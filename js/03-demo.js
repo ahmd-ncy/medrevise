@@ -1,0 +1,221 @@
+function seed() {
+  const q = (ch, e, p, x, img) => ({
+      id: uid(),
+      ch,
+      enonce: e,
+      img: img || "",
+      props: p.map((a, i) => ({ l: "ABCDE"[i], t: a[0], ok: !!a[1] })),
+      expl: x,
+    }),
+    c = (ch, r, vv, img) => ({ id: uid(), ch, recto: r, verso: vv, img: img || "" });
+  return {
+    mat: [
+      { id: "ma", ic: "bone", nom: "Anatomie", prof: "Pr Martin (fictif)", couleur: COL[0] },
+      { id: "mp", ic: "heart", nom: "Physiologie", prof: "Pr Durand (fictif)", couleur: COL[1] },
+      { id: "mb", ic: "flask", nom: "Biochimie", prof: "Pr Lefèvre (fictif)", couleur: COL[2] },
+    ],
+    chap: [
+      { id: "a1", mid: "ma", titre: "Membre supérieur", prof: "Pr Martin", info: "Exemple fictif" },
+      { id: "p1", mid: "mp", titre: "Cellule et membrane", prof: "Pr Durand", info: "" },
+      { id: "p2", mid: "mp", titre: "Cœur et circulation", prof: "Dr Roux (fictif)", info: "" },
+      { id: "b1", mid: "mb", titre: "Glucides", prof: "Pr Lefèvre", info: "" },
+    ],
+    courses: [
+      {
+        id: uid(),
+        ch: "p2",
+        titre: "Le cœur : anatomie et cycle cardiaque (EXEMPLE)",
+        texte:
+          "# Vue d'ensemble\nLe cœur est un muscle creux situé dans le **médiastin moyen**. Il comprend **4 cavités** : 2 oreillettes et 2 ventricules.\n- Le cœur droit reçoit le sang pauvre en O2 et l'envoie aux poumons (petite circulation).\n- Le cœur gauche reçoit le sang oxygéné et l'envoie à l'organisme (grande circulation).\n# Les valves\n## Valves atrio-ventriculaires\n- **Tricuspide** : entre l'oreillette droite et le ventricule droit.\n- **Mitrale** (bicuspide) : entre l'oreillette gauche et le ventricule gauche.\n## Valves sigmoïdes\n- **Pulmonaire** : du ventricule droit vers l'artère pulmonaire.\n- **Aortique** : du ventricule gauche vers l'aorte.\n# Le cycle cardiaque\nChaque cycle comprend deux grandes phases :\n- **Systole** : contraction des ventricules et éjection du sang.\n- **Diastole** : relâchement et remplissage des ventricules.\n## Contrôle électrique\nL'excitation naît dans le **nœud sinusal**, gagne le nœud atrio-ventriculaire, puis le faisceau de His et le réseau de Purkinje.\n# À retenir\n- Débit cardiaque = FC × VES, soit environ 5 L/min au repos.\n- La mitrale est bicuspide et à gauche, la tricuspide est à droite.\n- Le nœud sinusal est le pacemaker physiologique.",
+        imgs: [],
+      },
+      {
+        id: uid(),
+        ch: "a1",
+        titre: "Coiffe des rotateurs (EXEMPLE)",
+        texte:
+          "# Rôle\nLa coiffe **stabilise l'articulation de l'épaule**.\n# Les 4 muscles\n- Supra-épineux : initie l'abduction.\n- Infra-épineux et petit rond : rotation latérale.\n- Subscapulaire : rotation médiale.",
+        imgs: [svg],
+      },
+      {
+        id: uid(),
+        ch: "p1",
+        titre: "Pompe Na+/K+ (EXEMPLE)",
+        texte:
+          "# Principe\nTransport **actif primaire** : il consomme 1 ATP par cycle.\n- 3 Na+ sortent de la cellule.\n- 2 K+ entrent dans la cellule.\n# Rôle\nElle contribue au **potentiel de repos** et maintient les gradients ioniques.",
+        imgs: [],
+      },
+    ],
+    cards: [
+      c(
+        "a1",
+        "Quels sont les 4 muscles de la coiffe des rotateurs ?",
+        "Supra-épineux, infra-épineux, petit rond, subscapulaire",
+        svg,
+      ),
+      c("a1", "Quel muscle initie l'abduction du bras ?", "Le supra-épineux"),
+      c("a1", "Quel nerf innerve le triceps brachial ?", "Le nerf radial"),
+      c("a1", "Quels muscles innerve le nerf axillaire ?", "Deltoïde et petit rond"),
+      c("a1", "Os de la rangée proximale du carpe ?", "Scaphoïde, lunatum, triquetrum, pisiforme"),
+      c("p1", "Pompe Na+/K+ : ions transportés par cycle ?", "3 Na+ sortent, 2 K+ entrent"),
+      c("p1", "Potentiel de repos d'un neurone ?", "Environ -70 mV"),
+      c("p1", "La diffusion facilitée consomme-t-elle de l'ATP ?", "Non : transport passif via une protéine"),
+      c("p2", "Formule du débit cardiaque ?", "Débit = fréquence cardiaque × volume d'éjection systolique"),
+      c("p2", "Débit cardiaque au repos (adulte) ?", "Environ 5 L/min"),
+      c(
+        "p2",
+        "Quelle valve sépare l'oreillette gauche du ventricule gauche ?",
+        "La valve mitrale (bicuspide)",
+      ),
+      c("p2", "Pacemaker physiologique du cœur ?", "Le nœud sinusal"),
+      c("b1", "Où se déroule la glycolyse ?", "Dans le cytosol"),
+      c("b1", "Bilan net de la glycolyse par glucose ?", "2 ATP, 2 NADH, 2 pyruvates"),
+      c("b1", "Hormone hypoglycémiante ?", "L'insuline"),
+    ],
+    qcm: [
+      q(
+        "a1",
+        "Parmi ces muscles, lesquels font partie de la coiffe des rotateurs ?",
+        [
+          ["Supra-épineux", 1],
+          ["Deltoïde", 0],
+          ["Subscapulaire", 1],
+          ["Grand rond", 0],
+          ["Petit rond", 1],
+        ],
+        "Coiffe = supra-épineux, infra-épineux, petit rond, subscapulaire.",
+        svg,
+      ),
+      q(
+        "a1",
+        "Quel muscle déclenche le début de l'abduction du bras ?",
+        [
+          ["Supra-épineux", 1],
+          ["Subscapulaire", 0],
+          ["Petit rond", 0],
+        ],
+        "Le supra-épineux initie l'abduction.",
+      ),
+      q(
+        "a1",
+        "Concernant le nerf radial, quelles propositions sont exactes ?",
+        [
+          ["Il innerve le triceps brachial", 1],
+          ["Il innerve le muscle brachio-radial", 1],
+          ["Il innerve le fléchisseur superficiel des doigts", 0],
+          ["Il innerve le deltoïde", 0],
+        ],
+        "Le deltoïde dépend du nerf axillaire.",
+      ),
+      q(
+        "a1",
+        "Quels os appartiennent à la rangée proximale du carpe ?",
+        [
+          ["Scaphoïde", 1],
+          ["Lunatum", 1],
+          ["Trapèze", 0],
+          ["Hamatum", 0],
+          ["Pisiforme", 1],
+        ],
+        "Trapèze et hamatum sont dans la rangée distale.",
+      ),
+      q(
+        "a1",
+        "Concernant le nerf axillaire, quelles propositions sont exactes ?",
+        [
+          ["Il innerve le deltoïde", 1],
+          ["Il innerve le petit rond", 1],
+          ["Il innerve le supra-épineux", 0],
+          ["Il innerve le triceps brachial", 0],
+        ],
+        "Le supra-épineux dépend du nerf supra-scapulaire.",
+      ),
+      q(
+        "p1",
+        "À propos de la pompe Na+/K+ ATPase, quelles propositions sont exactes ?",
+        [
+          ["Elle expulse 3 Na+ par cycle", 1],
+          ["Elle fait entrer 2 K+ par cycle", 1],
+          ["C'est un transport passif", 0],
+          ["Elle fonctionne sans ATP", 0],
+        ],
+        "Transport actif primaire.",
+      ),
+      q(
+        "p1",
+        "Concernant le potentiel de repos d'un neurone, quelles propositions sont exactes ?",
+        [
+          ["L'intérieur de la cellule est négatif par rapport à l'extérieur", 1],
+          ["La perméabilité au K+ y est la plus élevée", 1],
+          ["Le Na+ est l'ion le plus perméant", 0],
+          ["Sa valeur est d'environ +70 mV", 0],
+        ],
+        "Environ -70 mV, dominé par la perméabilité au K+.",
+      ),
+      q(
+        "p2",
+        "Concernant le débit cardiaque, quelles propositions sont exactes ?",
+        [
+          ["Il est égal à FC × VES", 1],
+          ["Il augmente à l'effort", 1],
+          ["Il vaut environ 50 L/min au repos", 0],
+          ["Il diminue sous stimulation sympathique", 0],
+        ],
+        "Environ 5 L/min au repos.",
+      ),
+      q(
+        "p2",
+        "Concernant la valve mitrale, quelles propositions sont exactes ?",
+        [
+          ["Elle sépare l'oreillette gauche du ventricule gauche", 1],
+          ["Elle est bicuspide", 1],
+          ["C'est une valve tricuspide", 0],
+          ["Elle sépare le ventricule droit de l'artère pulmonaire", 0],
+        ],
+        "Valve atrio-ventriculaire gauche.",
+      ),
+      q(
+        "p2",
+        "Concernant le nœud sinusal, quelles propositions sont exactes ?",
+        [
+          ["C'est le pacemaker physiologique du cœur", 1],
+          ["Il est situé dans l'oreillette droite", 1],
+          ["Il est situé dans le ventricule gauche", 0],
+          ["Il est plus lent que le nœud atrio-ventriculaire", 0],
+        ],
+        "Il se dépolarise le plus vite.",
+      ),
+      q(
+        "b1",
+        "Concernant la glycolyse, quelles propositions sont exactes ?",
+        [
+          ["Elle se déroule dans le cytosol", 1],
+          ["Son bilan net est de 2 ATP par glucose", 1],
+          ["Elle se déroule dans la mitochondrie", 0],
+          ["Elle nécessite obligatoirement de l'O2", 0],
+        ],
+        "Elle peut fonctionner en anaérobie.",
+      ),
+      q(
+        "b1",
+        "Concernant l'insuline, quelles propositions sont exactes ?",
+        [
+          ["Elle est hypoglycémiante", 1],
+          ["Elle est sécrétée par les cellules bêta du pancréas", 1],
+          ["Elle est sécrétée par les cellules alpha", 0],
+          ["Elle favorise la glycogénolyse hépatique", 0],
+        ],
+        "Le glucagon est sécrété par les cellules alpha.",
+      ),
+    ],
+    ver: 3,
+    hist: [],
+    days: [],
+    se: 0,
+    seb: 0,
+    s15: 0,
+    s15b: 0,
+    ms: {},
+    fc: 0,
+  };
+}
