@@ -59,36 +59,33 @@ self.addEventListener("activate", (e) => {
       .then(() => self.clients.claim()),
   );
 });
+// Ouverture instantanée : les fichiers de l'app viennent de la copie locale de cette version.
+// Les mises à jour arrivent par sw.js : à chaque nouvelle version publiée, son numéro change,
+// la nouvelle copie se télécharge en arrière-plan, puis l'app se recharge toute seule.
 self.addEventListener("fetch", (e) => {
   const req = e.request,
     u = new URL(req.url);
   if (req.method !== "GET") return;
   if (u.origin === location.origin) {
     e.respondWith(
-      // « no-cache » : toujours vérifier auprès du serveur s'il y a une nouvelle version (sinon copie locale)
-      fetch(req, { cache: "no-cache" })
-        .then((r) => {
-          if (r.ok) {
-            const c = r.clone();
-            caches.open(VERSION).then((ca) => ca.put(req, c));
-          }
-          return r;
-        })
-        .catch(() => caches.match(req, { ignoreSearch: true }).then((r) => r || caches.match("index.html"))),
+      (async () => {
+        const ca = await caches.open(VERSION);
+        let r = await ca.match(req, { ignoreSearch: true });
+        if (!r && req.mode === "navigate") r = await ca.match("index.html");
+        return r || netCache(ca, req);
+      })(),
     );
   } else if (/fonts\.(googleapis|gstatic)\.com$/.test(u.hostname)) {
     // polices : copie locale d'abord
     e.respondWith(
-      caches.match(req).then(
-        (r) =>
-          r ||
-          fetch(req).then((n) => {
-            const c = n.clone();
-            caches.open(VERSION).then((ca) => ca.put(req, c));
-            return n;
-          }),
-      ),
+      caches.open(VERSION).then((ca) => ca.match(req).then((r) => r || netCache(ca, req))),
     );
   }
   // le reste (Supabase…) passe directement au réseau
 });
+function netCache(ca, req) {
+  return fetch(req).then((r) => {
+    if (r.ok) ca.put(req, r.clone());
+    return r;
+  });
+}
