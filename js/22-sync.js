@@ -375,9 +375,11 @@ const syTr = (m) =>
             ? "Mot de passe trop faible : au moins 8 caractères, avec des lettres, des chiffres et un symbole."
             : /could not find the function|schema cache/i.test(m)
               ? "Mise à jour de la base nécessaire : exécute le fichier supabase.sql dans Supabase (SQL Editor)."
-              : /fetch|network/i.test(m)
-              ? "Pas de connexion internet."
-              : m;
+              : /504|gateway|timeout|timed out/i.test(m)
+                ? "Le serveur met trop de temps à répondre (souvent l’envoi d’e-mail). Réessaie dans quelques minutes."
+                : /fetch|network/i.test(m)
+                  ? "Pas de connexion internet."
+                  : m;
 const syMsg = (t) => {
   if ($("sym")) $("sym").textContent = t;
 };
@@ -411,13 +413,31 @@ async function syLogin(signup) {
         options: { emailRedirectTo: location.href.split("#")[0], data: { prenom: nm } },
       })
     : await SY.sb.auth.signInWithPassword({ email: e, password: p });
-  if (r.error) return syMsg(syTr(r.error.message));
+  let r2 = r;
+  // Si l'envoi de l'e-mail de confirmation échoue (504, délai, SMTP), le compte existe souvent quand même :
+  // on tente de se connecter avec les mêmes identifiants avant d'afficher une erreur.
+  if (signup && r.error && /504|timeout|gateway|sending|smtp|confirmation|unexpected/i.test((r.error.message || "") + (r.error.status || ""))) {
+    syMsg("Finalisation…");
+    const t = await SY.sb.auth.signInWithPassword({ email: e, password: p });
+    if (!t.error) r2 = t;
+    else {
+      try {
+        localStorage.setItem("mr_code", code);
+      } catch (x) {}
+      return syMsg(
+        /not confirmed/i.test(t.error.message || "")
+          ? "Ton compte est créé, mais l’e-mail de confirmation n’a pas pu partir. Préviens l’administrateur : il le débloque, puis tu pourras te connecter ici."
+          : "Le serveur d’e-mails ne répond pas, ton compte n’a pas pu être finalisé. Réessaie dans quelques minutes ou préviens l’administrateur.",
+      );
+    }
+  }
+  if (r2.error) return syMsg(syTr(r2.error.message));
   if (signup) {
     if (!S.name) {
       S.name = nm;
       save();
     }
-    if (!r.data.session) {
+    if (!r2.data.session) {
       try {
         localStorage.setItem("mr_code", code);
       } catch (x) {}
