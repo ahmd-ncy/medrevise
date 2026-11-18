@@ -61,7 +61,7 @@ function home() {
     "</small></span></div></div>";
   const acc =
     SY.sb && !SY.user
-      ? '<button class="rs acc" style="--sc:var(--wn)" onclick="go(\'prof\');setTimeout(()=>jump(\'cpt\'),80)">' +
+      ? '<button class="rs acc" style="--sc:var(--wn)" onclick="profGo(\'compte\')">' +
         icn("cloud") +
         "<span><b>Sauvegarde ton travail</b><br><small>Connecte-toi pour tout retrouver sur ton iPhone et ton PC.</small></span></button>"
       : "";
@@ -81,7 +81,9 @@ function home() {
         nd +
         "/" +
         d.o.length +
-        '</h3><div class="c">' +
+        " " +
+        helpBtn("obj") +
+        '</h3><div class="c" id="hobj">' +
         d.o
           .map(([t, n]) => {
             const v = Math.min(n, OBJ[t].v(d) || 0),
@@ -108,7 +110,9 @@ function home() {
         (all ? ill("flame", "Journée bouclée !") : "") +
         "</div>"
       : "") +
-    "<h3>Au programme</h3>" +
+    '<h3>Au programme <small style="text-transform:none;letter-spacing:0">· méthode des J</small> ' +
+    helpBtn("j") +
+    "</h3>" +
     '<div class="tls">' +
     tile(ct.all.length, "carte" + (ct.all.length > 1 ? "s" : "") + " du jour", "cards", "go('cards');R.f='';R.due=true;render()", "var(--c3)") +
     tile(qd, "QCM à revoir", "check", "qs('due')", "var(--c4)") +
@@ -141,70 +145,159 @@ function home() {
   );
 }
 const jump = (id) => $(id).scrollIntoView({ behavior: "smooth" });
+// ================= Profil : un menu de sections =================
+const profGo = (sec) => {
+  go("prof");
+  R.ps = sec;
+  render();
+  scrollTo(0, 0);
+};
+const PSEC = [
+  ["compte", "Compte et synchronisation", "cloud", () => (SY.user ? SYL[SY.st] + (SY.role == "admin" ? " · invitations" : "") : "Non connecté")],
+  ["progres", "Ma progression", "chart", () => {
+    const st = stats();
+    return st.n + " QCM répondus · moyenne " + st.moy + "/20";
+  }],
+  ["cal", "Calendrier et notes", "cal", () => S.days.length + " journée" + (S.days.length > 1 ? "s" : "") + " bouclée" + (S.days.length > 1 ? "s" : "") + ", notes par UE"],
+  ["reg", "Réglages", "gear", () => "Concours, objectifs, barème, cartes par jour"],
+  ["app", "Apparence", "spark", () => "Couleurs, mode sombre, effets"],
+  ["don", "Données et sauvegarde", "file", () => "Exporter, restaurer, réinitialiser"],
+  ["aide", "Aide", "book", () => "Visite guidée et explications"],
+];
+// Photo de profil : recadrée au centre en carré de 256 px.
+function setPhoto(inp) {
+  if (!inp) {
+    delete S.photo;
+    save();
+    return render();
+  }
+  const f = inp.files[0];
+  if (!f) return;
+  const fr = new FileReader();
+  fr.onload = () => {
+    const i = new Image();
+    i.onload = () => {
+      const k = Math.min(i.width, i.height),
+        cv = document.createElement("canvas");
+      cv.width = cv.height = 256;
+      cv.getContext("2d").drawImage(i, (i.width - k) / 2, (i.height - k) / 2, k, k, 0, 0, 256, 256);
+      S.photo = cv.toDataURL("image/jpeg", 0.82);
+      save();
+      render();
+    };
+    i.src = fr.result;
+  };
+  fr.readAsDataURL(f);
+}
+const avatar = (nm) =>
+  S.photo && /^data:image\//.test(S.photo) ? '<img src="' + esc(S.photo) + '" alt="Photo de profil">' : esc((nm || "?")[0].toUpperCase());
 function prof() {
   const st = stats(),
     nm = S.name || "Étudiant·e",
-    J = (id, l) => '<button class="chip" onclick="jump(\'' + id + "')\">" + l + "</button>",
+    head =
+      '<div class="pf"><label class="av2 ph" title="Changer la photo de profil">' +
+      avatar(nm) +
+      '<input type="file" accept="image/*" hidden onchange="setPhoto(this)"><span class="phe">' +
+      icn("edit") +
+      '</span></label><div style="flex:1;min-width:0"><h2 style="margin:0">' +
+      esc(nm) +
+      "</h2><small>" +
+      icn("flame") +
+      " " +
+      flame() +
+      " jour" +
+      (flame() > 1 ? "s" : "") +
+      " d’affilée · " +
+      st.n +
+      " QCM · " +
+      S.fc +
+      " cartes</small>" +
+      (S.photo ? '<br><button class="lnk" onclick="setPhoto(null)">Retirer la photo</button>' : "") +
+      "</div></div>";
+  if (!R.ps)
+    return (
+      head +
+      '<div class="pmenu">' +
+      PSEC.map(
+        ([k, t, ic, sub]) =>
+          '<button class="pmi" onclick="R.ps=\'' +
+          k +
+          '\';render();scrollTo(0,0)"><span class="pmic">' +
+          icn(ic) +
+          '</span><span style="flex:1"><b>' +
+          t +
+          "</b><br><small>" +
+          esc(sub()) +
+          '</small></span><span class="cv">›</span></button>',
+      ).join("") +
+      "</div>"
+    );
+  const sec = PSEC.find((x) => x[0] == R.ps) || PSEC[0],
     tl = [
       [st.n, "QCM répondus"],
       [S.hist.length, "sessions"],
       [st.moy, "moyenne /20"],
       [S.fc, "cartes révisées"],
-      ["" + icn("flame") + " " + flame(), "jours d’affilée"],
+      [icn("flame") + " " + flame(), "jours d’affilée"],
       [S.days.length, "journées bouclées"],
       [fmtH(Object.values(S.tm || {}).reduce((a, b) => a + b, 0)), "temps de travail"],
     ];
+  let body = "";
+  if (sec[0] == "compte") {
+    body = '<div id="sybox">' + syBox() + "</div>";
+    setTimeout(syInvLoad, 0);
+  } else if (sec[0] == "progres")
+    body =
+      '<h3>Chiffres clés</h3><div class="g">' +
+      tl.map((t) => '<div class="k"><b>' + t[0] + "</b><small>" + t[1] + "</small></div>").join("") +
+      '</div><h3>Courbe de mes notes</h3><div class="c" id="chbox">' +
+      chart() +
+      "</div>" +
+      radar() +
+      "<h3>Maîtrise par chapitre</h3>" +
+      carte()
+        .replace("<h3>Maîtrise par UE</h3>", "")
+        .replace("<h3>Priorités</h3>", '<div class="lb" style="margin:0 0 6px">Priorités</div>') +
+      memo() +
+      '<h3>Contenu</h3><div class="c">' +
+      [
+        [S.mat.length, "UE"],
+        [S.chap.length, "chapitres"],
+        [S.courses.length, "livrets"],
+        [S.qcm.length, "QCM"],
+        [S.cards.length, "flashcards"],
+      ]
+        .map((t) => '<span class="tag"><b>' + t[0] + "</b> " + t[1] + "</span>")
+        .join("") +
+      "</div>";
+  else if (sec[0] == "cal") body = insight();
+  else if (sec[0] == "reg") body = settings();
+  else if (sec[0] == "app") body = appearance();
+  else if (sec[0] == "don")
+    body =
+      data().replace(/^<h2>[^<]*<\/h2>/, "") +
+      '<h3>Recommencer à zéro</h3><div class="c"><p class="m" style="margin-top:0">Efface tout ton contenu pour repartir d’une application vide, ou avec le contenu de démonstration.</p><button class="big ko2" onclick="resetDlg()">Réinitialiser l’application</button></div>';
+  else if (sec[0] == "aide")
+    body =
+      '<div class="c"><b>Visite guidée</b><p class="m" style="margin:.3em 0 .6em">Refais le tour de l’application, écran par écran.</p><button class="b p" onclick="tutoStart(1)">Lancer la visite guidée</button></div><h3>Explications</h3><div class="pmenu">' +
+      Object.keys(HELP)
+        .filter((k) => k != "inv" || SY.role == "admin")
+        .map(
+          (k) =>
+            '<button class="pmi" onclick="helpShow(\'' +
+            k +
+            '\')"><span class="pmic" style="font:800 16px Inter,sans-serif">?</span><span style="flex:1"><b>' +
+            HELP[k][0] +
+            '</b></span><span class="cv">›</span></button>',
+        )
+        .join("") +
+      "</div>";
   return (
-    '<div class="pf"><div class="av2">' +
-    esc(nm[0].toUpperCase()) +
-    '</div><div style="flex:1"><h2 style="margin:0">' +
-    esc(nm) +
-    "</h2><small>" +
-    st.n +
-    " QCM répondus · " +
-    S.fc +
-    " cartes révisées</small></div></div>" +
-    '<div class="chips">' +
-    J("cpt", "Compte") +
-    J("p1", "Chiffres") +
-    J("p2", "Progression") +
-    J("p3", "Notes") +
-    J("p4", "Apparence") +
-    J("p5", "Réglages") +
-    "</div>" +
-    '<h3 id="cpt">Compte et synchronisation</h3><div id="sybox">' +
-    syBox() +
-    "</div>" +
-    (setTimeout(syInvLoad, 0), "") +
-    '<h3 id="p1">Chiffres clés</h3><div class="g">' +
-    tl.map((t) => '<div class="k"><b>' + t[0] + "</b><small>" + t[1] + "</small></div>").join("") +
-    "</div>" +
-    '<h3 id="p2">Progression</h3><div class="c" id="chbox">' +
-    chart() +
-    "</div>" +
-    radar() +
-    '<h3>Maîtrise par chapitre</h3>' +
-    carte()
-      .replace("<h3>Maîtrise par UE</h3>", "")
-      .replace("<h3>Priorités</h3>", '<div class="lb" style="margin:0 0 6px">Priorités</div>') +
-    memo() +
-    '<h3 id="p3">Notes et calendrier</h3>' +
-    insight() +
-    '<h3>Contenu</h3><div class="c">' +
-    [
-      [S.mat.length, "UE"],
-      [S.chap.length, "chapitres"],
-      [S.courses.length, "livrets"],
-      [S.qcm.length, "QCM"],
-      [S.cards.length, "flashcards"],
-    ]
-      .map((t) => '<span class="tag"><b>' + t[0] + "</b> " + t[1] + "</span>")
-      .join("") +
-    "</div>" +
-    '<h3 id="p4">Apparence</h3>' +
-    appearance() +
-    '<h3 id="p5">Réglages</h3>' +
-    settings() +
-    '<h3>Données</h3><button class="big" onclick="go(\'data\')">Données et sauvegarde</button><h3>Développement</h3><div class="c"><p class="m" style="margin-top:0">Pour tes tests : remet l’application à zéro, vide ou avec un contenu de démonstration.</p><button class="big ko2" onclick="resetDlg()">Réinitialiser l’application</button></div>'
+    '<button class="b" onclick="go(\'prof\')">← Profil</button><h2 class="ti" style="margin-top:12px">' +
+    icn(sec[2]) +
+    " " +
+    sec[1] +
+    "</h2>" +
+    body
   );
 }

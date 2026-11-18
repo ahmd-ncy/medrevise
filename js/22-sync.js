@@ -367,7 +367,9 @@ const syTr = (m) =>
           ? "Trop de tentatives : réessaie dans quelques minutes."
           : /password/i.test(m) && /6|short|weak/i.test(m)
             ? "Mot de passe trop court ou trop simple (6 caractères minimum)."
-            : /fetch|network/i.test(m)
+            : /could not find the function|schema cache/i.test(m)
+              ? "Mise à jour de la base nécessaire : exécute le fichier supabase-maj-2.sql dans Supabase (SQL Editor)."
+              : /fetch|network/i.test(m)
               ? "Pas de connexion internet."
               : m;
 const syMsg = (t) => {
@@ -440,7 +442,7 @@ function syBadge() {
   if (SY.st == "off") return "";
   const c = { out: "#ffd27a", sync: "#fff", ok: "#9be7a5", err: "#ff9b8f", offline: "#ffd27a" }[SY.st] || "#fff";
   return (
-    '<button class="syb" id="syb" onclick="go(\'prof\');setTimeout(()=>jump(\'cpt\'),80)" title="' +
+    '<button class="syb" id="syb" onclick="profGo(\'compte\')" title="' +
     SYL[SY.st] +
     '" aria-label="' +
     SYL[SY.st] +
@@ -465,7 +467,9 @@ function syBox() {
   return (
     '<div class="c"><p style="margin-top:0">Connecté avec <b>' +
     esc(SY.user.email || "") +
-    '</b></p><p class="m" style="margin:.2em 0">' +
+    '</b>' +
+    (SY.acc && SY.acc.expire && SY.role != "admin" ? "<br><small>Accès jusqu’au " + fdt(SY.acc.expire) + "</small>" : "") +
+    '</p><p class="m" style="margin:.2em 0">' +
     SYL[SY.st] +
     (SY.st == "ok" && SY.last ? " " + syAgo() : "") +
     (pf ? " · " + pf + " fichier" + (pf > 1 ? "s" : "") + " en attente d’envoi" : "") +
@@ -500,8 +504,19 @@ async function syCheckMember() {
   if (!SY.user) return;
   const uid = SY.user.id;
   try {
-    let { data: role, error } = await SY.sb.rpc("mon_role");
-    if (error) throw error;
+    let role = null,
+      r0 = await SY.sb.rpc("mon_acces");
+    if (r0.error && /function|schema cache/i.test(r0.error.message || "")) {
+      // base pas encore mise à jour (supabase-maj-2.sql) : ancien contrôle
+      const r1 = await SY.sb.rpc("mon_role");
+      if (r1.error) throw r1.error;
+      role = r1.data;
+      SY.acc = null;
+    } else {
+      if (r0.error) throw r0.error;
+      SY.acc = r0.data || null;
+      role = SY.acc && !SY.acc.expire_deja ? SY.acc.role : null;
+    }
     // code saisi à l'inscription, quand le compte devait d'abord être confirmé par e-mail
     let pend = null;
     try {
@@ -571,7 +586,11 @@ function gate() {
       ? '<p>Connexion internet nécessaire pour vérifier ton accès.</p><button class="big" onclick="syCheckMember()">Réessayer</button><button class="b" style="width:100%" onclick="syOut()">Se déconnecter</button>'
       : "<p>Connecté avec <b>" +
         esc(SY.user.email || "") +
-        "</b>, mais ce compte n’a pas encore accès à l’app.</p>" +
+        "</b>, " +
+        (SY.acc && SY.acc.expire_deja
+          ? "mais ton accès a expiré le " + fdt(SY.acc.expire) + ". Demande un nouveau code."
+          : "mais ce compte n’a pas encore accès à l’app.") +
+        "</p>" +
         inp("syc", "Code d’invitation", "text", "off", "XXXX-XXXX") +
         '<button class="big" onclick="syJoin()">Valider le code</button><button class="b" style="width:100%" onclick="syOut()">Se déconnecter</button>';
   return (
@@ -592,56 +611,181 @@ async function syJoin() {
   await syCheckMember();
 }
 // ---------- panneau administrateur ----------
+// Seul l'administrateur (le premier compte créé) peut inviter. Il choisit combien de temps le code reste
+// utilisable et combien de temps dure l'accès donné (de 1 heure à 1 an, ou illimité).
+const DUR = [
+    [1, "1 heure"],
+    [6, "6 heures"],
+    [24, "24 heures"],
+    [72, "3 jours"],
+    [168, "7 jours"],
+    [720, "30 jours"],
+    [2160, "3 mois"],
+    [4320, "6 mois"],
+    [8760, "1 an"],
+  ],
+  durLab = (h) =>
+    h == null
+      ? "illimité"
+      : h % 8760 == 0
+        ? h / 8760 + " an" + (h > 8760 ? "s" : "")
+        : h % 720 == 0
+          ? h / 720 + " mois"
+          : h % 24 == 0
+            ? h / 24 + " jour" + (h > 24 ? "s" : "")
+            : h + " heure" + (h > 1 ? "s" : ""),
+  fdt = (d) =>
+    new Date(d).toLocaleString("fr-FR", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+function durPick(id, def, inf) {
+  return (
+    '<select id="' +
+    id +
+    '" onchange="$(\'' +
+    id +
+    "c').hidden=this.value!='c'\">" +
+    (inf ? '<option value=""' + (def === "" ? " selected" : "") + ">Illimitée</option>" : "") +
+    DUR.map(([h, l]) => '<option value="' + h + '"' + (h === def ? " selected" : "") + ">" + l + "</option>").join("") +
+    '<option value="c">Personnalisée…</option></select><div id="' +
+    id +
+    'c" class="r" hidden style="margin:0;flex-wrap:nowrap"><input type="number" id="' +
+    id +
+    'n" min="1" value="2" aria-label="Nombre"><select id="' +
+    id +
+    'u" aria-label="Unité"><option value="1">heures</option><option value="24" selected>jours</option><option value="720">mois</option></select></div>'
+  );
+}
+function durVal(id) {
+  const v = $(id).value;
+  if (v === "") return null;
+  if (v === "c") return Math.min(8784, Math.max(1, Math.round((+$(id + "n").value || 0) * +$(id + "u").value)));
+  return +v;
+}
 function syAdmin() {
   return SY.role == "admin"
-    ? '<div class="c"><b>Invitations</b><p class="m" style="margin:.3em 0 .6em">Chaque code ne sert qu’une fois et expire après la durée choisie. Donne-le à la personne avec l’adresse de l’app.</p><div class="r" style="margin:0"><button class="b p" onclick="syInvite(24)">Créer un code (24 h)</button><button class="b" onclick="syInvite(168)">Créer un code (7 jours)</button></div><div id="synew"></div><div id="syinv">' + (SY.invH || '<p class="m">Chargement des invitations…</p>') + "</div></div>"
+    ? '<div class="c"><b>Inviter quelqu’un</b> ' +
+        helpBtn("inv") +
+        '<label class="f">Le code doit être utilisé dans les</label>' +
+        durPick("dcode", 24) +
+        '<label class="f">Durée de l’accès, une fois le code utilisé</label>' +
+        durPick("dacc", "", 1) +
+        '<div class="r"><button class="b p" onclick="syInvite()">Créer le code</button></div><div id="synew"></div></div>' +
+        '<div class="c"><b>Membres</b><div id="symem">' +
+        (SY.memH || '<p class="m">Chargement…</p>') +
+        '</div></div><div class="c"><b>Codes d’invitation</b><div id="syinv">' +
+        (SY.invH || '<p class="m">Chargement…</p>') +
+        "</div></div>"
     : "";
 }
-async function syInvite(h) {
-  const { data, error } = await SY.sb.rpc("creer_invitation", { p_heures: h });
+async function syInvite() {
+  const h = durVal("dcode"),
+    acc = durVal("dacc"),
+    { data, error } = await SY.sb.rpc("creer_invitation", { p_heures: h, p_acces: acc });
   if (error) return ($("synew").innerHTML = '<p class="wnl">' + esc(syTr(error.message)) + "</p>");
   $("synew").innerHTML =
     '<div class="bn good"><b>Nouveau code : <span style="font:700 1.4rem ui-monospace,monospace;letter-spacing:.08em">' +
     esc(data) +
-    "</span></b><p>Valable " +
-    (h >= 48 ? h / 24 + " jours" : h + " heures") +
-    ', une seule fois.</p><button class="b" onclick="navigator.clipboard.writeText(\'' +
+    "</span></b><p>À utiliser dans les " +
+    durLab(h) +
+    ", une seule fois. Accès donné : " +
+    durLab(acc) +
+    '.</p><button class="b" onclick="navigator.clipboard.writeText(\'' +
     esc(data) +
     "').then(()=>this.textContent='Copié ✔').catch(()=>{})\">Copier</button></div>";
   syInvLoad();
 }
 async function syInvLoad() {
-  const box = $("syinv");
-  if (!box || SY.role != "admin") return;
-  const { data, error } = await SY.sb.rpc("liste_invitations");
-  if (error) return (box.innerHTML = '<p class="m">Liste indisponible : ' + esc(syTr(error.message)) + "</p>");
+  if (SY.role != "admin" || !$("syinv")) return;
   const now = Date.now(),
-    fd = (d) => new Date(d).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-  box.innerHTML = SY.invH = data.length
-    ? data
-        .map((i) => {
-          const used = !!i.utilise_le,
-            exp = !used && new Date(i.expire) < now;
-          return (
-            '<div class="hl1" style="align-items:center"><span style="flex:1"><b style="font-family:ui-monospace,monospace">' +
-            esc(i.code) +
-            "</b><br><small>" +
-            (used
-              ? "utilisé par " + esc(i.email || "un compte supprimé") + " le " + fd(i.utilise_le)
-              : exp
-                ? "expiré le " + fd(i.expire)
-                : "valable jusqu’au " + fd(i.expire)) +
-            "</small></span>" +
-            (!used && !exp
-              ? "<button class=\"b\" onclick=\"syCancel('" + esc(i.code) + "')\">Annuler</button>"
-              : "") +
-            "</div>"
-          );
-        })
-        .join("")
-    : '<p class="m">Aucune invitation pour l’instant.</p>';
+    [inv, mem] = await Promise.all([SY.sb.rpc("liste_invitations"), SY.sb.rpc("liste_membres")]);
+  if ($("syinv"))
+    $("syinv").innerHTML = SY.invH = inv.error
+      ? '<p class="wnl">' + esc(syTr(inv.error.message)) + "</p>"
+      : inv.data.length
+        ? inv.data
+            .map((i) => {
+              const used = !!i.utilise_le,
+                exp = !used && new Date(i.expire) < now;
+              return (
+                '<div class="hl1" style="align-items:center"><span style="flex:1"><b style="font-family:ui-monospace,monospace">' +
+                esc(i.code) +
+                "</b> <small>· accès " +
+                durLab(i.acces_heures ?? null) +
+                "</small><br><small>" +
+                (used
+                  ? "utilisé par " + esc(i.email || "un compte supprimé") + " le " + fdt(i.utilise_le)
+                  : exp
+                    ? "expiré le " + fdt(i.expire)
+                    : "à utiliser avant le " + fdt(i.expire)) +
+                "</small></span>" +
+                (!used && !exp ? "<button class=\"b\" onclick=\"syCancel('" + esc(i.code) + "')\">Annuler</button>" : "") +
+                "</div>"
+              );
+            })
+            .join("")
+        : '<p class="m">Aucun code pour l’instant.</p>';
+  if ($("symem"))
+    $("symem").innerHTML = SY.memH = mem.error
+      ? '<p class="wnl">' + esc(syTr(mem.error.message)) + "</p>"
+      : mem.data
+          .map((m) => {
+            const ex = m.expire && new Date(m.expire) < now;
+            return (
+              '<div class="hl1" style="align-items:center"><span style="flex:1;min-width:150px"><b>' +
+              esc(m.email || "?") +
+              "</b><br><small>" +
+              (m.role == "admin"
+                ? "administrateur (toi)"
+                : !m.expire
+                  ? "accès illimité"
+                  : ex
+                    ? "accès expiré le " + fdt(m.expire)
+                    : "accès jusqu’au " + fdt(m.expire)) +
+              "</small></span>" +
+              (m.role == "admin"
+                ? ""
+                : "<button class=\"b\" onclick=\"syMemDur('" +
+                  m.user_id +
+                  "','" +
+                  esc(m.email || "") +
+                  "')\">Durée</button><button class=\"b\" onclick=\"syMemOut('" +
+                  m.user_id +
+                  "','" +
+                  esc(m.email || "") +
+                  "')\">Retirer</button>") +
+              "</div>"
+            );
+          })
+          .join("");
 }
 async function syCancel(c) {
   await SY.sb.rpc("annuler_invitation", { p_code: c });
   syInvLoad();
+}
+function syMemDur(uid, em) {
+  const d = document.createElement("div");
+  d.id = "md";
+  d.innerHTML =
+    '<div class="mb" role="dialog" aria-modal="true"><h3>Durée d’accès</h3><p class="m" style="font-weight:500">' +
+    esc(em) +
+    ' aura accès pendant, à partir de maintenant :</p>' +
+    durPick("dmem", 720, 1) +
+    '<p id="em" class="m" role="status"></p><div class="r2"><button class="big" style="background:var(--mut)" id="mn">Annuler</button><button class="big" id="my">Appliquer</button></div></div>';
+  document.body.appendChild(d);
+  $("mn").onclick = () => d.remove();
+  $("my").onclick = async () => {
+    const { error } = await SY.sb.rpc("modifier_acces", { p_user: uid, p_heures: durVal("dmem") });
+    if (error) return ($("em").textContent = syTr(error.message));
+    d.remove();
+    syInvLoad();
+  };
+}
+function syMemOut(uid, em) {
+  ask(
+    "Retirer l’accès de " + em + " ? Ses données restent dans la base, mais il ne pourra plus utiliser l’app sans nouveau code.",
+    async () => {
+      await SY.sb.rpc("retirer_membre", { p_user: uid });
+      syInvLoad();
+    },
+    "Retirer l’accès",
+  );
 }

@@ -484,7 +484,9 @@ function plan() {
   return (
     '<h2 class="ti">' +
     icn("cal") +
-    " Planning</h2>" +
+    " Planning " +
+    helpBtn("plan") +
+    "</h2>" +
     '<div class="c"><p style="margin:0">' +
     rythme +
     "</p>" +
@@ -545,7 +547,10 @@ function plan() {
     (ex
       ? num("pbuf", P.buf, "Marge de révision avant le concours, sans nouveau chapitre (jours)", upd("pbuf"), 0)
       : num("pnd", P.nd, "Nouveaux chapitres par jour (0,5 = un tous les deux jours)", "S.pnd=Math.max(0,+this.value||0);save();render()", 0, 10, 0.5)) +
-    '<label class="f">Rappels de la méthode des J (jours après J0)</label><input type="text" value="' +
+    '<label class="f">Rappels de la méthode des J (jours après J0) ' +
+    helpBtn("j") +
+    "</label>" +
+    '<input type="text" value="' +
     JS().join(", ") +
     '" onchange="setJs(this.value)"></div>' +
     "<h3>À commencer (" +

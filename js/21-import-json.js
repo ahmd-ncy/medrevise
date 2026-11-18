@@ -50,10 +50,13 @@ const nrmT = (t) =>
     .trim();
 function jsonForm() {
   return (
-    '<div class="c"><b>1. Préparer le fichier avec Claude</b><p class="m" style="margin:.3em 0 .6em">Ouvre une nouvelle conversation, colle ce prompt, complète l’UE et le chapitre à la fin, et joins ton cours (PDF). Claude te répondra avec un bloc JSON à copier.</p><div class="r" style="margin:0"><button class="b p" onclick="jCopy()">Copier le prompt</button></div><p id="jcm" class="m" role="status"></p><details><summary>Voir le prompt</summary><pre class="pre" id="jpr">' +
+    '<div class="c imp"><b>Import depuis Claude</b> ' +
+    helpBtn("import") +
+    '<p class="m" style="margin:.3em 0 0">Fais préparer tes QCM et tes flashcards par Claude à partir de ton cours, puis importe-les ici en une fois, au lieu de les taper un par un.</p></div>' +
+    '<div class="c"><b>1. Préparer le fichier avec Claude</b><p class="m" style="margin:.3em 0 .6em">Ouvre une nouvelle conversation avec Claude, colle ce prompt, complète l’UE et le chapitre à la fin, et joins ton cours (PDF). Claude te répondra avec un bloc de texte à copier.</p><div class="r" style="margin:0"><button class="b p" onclick="jCopy()">Copier le prompt</button></div><p id="jcm" class="m" role="status"></p><details><summary>Voir le prompt</summary><pre class="pre" id="jpr">' +
     esc(JPROMPT) +
     "</pre></details></div>" +
-    '<div class="c"><b>2. Importer le résultat</b><label class="f">Colle le JSON ici (le bloc de code entier convient)</label><textarea id="jt" style="font:13px ui-monospace,monospace;min-height:140px" oninput="JI=null;$(\'jp\').innerHTML=\'\'"></textarea><label class="f">Ou choisis un fichier .json</label><input type="file" accept=".json,.txt,application/json" onchange="this.files[0]&&this.files[0].text().then(t=>{$(\'jt\').value=t;jCheck()})">' +
+    '<div class="c"><b>2. Importer le résultat</b><label class="f">Colle ici la réponse de Claude (le bloc de code entier convient)</label><textarea id="jt" style="font:13px ui-monospace,monospace;min-height:140px" oninput="JI=null;$(\'jp\').innerHTML=\'\'"></textarea><label class="f">Ou choisis un fichier .json</label><input type="file" accept=".json,.txt,application/json" onchange="this.files[0]&&this.files[0].text().then(t=>{$(\'jt\').value=t;jCheck()})">' +
     '<div class="lb">Destination</div><label class="f" style="color:var(--fg)"><input type="radio" name="jd" value="f" checked onchange="jDest()"> Selon l’UE et le chapitre écrits dans le fichier (créés s’ils n’existent pas)</label><label class="f" style="color:var(--fg)"><input type="radio" name="jd" value="c" onchange="jDest()"> Dans un chapitre que je choisis</label><div id="jdc" hidden><label class="f">UE</label>' +
     chsel() +
     '</div><label class="f">Livret à lier, pour le bouton « Voir dans le cours » (pages)</label><select id="sl">' +

@@ -1,7 +1,7 @@
 -- MedRevise : accès sur invitation.
 -- À exécuter une fois dans Supabase → SQL Editor → New query → Run, APRÈS supabase.sql.
--- AVANT de lancer : vérifie dans Authentication → Users que seul ton compte existe.
--- Tous les comptes déjà créés deviennent administrateurs (ils peuvent inviter).
+-- Le premier compte créé dans Authentication → Users devient l'unique administrateur (celui qui invite).
+-- Ensuite, exécute aussi supabase-maj-2.sql.
 
 -- Membres : les comptes qui ont le droit d'utiliser l'app
 create table if not exists public.membres (
@@ -25,9 +25,11 @@ create table if not exists public.invitations (
 );
 alter table public.invitations enable row level security;
 
--- Les comptes existants (le tien) deviennent administrateurs
+-- Le premier compte créé (le tien) devient l'unique administrateur, seulement s'il n'y en a pas encore
 insert into public.membres (user_id, role)
 select id, 'admin' from auth.users
+where not exists (select 1 from public.membres where role = 'admin')
+order by created_at limit 1
 on conflict (user_id) do update set role = 'admin';
 
 create or replace function public.est_membre() returns boolean

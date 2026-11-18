@@ -17,7 +17,7 @@ const tabsAdd = () =>
   [
     ["qcm", "QCM"],
     ["card", "Flashcard"],
-    ["json", "Importer JSON"],
+    ["json", "Import depuis Claude"],
     ["oc", "Schéma à trous"],
     ["cours", "Livret"],
     ["chap", "Chapitre"],

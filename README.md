@@ -14,7 +14,7 @@ Adresse : https://ahmd-ncy.github.io/medrevise/
 2. Colle tout le contenu du fichier [`supabase.sql`](supabase.sql), puis clique sur **Run**.
 3. Dans **Authentication** → **URL Configuration**, mets `https://ahmd-ncy.github.io/medrevise/` dans **Site URL**, et ajoute-la aussi dans **Redirect URLs**. C'est l'adresse où mènent les liens de confirmation et de mot de passe oublié.
 
-4. **Accès sur invitation** : après avoir créé ton propre compte dans l'app, vérifie dans **Authentication → Users** que tu es le seul compte, puis exécute de la même façon le fichier [`supabase-invitations.sql`](supabase-invitations.sql). Ton compte devient administrateur. Ensuite, personne ne peut utiliser l'app ni stocker de données sans un code d'invitation que tu crées dans **Profil → Compte et synchronisation → Invitations** (valable 24 h ou 7 jours, une seule utilisation).
+4. **Accès sur invitation** : après avoir créé ton propre compte dans l'app, vérifie dans **Authentication → Users** que tu es le seul compte, puis exécute de la même façon le fichier [`supabase-invitations.sql`](supabase-invitations.sql). Ton compte devient administrateur. Exécute ensuite [`supabase-maj-2.sql`](supabase-maj-2.sql) (durées et gestion des membres). Ensuite, personne ne peut utiliser l'app ni stocker de données sans un code d'invitation que tu crées dans **Profil → Compte et synchronisation**. Tu choisis combien de temps le code reste utilisable et combien de temps dure l'accès (de 1 heure à 1 an, ou illimité), et tu peux modifier ou retirer l'accès de chaque membre.
 
 ### 2. Mise en ligne (GitHub Pages)
 
@@ -43,10 +43,13 @@ Ensuite, dans l'app : **Profil** → **Compte et synchronisation** → crée ton
 | `css/app.css` | Styles |
 | `js/00-config.js` | Adresse et clé publique Supabase |
 | `js/01` à `js/21` | Modules de l'app, chargés dans l'ordre (icônes, état, accueil, cours, séances, planning, import JSON…) |
-| `js/22-sync.js` | Compte et synchronisation |
+| `js/22-sync.js` | Compte, synchronisation et invitations |
+| `js/23-aide.js` | Bulles d'aide « ? » |
+| `js/24-tuto.js` | Visite guidée |
 | `js/99-demarrage.js` | Démarrage |
 | `sw.template.js` → `sw.js` | Fonctionnement hors connexion (généré par `build.py`) |
 | `vendor/` | pdf.js et supabase-js, embarqués pour marcher hors connexion |
 | `supabase.sql` | Création de la base et du stockage |
+| `supabase-invitations.sql`, `supabase-maj-2.sql` | Accès sur invitation, durées, membres |
 
 Après avoir ajouté, renommé ou modifié des fichiers, lance `python3 build.py` : il régénère `index.html` et `sw.js` (avec un nouveau numéro de version, pour que les appareils récupèrent la mise à jour).

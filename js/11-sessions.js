@@ -5,7 +5,7 @@ function intro(k) {
     tm = ex ? "t" : R.tm || "n";
   let h =
     '<h2 class="ti">' +
-    (q ? "QCM" : "Flashcards") +
+    (q ? "QCM" : "Flashcards " + helpBtn("fsrs")) +
     "</h2>" +
     (R.done || "") +
     '<div class="c"><div class="lb">Sujet <small>(' +

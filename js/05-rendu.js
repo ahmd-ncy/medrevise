@@ -13,10 +13,11 @@ function render() {
       ["cards", "Cartes", "var(--c3)", "cards"],
       ["qcm", "QCM", "var(--c4)", "check"],
       ["err", "Erreurs", "var(--c5)", "errors"],
+      ["plan", "Planning", "var(--c2)", "cal"],
       ["add", "Ajouter", "var(--c6)", "plus"],
     ],
     pn =
-      { prof: "Profil", data: "Données", veille: "Veille d’examen", syn: "Fiche de synthèse", plan: "Planning" }[tab] ||
+      { prof: "Profil", data: "Données", veille: "Veille d’examen", syn: "Fiche de synthèse" }[tab] ||
       (TB.find((t) => t[0] === tab) || [])[1] ||
       "";
   $("top").innerHTML =
@@ -33,17 +34,18 @@ function render() {
     '</span><button class="av' +
     (tab == "prof" || tab == "data" ? " on" : "") +
     '" onclick="go(\'prof\')" aria-label="Profil">' +
-    (S.name ? esc(S.name[0].toUpperCase()) : icn("user")) +
+    (S.photo ? avatar(S.name) : S.name ? esc(S.name[0].toUpperCase()) : icn("user")) +
     '</button></div></div><div class="tabs">' +
     TB.map(
       (t) =>
-        '<button style="--c:' +
+        '<button data-t="' +
+        t[0] +
+        '" style="--c:' +
         t[2] +
         '" class="' +
         (tab === t[0] ||
         (tab == "veille" && t[0] == "err") ||
-        (tab == "syn" && t[0] == "cours") ||
-        (tab == "plan" && t[0] == "home")
+        (tab == "syn" && t[0] == "cours")
           ? "on"
           : "") +
         '" onclick="go(\'' +
@@ -59,7 +61,7 @@ function render() {
     home,
     plan,
     prof,
-    data,
+    data: () => ((R.ps = "don"), prof()),
     veille,
     syn,
     err: errs,
@@ -74,6 +76,7 @@ function render() {
   $("app").classList.toggle("wide", tab === "cours" && !!R.id);
   if (!(tab === "cours" && R.id)) document.body.classList.remove("pf");
   if (tab === "cours" && !R.id && R.sq) pdfSearchSoon();
+  if (typeof tutoAuto == "function") tutoAuto();
 }
 function resetDlg() {
   const d = document.createElement("div");
