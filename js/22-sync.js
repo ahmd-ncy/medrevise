@@ -373,7 +373,7 @@ const syTr = (m) =>
           : /password/i.test(m) && /6|short|weak/i.test(m)
             ? "Mot de passe trop faible : au moins 8 caractères, avec des lettres, des chiffres et un symbole."
             : /could not find the function|schema cache/i.test(m)
-              ? "Mise à jour de la base nécessaire : exécute le fichier supabase-maj-2.sql dans Supabase (SQL Editor)."
+              ? "Mise à jour de la base nécessaire : exécute le fichier supabase.sql dans Supabase (SQL Editor)."
               : /fetch|network/i.test(m)
               ? "Pas de connexion internet."
               : m;
@@ -561,7 +561,7 @@ async function syCheckMember() {
     let role = null,
       r0 = await SY.sb.rpc("mon_acces");
     if (r0.error && /function|schema cache/i.test(r0.error.message || "")) {
-      // base pas encore mise à jour (supabase-maj-2.sql) : ancien contrôle
+      // base pas encore mise à jour (supabase.sql) : ancien contrôle
       const r1 = await SY.sb.rpc("mon_role");
       if (r1.error) throw r1.error;
       role = r1.data;
@@ -936,7 +936,7 @@ function syMemOut(uid) {
 // ================= Profil envoyé au serveur =================
 async function syProfil() {
   const m = syMeta();
-  if (m.noProf && Date.now() - m.noProf < 6 * 3600e3) return; // table pas encore créée (supabase-maj-3.sql)
+  if (m.noProf && Date.now() - m.noProf < 6 * 3600e3) return; // table pas encore créée (supabase.sql)
   const st = stats(),
     ph = S.photo && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(S.photo) && S.photo.length < 150000 ? S.photo : null,
     o = {
@@ -992,7 +992,7 @@ async function adLoad() {
   AD.err = "";
   if (r.error) {
     if (/function|schema cache/i.test(r.error.message || "")) {
-      AD.err = "Pour voir les profils, exécute le fichier supabase-maj-3.sql dans Supabase (SQL Editor).";
+      AD.err = "Pour voir les profils, exécute le fichier supabase.sql dans Supabase (SQL Editor).";
       r = await SY.sb.rpc("liste_membres");
     }
     if (r.error) {
