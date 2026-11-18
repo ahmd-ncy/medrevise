@@ -253,11 +253,24 @@ const jDue = () =>
     .sort((a, b) => (S.jm[a.id].next < S.jm[b.id].next ? -1 : 1));
 // Chapitres pas encore commencés et au programme, dans l'ordre d'apprentissage choisi.
 function jOrder() {
+  // Ordre par défaut : les UE avancent en parallèle (chapitre 1 de chaque UE, puis chapitre 2…),
+  // et dans une UE les chapitres suivent leur numéro.
   const o = S.jo || [],
-    ix = (c) => {
-      const i = o.indexOf(c.id);
-      return i < 0 ? 1e6 + S.mat.findIndex((m) => m.id === c.mid) * 1000 + S.chap.indexOf(c) : i;
-    };
+    num = (c) => {
+      const n = +((String(c.titre).match(/chap(?:itre)?\.?\s*0*(\d+)/i) || [])[1] || NaN);
+      return isNaN(n) ? 1e4 + S.chap.indexOf(c) : n;
+    },
+    rk = {};
+  S.mat.forEach((m) =>
+    S.chap
+      .filter((c) => c.mid === m.id)
+      .sort((a, b) => num(a) - num(b))
+      .forEach((c, i) => (rk[c.id] = i)),
+  );
+  const ix = (c) => {
+    const i = o.indexOf(c.id);
+    return i < 0 ? 1e6 + (rk[c.id] ?? 999) * 100 + Math.max(0, S.mat.findIndex((m) => m.id === c.mid)) : i;
+  };
   return S.chap.filter((c) => !S.jm[c.id] && !(S.jx || []).includes(c.id)).sort((a, b) => ix(a) - ix(b));
 }
 function jMove(id, k) {
@@ -316,7 +329,8 @@ function jPlan(N) {
       days[0].min += P.tn;
     }
   });
-  let credit = Math.max(0, rate - days[0].neu.length),
+  // s’il reste des chapitres, le premier commence dès aujourd’hui
+  let credit = Math.max(0, (queue.length && rate > 0 ? Math.max(1, rate) : rate) - days[0].neu.length),
     qi = 0,
     pn = 0;
   for (let i = 0; i < N; i++) {
@@ -349,6 +363,20 @@ function jPlan(N) {
   // pn : nouveaux chapitres réellement placés ; short : le temps disponible ne suffit pas pour tenir le rythme
   const short = rate > 0 && queue.length > pn && pn < Math.min(queue.length, rate * N) * 0.85 - 0.5;
   return { days, rate, left: queue.length, dl, back, cap: P.cap, pn, short };
+}
+// Date prévue de la première étude (J0) de chaque chapitre pas encore commencé : on prolonge la
+// simulation jusqu'au concours (ou jusqu'à ce que tous les chapitres soient placés, 1 an maximum).
+function jStarts() {
+  const P = PL(),
+    q = jOrder(),
+    ex = S.exam && S.exam > day() ? S.exam : null;
+  if (!q.length) return { at: {}, last: null, miss: 0, ex };
+  const N = ex ? Math.min(366, dBetween(day(), ex) + 1) : Math.min(366, Math.ceil(q.length / Math.max(0.1, P.nd)) + 21),
+    p = jPlan(N),
+    at = {};
+  p.days.forEach((d) => d.neu.forEach((r) => !r.done && !at[r.c.id] && (at[r.c.id] = d.d)));
+  const ds = Object.values(at).sort();
+  return { at, last: ds.length ? ds[ds.length - 1] : null, miss: q.filter((c) => !at[c.id]).length, ex };
 }
 const fmtM = (m) => (m >= 60 ? Math.floor(m / 60) + " h" + (m % 60 ? " " + String(m % 60).padStart(2, "0") : "") : m + " min");
 function jBadge(ch) {
@@ -534,6 +562,14 @@ function plan() {
   else
     rythme =
       "<b>" + q.length + "</b> chapitre" + (q.length > 1 ? "s" : "") + " à commencer, au rythme de " + fr(P.nd) + " par jour. Indique la date du concours dans les réglages pour que le rythme s’adapte tout seul.";
+  const js0 = q.length ? jStarts() : null,
+    fin = !js0
+      ? ""
+      : js0.miss
+        ? '<p class="wnl">' + icn("alert") + " " + js0.miss + " chapitre" + (js0.miss > 1 ? "s" : "") + " ne trouve" + (js0.miss > 1 ? "nt" : "") + " pas de place " + (js0.ex ? "avant ta marge de révision" : "dans l’année") + ". Augmente ton temps de travail par jour ou réduis la marge avant le concours.</p>"
+        : js0.last
+          ? '<p style="margin:.4em 0 0">' + icn("cal") + " Tous tes chapitres seront commencés le <b>" + dlab(js0.last) + "</b>" + (js0.ex ? ", " + dBetween(js0.last, js0.ex) + " jours avant le concours." : ".") + ' <a href="#" onclick="PV(\'todo\');return false">Voir la date de chaque chapitre</a></p>'
+          : "";
   const head =
     '<h2 class="ti">' +
     icn("cal") +
@@ -548,6 +584,7 @@ function plan() {
     " · nouveaux chapitres de " +
     fmtM(P.tn) +
     "</p>" +
+    fin +
     (p.short
       ? '<p class="wnl">' + icn("alert") + " Avec " + fmtM(P.cap) + " par jour, tu ne peux commencer qu’environ " + fr((p.pn / 28) * 7) + " chapitre(s) par semaine au lieu de " + fr(p.rate * 7) + ". Augmente ton temps de travail ou réduis la durée prévue d’un nouveau chapitre.</p>"
       : "") +
@@ -667,7 +704,7 @@ function plan() {
   } else if (v == "todo") {
     const l = fu(q);
     body =
-      '<p class="m" style="margin-top:0">Le planning les propose dans cet ordre. Si tu as déjà vu un chapitre en cours, indique la date : ses rappels reprennent à partir de là.</p>' +
+      '<p class="m" style="margin-top:0">Le planning les propose dans cet ordre, avec la date prévue pour commencer chacun. Change l’ordre avec les flèches. Si tu as déjà vu un chapitre en cours, indique la date : ses rappels reprennent à partir de là.</p>' +
       ueChips(q) +
       (l.length
         ? '<div class="c">' +
@@ -683,7 +720,11 @@ function plan() {
                 esc(c.titre) +
                 "</b><br><small>" +
                 esc(M(c.mid).nom) +
-                '</small></div><label class="dv"><small>Déjà vu le</small><input type="date" max="' +
+                "</small>" +
+                (js0 && js0.at[c.id]
+                  ? '<br><span class="tag pst">' + (js0.at[c.id] === day() ? "à commencer aujourd’hui" : "à commencer le " + dShort(js0.at[c.id])) + "</span>"
+                  : '<br><span class="tag pst" style="background:var(--wnb);color:var(--wn)">pas de place avant le concours</span>') +
+                '</div><label class="dv"><small>Déjà vu le</small><input type="date" max="' +
                 day() +
                 '" onchange="if(this.value){jStart(\'' +
                 c.id +

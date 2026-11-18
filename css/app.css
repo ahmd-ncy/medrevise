@@ -4052,3 +4052,7 @@ html[data-fx="aurora"] .amc {
     grid-template-columns: 1fr;
   }
 }
+.pst {
+  margin-top: 4px;
+  display: inline-block;
+}

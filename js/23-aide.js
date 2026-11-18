@@ -7,7 +7,7 @@ const HELP = {
   ],
   plan: [
     "Le planning",
-    "<p>Le planning organise tes journées à partir de la méthode des J. Il place d’abord les <b>rappels</b> les plus urgents (les plus proches de J0), puis les <b>nouveaux chapitres</b>, dans la limite du temps que tu as indiqué par jour.</p><p>Ce qui ne tient pas dans ta journée est <b>reporté au lendemain</b>. Avec une date de concours (dans Profil → Réglages), il calcule combien de chapitres commencer par semaine pour avoir tout vu à temps, et te prévient si ton temps ne suffit pas.</p><p>Dans « À commencer », tu choisis l’ordre des chapitres, tu en retires du programme, ou tu indiques la date à laquelle tu as déjà vu un chapitre en cours.</p>",
+    "<p>Le planning organise tes journées à partir de la méthode des J. Il place d’abord les <b>rappels</b> les plus urgents (les plus proches de J0), puis les <b>nouveaux chapitres</b>, dans la limite du temps que tu as indiqué par jour.</p><p>Ce qui ne tient pas dans ta journée est <b>reporté au lendemain</b>. Avec une date de concours (dans Profil → Réglages), il calcule combien de chapitres commencer par semaine pour avoir tout vu à temps, et te prévient si ton temps ne suffit pas.</p><p>Dans « À commencer », chaque chapitre affiche la <b>date prévue pour le commencer</b>. Par défaut, tes UE avancent en parallèle (chapitre 1 de chaque UE, puis chapitre 2…). Tu peux changer l’ordre, retirer un chapitre du programme, ou indiquer la date à laquelle tu l’as déjà vu en cours : ses rappels reprennent à partir de là.</p>",
   ],
   fsrs: [
     "La répétition espacée des cartes",
