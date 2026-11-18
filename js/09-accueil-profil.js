@@ -221,24 +221,120 @@ function prof() {
       " cartes</small>" +
       (S.photo ? '<br><button class="lnk" onclick="setPhoto(null)">Retirer la photo</button>' : "") +
       "</div></div>";
-  if (!R.ps)
+  if (!R.ps) {
+    // ---------- page d'accueil du profil ----------
+    const tm = Object.values(S.tm || {}).reduce((a, b) => a + b, 0),
+      jr = S.exam ? Math.ceil((new Date(S.exam) - new Date(day())) / 864e5) : null,
+      st7 = [...Array(7)].map((_, i) => day(i - 6)),
+      act = st7.map((d) => (S.act || {})[d] || 0),
+      mx = Math.max(5, ...act),
+      started = Object.keys(S.jm || {}).length,
+      tot = S.chap.length,
+      d14 = [...Array(14)].map((_, i) => day(i - 13)),
+      g = (S.gel && S.gel.used) || [],
+      tiles = [
+        ["flame", flame(), "jour" + (flame() > 1 ? "s" : "") + " d’affilée", "var(--c5)"],
+        ["check", st.n, "QCM répondus", "var(--c4)"],
+        ["target", st.moy, "moyenne /20", "var(--c1)"],
+        ["cards", S.fc || 0, "cartes révisées", "var(--c3)"],
+        ["clock", fmtH(tm), "de travail", "var(--c2)"],
+      ],
+      cards = PSEC.filter((x) => !x[4] || x[4]()),
+      col = { moi: "var(--c1)", compte: "var(--c2)", progres: "var(--c4)", cal: "var(--c3)", reg: "var(--c6)", app: "var(--c5)", don: "var(--c2)", aide: "var(--c1)", admin: "var(--c4)" };
     return (
-      head +
-      '<div class="pmenu">' +
-      PSEC.filter((x) => !x[4] || x[4]()).map(
-        ([k, t, ic, sub]) =>
-          '<button class="pmi" onclick="R.ps=\'' +
-          k +
-          '\';render();scrollTo(0,0)"><span class="pmic">' +
-          icn(ic) +
-          '</span><span style="flex:1"><b>' +
-          t +
-          "</b><br><small>" +
-          esc(sub()) +
-          '</small></span><span class="cv">›</span></button>',
-      ).join("") +
+      '<div class="pcov"><div class="pcbg"></div><label class="av2 ph pcav" title="Changer la photo de profil">' +
+      avatar(nm) +
+      '<input type="file" accept="image/*" hidden onchange="setPhoto(this)"><span class="phe">' +
+      icn("edit") +
+      '</span></label><div class="pcin"><h2>' +
+      esc(nm + (S.lname ? " " + S.lname : "")) +
+      '</h2><div class="pcch">' +
+      [S.fil, S.fac ? "Fac de " + S.fac : "", jr !== null && jr >= 0 ? "J-" + jr + " avant le concours" : ""]
+        .filter(Boolean)
+        .map((x) => "<span>" + esc(x) + "</span>")
+        .join("") +
+      (S.gel && S.gel.has ? '<span class="gelp">❄ gel dispo</span>' : "") +
+      "</div>" +
+      (S.bio ? '<p class="pcq">« ' + esc(S.bio) + " »</p>" : "") +
+      '<button class="b" onclick="R.ps=\'moi\';render()">' +
+      icn("edit") +
+      " Modifier mon profil</button></div></div>" +
+      '<div class="pst">' +
+      tiles
+        .map((t) => '<div class="psi" style="--sc:' + t[3] + '">' + icn(t[0]) + "<b>" + t[1] + "</b><small>" + t[2] + "</small></div>")
+        .join("") +
+      "</div>" +
+      '<div class="pgrid"><div class="c"><b>Mes 7 derniers jours</b><div class="pbars">' +
+      st7
+        .map(
+          (d, i) =>
+            '<div title="' +
+            act[i] +
+            ' réponses"><span><i style="height:' +
+            (act[i] / mx) * 100 +
+            '%"></i></span><small>' +
+            new Date(d + "T12:00").toLocaleDateString("fr-FR", { weekday: "narrow" }) +
+            "</small></div>",
+        )
+        .join("") +
+      '</div><div class="pdots" title="14 derniers jours">' +
+      d14
+        .map((d) => '<i class="' + (S.days.includes(d) ? "on" : g.includes(d) ? "gel" : "") + '" title="' + dShort(d) + '"></i>')
+        .join("") +
+      '</div><small class="m">Points : journées bouclées (❄ = protégée par un gel).</small></div>' +
+      '<div class="c"><b>Mes UE</b>' +
+      (S.mat.length
+        ? S.mat
+            .map((m) => {
+              const x = S.ms[m.id],
+                p = x && x.n ? x.ok / x.n : null;
+              return (
+                '<div class="pue" style="--sc:' +
+                m.couleur +
+                '"><span class="pui">' +
+                ICO(m) +
+                '</span><span style="flex:1;min-width:0"><b>' +
+                esc(m.nom) +
+                '</b><span class="bar"><i style="width:' +
+                (p === null ? 0 : p * 100) +
+                '%"></i></span></span><small>' +
+                (p === null ? "—" : Math.round(p * 100) + " %") +
+                "</small></div>"
+              );
+            })
+            .join("")
+        : '<p class="m">Ajoute tes UE pour voir ta maîtrise ici.</p>') +
+      (tot
+        ? '<div class="lb">Chapitres commencés</div><div class="r" style="margin:0;align-items:center"><span class="bar" style="flex:1"><i style="width:' +
+          (started / tot) * 100 +
+          '%"></i></span><small>' +
+          started +
+          " / " +
+          tot +
+          "</small></div>"
+        : "") +
+      "</div></div>" +
+      '<h3>Raccourcis</h3><div class="pqk">' +
+      cards
+        .filter((c) => c[0] != "moi")
+        .map(
+          ([k, t, ic, sub]) =>
+            '<button class="pq" style="--sc:' +
+            (col[k] || "var(--ac)") +
+            '" onclick="R.ps=\'' +
+            k +
+            '\';render();scrollTo(0,0)"><span class="pmic">' +
+            icn(ic) +
+            "</span><b>" +
+            t +
+            "</b><small>" +
+            esc(sub()) +
+            "</small></button>",
+        )
+        .join("") +
       "</div>"
     );
+  }
   const sec = PSEC.find((x) => x[0] == R.ps) || PSEC[0],
     tl = [
       [st.n, "QCM répondus"],
@@ -284,7 +380,7 @@ function prof() {
       "</div>";
   } else if (sec[0] == "compte") {
     body = '<div id="sybox">' + syBox() + "</div>";
-    setTimeout(syInvLoad, 0);
+
   } else if (sec[0] == "progres")
     body =
       '<h3>Chiffres clés</h3><div class="g">' +

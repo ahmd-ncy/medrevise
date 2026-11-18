@@ -1,3 +1,9 @@
+/* Polices hébergées avec l'app (plus rapides que Google Fonts, et disponibles hors connexion) */
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 500; font-display: swap; src: url(../fonts/inter-latin-500-normal.woff2) format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 600; font-display: swap; src: url(../fonts/inter-latin-600-normal.woff2) format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 700 800; font-display: swap; src: url(../fonts/inter-latin-800-normal.woff2) format("woff2"); }
+@font-face { font-family: "Source Serif 4"; font-style: normal; font-weight: 400 600; font-display: swap; src: url(../fonts/source-serif-4-latin-600-normal.woff2) format("woff2"); }
+@font-face { font-family: "Source Serif 4"; font-style: normal; font-weight: 700 800; font-display: swap; src: url(../fonts/source-serif-4-latin-700-normal.woff2) format("woff2"); }
 :root {
   --bg: #f6f0e4;
   --card: #fffcf5;
@@ -3021,4 +3027,441 @@ html[data-rad="s"] :is(.c, .k, .hero2, .tl, .wd, details.sec, details.ue, .pmenu
 .adst b {
   font: 700 1.2rem "Source Serif 4", Georgia, serif;
   display: block;
+}
+.gsw {
+  text-align: center;
+  margin: 12px 0 0;
+  font-size: 13.5px;
+  color: #c7d2fe !important;
+}
+.gsw .lnk {
+  font-size: 13.5px;
+}
+.gok {
+  text-align: center;
+  padding: 6px 0;
+}
+.gok .ic {
+  width: 44px;
+  height: 44px;
+  color: #86efac;
+}
+.gok h3 {
+  margin: 8px 0;
+  color: #fff;
+}
+.gok p {
+  font-size: 14px;
+  line-height: 1.5;
+}
+/* ===== Effet « Aurore boréale » (thème Signature) ===== */
+html[data-fx="aurora"] body {
+  background:
+    radial-gradient(60% 45% at 0% 0%, color-mix(in srgb, var(--c1) 34%, transparent), transparent 70%),
+    radial-gradient(55% 40% at 100% 30%, color-mix(in srgb, var(--c4) 26%, transparent), transparent 70%),
+    radial-gradient(60% 45% at 40% 100%, color-mix(in srgb, var(--c2) 26%, transparent), transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
+}
+html[data-fx="aurora"] :is(.c, .k, .hero2, .tl, .wd, details.sec, details.ue, .pmenu, .sl, .rs, .pf, .thc, .adm, .seg) {
+  background: color-mix(in srgb, var(--card) 72%, transparent);
+  border-color: color-mix(in srgb, var(--fg) 13%, transparent);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+html[data-fx="aurora"] header,
+html[data-fx="aurora"] .tabs {
+  background: color-mix(in srgb, var(--card) 80%, transparent);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+html[data-fx="aurora"] :is(.big, .b.p):not(.ko2):not(.ok2):not(.wn2):not(.ez2):not([style*="background"]) {
+  background: linear-gradient(90deg, var(--ac), color-mix(in srgb, var(--ac) 45%, #06b6d4));
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--ac) 35%, transparent);
+}
+html[data-fx="aurora"] .hero2 {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--c1) 30%, transparent), color-mix(in srgb, var(--card) 70%, transparent) 70%);
+}
+html[data-fx="aurora"] .mb {
+  background: var(--card);
+  border: 1px solid color-mix(in srgb, var(--fg) 15%, transparent);
+}
+html[data-fx="aurora"] .bn0 {
+  background: linear-gradient(120deg, color-mix(in srgb, var(--tc) 85%, #0b1430), #0b1430);
+}
+html[data-fx="aurora"] .flm b,
+html[data-fx="aurora"] .ti {
+  text-shadow: 0 0 18px color-mix(in srgb, var(--ac) 40%, transparent);
+}
+.icg {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  gap: 6px;
+}
+.icg .icb {
+  padding: 8px 0;
+  display: grid;
+  place-items: center;
+}
+.icg .icb .ic {
+  width: 22px;
+  height: 22px;
+}
+.icb.p .ic {
+  color: var(--on);
+}
+/* ===== Profil (page d'accueil) ===== */
+.pcov {
+  position: relative;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid var(--bd);
+  background: var(--card);
+  margin-bottom: 12px;
+  text-align: center;
+  padding-bottom: 16px;
+}
+.pcbg {
+  height: 96px;
+  background:
+    radial-gradient(60% 120% at 20% 0%, color-mix(in srgb, var(--c2) 70%, transparent), transparent),
+    linear-gradient(120deg, var(--c1), var(--c4));
+}
+.av2.ph.pcav {
+  width: 104px;
+  height: 104px;
+  margin: -52px auto 0;
+  border: 4px solid var(--card);
+  font-size: 2.6rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+.pcin {
+  padding: 6px 16px 0;
+}
+.pcin h2 {
+  margin: 6px 0 6px;
+  font-size: 1.6rem;
+}
+.pcch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+.pcch span {
+  font: 600 12.5px Inter, sans-serif;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--ac) 14%, transparent);
+  color: var(--fg);
+}
+.pcch .gelp {
+  background: #d8ecfb;
+  color: #1d5f93;
+}
+.pcq {
+  font-style: italic;
+  color: var(--mut);
+  margin: 4px 0 10px;
+}
+.pst {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.psi {
+  border: 1px solid var(--bd);
+  background: var(--card);
+  border-radius: 12px;
+  padding: 10px 6px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.psi .ic {
+  color: var(--sc);
+  width: 20px;
+  height: 20px;
+}
+.psi b {
+  font: 700 1.2rem "Source Serif 4", Georgia, serif;
+}
+.psi small {
+  font-size: 11.5px;
+  line-height: 1.2;
+}
+@media (max-width: 520px) {
+  .pst {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+.pgrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 700px) {
+  .pgrid {
+    grid-template-columns: 1fr;
+  }
+}
+.pgrid .c {
+  margin: 0;
+}
+.pbars {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin: 10px 0 8px;
+}
+.pbars div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.pbars span {
+  width: 14px;
+  height: 64px;
+  border-radius: 7px;
+  background: var(--bd);
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+.pbars i {
+  display: block;
+  width: 100%;
+  background: linear-gradient(var(--c2), var(--c1));
+  border-radius: 7px;
+}
+.pdots {
+  display: flex;
+  gap: 4px;
+  margin: 4px 0;
+}
+.pdots i {
+  flex: 1;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--bd);
+}
+.pdots i.on {
+  background: var(--c5);
+}
+.pdots i.gel {
+  background: #7cc0f2;
+}
+.pue {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0;
+}
+.pue b {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pui {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--sc) 18%, transparent);
+  color: var(--sc);
+}
+.pue .bar {
+  display: block;
+  height: 6px;
+}
+.pue .bar i {
+  background: var(--sc);
+}
+.pqk {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+.pq {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: left;
+  border: 1px solid var(--bd);
+  border-top: 4px solid var(--sc);
+  background: var(--card);
+  color: var(--fg);
+  border-radius: 12px;
+  padding: 12px;
+  cursor: pointer;
+  font: 600 14px Inter, sans-serif;
+}
+.pq .pmic {
+  color: var(--sc);
+  background: color-mix(in srgb, var(--sc) 15%, transparent);
+}
+.pq small {
+  font-weight: 500;
+  line-height: 1.3;
+}
+html[data-fx="aurora"] :is(.pcov, .psi, .pq) {
+  background: color-mix(in srgb, var(--card) 72%, transparent);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+/* ===== Administration ===== */
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+}
+.adp.sm {
+  width: 34px;
+  height: 34px;
+  font-size: 0.9rem;
+}
+.adp.av2.pcav.big {
+  width: 104px;
+  height: 104px;
+  margin: -52px auto 0;
+  border: 4px solid var(--card);
+  display: grid;
+  font-size: 2.6rem;
+}
+.lead {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+.ldr {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--ac) 8%, transparent);
+  color: var(--fg);
+  cursor: pointer;
+  font: 500 14px Inter, sans-serif;
+}
+.rk {
+  width: 26px;
+  text-align: center;
+  font: 700 15px Inter, sans-serif;
+}
+.lst {
+  font: 700 13px Inter, sans-serif;
+  white-space: nowrap;
+}
+.amg {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+  gap: 10px;
+}
+.amc {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+  border: 1px solid var(--bd);
+  background: var(--card);
+  color: var(--fg);
+  border-radius: 14px;
+  padding: 0 10px 12px;
+  cursor: pointer;
+  font: 500 14px Inter, sans-serif;
+}
+.amc:hover {
+  border-color: var(--ac);
+  transform: translateY(-2px);
+}
+.amb {
+  align-self: stretch;
+  height: 42px;
+  margin: 0 -10px;
+  background: linear-gradient(120deg, var(--c1), var(--c4));
+}
+.amc .adp {
+  width: 56px;
+  height: 56px;
+  margin-top: -28px;
+  border: 3px solid var(--card);
+}
+.amc > b {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.amc small {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ams {
+  display: flex;
+  gap: 8px;
+  font: 700 12.5px Inter, sans-serif;
+  margin: 2px 0;
+}
+.stb {
+  font: 700 11.5px Inter, sans-serif;
+  padding: 3px 9px;
+  border-radius: 20px;
+  background: var(--okb);
+  color: var(--ok);
+}
+.stb.wn {
+  background: var(--wnb);
+  color: var(--wn);
+}
+.stb.ko {
+  background: var(--kob);
+  color: var(--ko);
+}
+.stb.ad {
+  background: color-mix(in srgb, var(--c4) 20%, transparent);
+  color: var(--c4);
+}
+.aiv {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--bd);
+}
+.aiv:last-child {
+  border-bottom: 0;
+}
+a.b {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+html[data-fx="aurora"] :is(.amc, .ldr) {
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+html[data-fx="aurora"] .amc {
+  background: color-mix(in srgb, var(--card) 72%, transparent);
 }

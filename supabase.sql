@@ -86,7 +86,10 @@ update public.membres set role = 'membre'
 where role = 'admin' and user_id <> (select id from auth.users order by created_at limit 1);
 
 alter table public.membres add column if not exists expire timestamptz;          -- fin de l'accès (vide = illimité)
-alter table public.invitations add column if not exists acces_heures int;         -- durée d'accès donnée par le code (vide = illimité)
+alter table public.invitations add column if not exists acces_heures int;
+alter table public.invitations add column if not exists libelle text check (char_length(libelle) <= 60);  -- « pour qui ? »
+alter table public.invitations add column if not exists archive boolean not null default false;
+alter table public.membres add column if not exists note text check (char_length(note) <= 1000);        -- note privée de l'administrateur         -- durée d'accès donnée par le code (vide = illimité)
 
 -- Un membre dont l'accès a expiré n'a plus accès aux données (les règles de la base utilisent est_membre)
 create or replace function public.est_membre() returns boolean
@@ -115,7 +118,8 @@ $$;
 -- Créer un code : validité du code et durée de l'accès, de 1 heure à 1 an (accès illimité si p_acces est vide)
 drop function if exists public.creer_invitation(int);
 drop function if exists public.creer_invitation(int, int);
-create function public.creer_invitation(p_heures int default 24, p_acces int default null) returns text
+drop function if exists public.creer_invitation(int, int, text);
+create function public.creer_invitation(p_heures int default 24, p_acces int default null, p_libelle text default null) returns text
 language plpgsql volatile security definer set search_path = '' as $$
 declare
   c text;
@@ -133,9 +137,10 @@ begin
     end loop;
     exit when not exists (select 1 from public.invitations where code = c);
   end loop;
-  insert into public.invitations (code, cree_par, expire, acces_heures)
+  insert into public.invitations (code, cree_par, expire, acces_heures, libelle)
   values (c, auth.uid(), now() + make_interval(hours => greatest(1, least(p_heures, 8784))),
-          case when p_acces is null then null else greatest(1, least(p_acces, 8784)) end);
+          case when p_acces is null then null else greatest(1, least(p_acces, 8784)) end,
+          nullif(left(trim(coalesce(p_libelle, '')), 60), ''));
   return c;
 end $$;
 
@@ -151,16 +156,62 @@ end $$;
 
 drop function if exists public.liste_invitations();
 create function public.liste_invitations()
-returns table (code text, cree_le timestamptz, expire timestamptz, acces_heures int, utilise_le timestamptz, email text)
+returns table (code text, cree_le timestamptz, expire timestamptz, acces_heures int, utilise_le timestamptz, email text, libelle text, archive boolean)
 language plpgsql stable security definer set search_path = '' as $$
 begin
   if coalesce(public.mon_role(), '') <> 'admin' then
     raise exception 'Réservé à l''administrateur';
   end if;
   return query
-    select i.code, i.cree_le, i.expire, i.acces_heures, i.utilise_le, u.email::text
+    select i.code, i.cree_le, i.expire, i.acces_heures, i.utilise_le, u.email::text, i.libelle, i.archive
     from public.invitations i left join auth.users u on u.id = i.utilise_par
-    order by i.cree_le desc limit 50;
+    order by i.cree_le desc limit 200;
+end $$;
+
+-- Gestion des codes (administrateur) : supprimer, archiver
+create or replace function public.supprimer_invitation(p_code text) returns void
+language plpgsql volatile security definer set search_path = '' as $$
+begin
+  if coalesce(public.mon_role(), '') <> 'admin' then
+    raise exception 'Réservé à l''administrateur';
+  end if;
+  delete from public.invitations where code = p_code;
+end $$;
+create or replace function public.archiver_invitation(p_code text, p_archive boolean) returns void
+language plpgsql volatile security definer set search_path = '' as $$
+begin
+  if coalesce(public.mon_role(), '') <> 'admin' then
+    raise exception 'Réservé à l''administrateur';
+  end if;
+  update public.invitations set archive = coalesce(p_archive, true) where code = p_code;
+end $$;
+
+-- Gestion des membres (administrateur) : prolonger, suspendre, note privée
+create or replace function public.prolonger_acces(p_user uuid, p_heures int) returns void
+language plpgsql volatile security definer set search_path = '' as $$
+begin
+  if coalesce(public.mon_role(), '') <> 'admin' then
+    raise exception 'Réservé à l''administrateur';
+  end if;
+  update public.membres
+     set expire = greatest(coalesce(expire, now()), now()) + make_interval(hours => greatest(1, least(p_heures, 8784)))
+   where user_id = p_user and role <> 'admin' and expire is not null;
+end $$;
+create or replace function public.suspendre_membre(p_user uuid) returns void
+language plpgsql volatile security definer set search_path = '' as $$
+begin
+  if coalesce(public.mon_role(), '') <> 'admin' then
+    raise exception 'Réservé à l''administrateur';
+  end if;
+  update public.membres set expire = now() where user_id = p_user and role <> 'admin';
+end $$;
+create or replace function public.admin_note(p_user uuid, p_note text) returns void
+language plpgsql volatile security definer set search_path = '' as $$
+begin
+  if coalesce(public.mon_role(), '') <> 'admin' then
+    raise exception 'Réservé à l''administrateur';
+  end if;
+  update public.membres set note = nullif(left(coalesce(p_note, ''), 1000), '') where user_id = p_user;
 end $$;
 
 -- Membres (administrateur seulement) : liste, durée d'accès, retrait
@@ -232,12 +283,16 @@ begin
 end $$;
 
 -- Droits sur les fonctions : rien pour les visiteurs non connectés, sauf la vérification d'un code
-revoke all on function public.creer_invitation(int, int), public.utiliser_invitation(text), public.liste_invitations(),
+revoke all on function public.creer_invitation(int, int, text), public.utiliser_invitation(text), public.liste_invitations(),
   public.annuler_invitation(text), public.est_membre(), public.mon_role(), public.mon_acces(), public.liste_membres(),
-  public.modifier_acces(uuid, int), public.retirer_membre(uuid) from public, anon;
-grant execute on function public.creer_invitation(int, int), public.utiliser_invitation(text), public.liste_invitations(),
+  public.modifier_acces(uuid, int), public.retirer_membre(uuid), public.supprimer_invitation(text),
+  public.archiver_invitation(text, boolean), public.prolonger_acces(uuid, int), public.suspendre_membre(uuid),
+  public.admin_note(uuid, text) from public, anon;
+grant execute on function public.creer_invitation(int, int, text), public.utiliser_invitation(text), public.liste_invitations(),
   public.annuler_invitation(text), public.est_membre(), public.mon_role(), public.mon_acces(), public.liste_membres(),
-  public.modifier_acces(uuid, int), public.retirer_membre(uuid) to authenticated;
+  public.modifier_acces(uuid, int), public.retirer_membre(uuid), public.supprimer_invitation(text),
+  public.archiver_invitation(text, boolean), public.prolonger_acces(uuid, int), public.suspendre_membre(uuid),
+  public.admin_note(uuid, text) to authenticated;
 grant execute on function public.invitation_valide(text) to anon, authenticated;
 
 -- Les données et les fichiers ne sont accessibles qu'aux membres
@@ -300,7 +355,7 @@ returns table (
   user_id uuid, email text, role text, depuis timestamptz, expire timestamptz,
   derniere_connexion timestamptz, cree_le timestamptz,
   prenom text, nom text, filiere text, fac text, bio text, photo text, stats jsonb, maj timestamptz,
-  taille_donnees bigint, nb_fichiers bigint
+  taille_donnees bigint, nb_fichiers bigint, note text
 )
 language plpgsql stable security definer set search_path = '' as $$
 begin
@@ -312,7 +367,8 @@ begin
            p.prenom, p.nom, p.filiere, p.fac, p.bio, p.photo, p.stats, p.maj,
            (select coalesce(sum(char_length(e.data)), 0)::bigint from public.etat e where e.user_id = m.user_id),
            (select count(*)::bigint from storage.objects o
-             where o.bucket_id = 'fichiers' and (storage.foldername(o.name))[1] = m.user_id::text)
+             where o.bucket_id = 'fichiers' and (storage.foldername(o.name))[1] = m.user_id::text),
+           m.note
     from public.membres m
     join auth.users u on u.id = m.user_id
     left join public.profils p on p.user_id = m.user_id

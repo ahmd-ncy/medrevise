@@ -1,4 +1,9 @@
 const PALS = {
+  signature: {
+    l: ["#eef2ff", "#ffffff", "#0f172a", "#55607a", "#d6dcf5"],
+    d: ["#0b1430", "#131e45", "#eef3ff", "#a9b6e8", "#2a3872"],
+    c: ["#3b82f6", "#06b6d4", "#f59e0b", "#a855f7", "#f43f5e", "#22c55e"],
+  },
   ocean: {
     l: ["#f1f5fa", "#ffffff", "#162033", "#5a6880", "#d5deea"],
     d: ["#0c1524", "#14213a", "#e6edf7", "#9db0cc", "#24365a"],
@@ -75,6 +80,7 @@ const FONTS = {
 };
 // Thèmes prêts à l'emploi : un clic règle tout d'un coup.
 const THEMES = [
+  ["signature", "Signature", { mode: "dark", pal: "signature", bg: "w", bgd: "p", fx: "aurora", font: "inter", rad: "r", mono: 0 }],
   ["classique", "Classique", { mode: "auto", pal: "ocean", bg: "w", bgd: "p", fx: "none", font: "inter", rad: "n", mono: 0 }],
   ["minuit", "Minuit", { mode: "dark", pal: "ocean", bg: "w", bgd: "b", fx: "none", font: "inter", rad: "n", mono: 0 }],
   ["neon", "Néon", { mode: "dark", pal: "lavande", bg: "w", bgd: "n", fx: "glow", font: "inter", rad: "r", mono: 0 }],
@@ -206,6 +212,7 @@ function appearance() {
       "</div>",
     pal = PALS[S.pal] ? S.pal : "ocean",
     PL2 = [
+      ["signature", "Signature"],
       ["ocean", "Océan"],
       ["foret", "Forêt"],
       ["aurore", "Aurore"],
@@ -303,6 +310,7 @@ function appearance() {
     ch(
       [
         ["none", "Aucun"],
+        ["aurora", "Aurore boréale"],
         ["glow", "Lueur"],
         ["glass", "Verre"],
         ["grad", "Dégradé"],

@@ -20,6 +20,11 @@ function load() {
   }
   S.err = S.err || [];
   fsMigrate();
+  // Style « Signature » (celui de l'écran de connexion) appliqué par défaut, une fois
+  if (S.lookV !== 2) {
+    Object.assign(S, { mode: "dark", pal: "signature", bg: "w", bgd: "p", fx: "aurora", font: "inter", rad: "r", mono: 0, theme: "signature" });
+    S.lookV = 2;
+  }
   S.jm = S.jm || {};
   S.pal = { sauge: "foret", sable: "aurore", papier: "aurore" }[S.pal] || S.pal;
   S.cs = S.cs || {};

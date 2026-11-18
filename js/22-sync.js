@@ -357,6 +357,7 @@ function syNewPass() {
     if (error) return ($("em").textContent = syTr(error.message));
     d.remove();
     toast("Mot de passe modifié ✔");
+    render();
   };
 }
 
@@ -456,11 +457,47 @@ async function syForgotMe() {
   const { error } = await SY.sb.auth.resetPasswordForEmail(SY.user.email, { redirectTo: location.href.split("#")[0] });
   toast(error ? syTr(error.message) : "E-mail envoyé à " + esc(SY.user.email) + " : ouvre le lien pour choisir un nouveau mot de passe.");
 }
+// Envoi du lien « mot de passe oublié », avec un état visible et un délai maximum.
 async function syForgot() {
-  const e = ($("sye").value || "").trim();
-  if (!/^\S+@\S+\.\S+$/.test(e)) return syMsg("Écris d’abord ton adresse e-mail ci-dessus.");
-  const { error } = await SY.sb.auth.resetPasswordForEmail(e, { redirectTo: location.href.split("#")[0] });
-  syMsg(error ? syTr(error.message) : "E-mail envoyé : ouvre le lien pour choisir un nouveau mot de passe.");
+  const e = ($("sye").value || "").trim(),
+    b = $("fpb");
+  if (!/^\S+@\S+\.\S+$/.test(e)) return syMsg("Indique l’adresse e-mail de ton compte.");
+  if (b) {
+    b.disabled = true;
+    b.textContent = "Envoi…";
+  }
+  syMsg("");
+  let r;
+  try {
+    r = await Promise.race([
+      SY.sb.auth.resetPasswordForEmail(e, { redirectTo: location.origin + location.pathname }),
+      new Promise((_, ko) => setTimeout(() => ko(new Error("délai")), 15000)),
+    ]);
+  } catch (x) {
+    r = { error: { message: x.message == "délai" ? "Le serveur ne répond pas. Vérifie ta connexion et réessaie." : x.message } };
+  }
+  if (b) {
+    b.disabled = false;
+    b.textContent = "Envoyer le lien";
+  }
+  if (r && r.error) {
+    console.warn("Mot de passe oublié :", r.error);
+    return syMsg(
+      /after|seconds|security purposes|rate/i.test(r.error.message)
+        ? "Un e-mail vient déjà d’être envoyé : attends une minute avant de recommencer."
+        : /sending|smtp|mail/i.test(r.error.message)
+          ? "L’e-mail n’a pas pu partir (réglage d’envoi à vérifier côté administrateur)."
+          : syTr(r.error.message),
+    );
+  }
+  const g = document.querySelector(".gcard");
+  if (g)
+    g.innerHTML =
+      '<div class="gok">' +
+      icn("check") +
+      '<h3>E-mail envoyé</h3><p>Si un compte existe pour <b>' +
+      esc(e) +
+      "</b>, tu vas recevoir un lien dans quelques instants. Pense à regarder dans les spams.</p><p>Le lien s’ouvre dans ton navigateur : choisis ton nouveau mot de passe, puis reviens te connecter ici.</p><button class=\"big gbtn\" onclick=\"SY.gt='in';render()\">Retour à la connexion</button></div>";
 }
 function syLogout() {
   ask(
@@ -713,14 +750,18 @@ function gate() {
           inp("syn", "Prénom", "text", "given-name", "Ton prénom", "user", ' maxlength="40" autocapitalize="words"') +
           inp("sye", "E-mail", "email", "email", "toi@exemple.fr", "cloud") +
           pwFields("syw") +
-          '<button class="big gbtn" onclick="syLogin(1)">Créer mon compte</button>'
+          '<button class="big gbtn" onclick="syLogin(1)">Créer mon compte</button><p class="gsw">Déjà un compte ? <button class="lnk" onclick="SY.gt=\'in\';render()">Connecte-toi</button></p>'
+        : SY.gt == "fp"
+          ? '<p class="gsub">Mot de passe oublié</p><p style="margin:.2em 0 .4em;font-size:14px">Entre l’adresse de ton compte : tu recevras un e-mail avec un lien pour choisir un nouveau mot de passe.</p>' +
+            inp("sye", "E-mail", "email", "email", "toi@exemple.fr", "cloud", ' onkeydown="if(event.key===\'Enter\')syForgot()"') +
+            '<button class="big gbtn" id="fpb" onclick="syForgot()">Envoyer le lien</button><p class="gsw"><button class="lnk" onclick="SY.gt=\'in\';render()">← Retour à la connexion</button></p>'
         : '<p class="gsub">Content de te revoir.</p>' +
           inp("sye", "E-mail", "email", "email", "toi@exemple.fr", "cloud") +
           '<label class="f">Mot de passe</label><div class="gi">' +
           icn("shield") +
           '<input type="password" id="syp" autocomplete="current-password" onkeydown="if(event.key===\'Enter\')syLogin(0)"><button type="button" class="eye" onclick="pwEye(this)" aria-label="Afficher le mot de passe">' +
           icn("eye") +
-          '</button></div><button class="big gbtn" onclick="syLogin(0)">Se connecter</button><button class="lnk" style="display:block;margin:6px auto 0" onclick="syForgot()">Mot de passe oublié ?</button>')
+          '</button></div><button class="big gbtn" onclick="syLogin(0)">Se connecter</button><button class="lnk" style="display:block;margin:8px auto 0" onclick="SY.gt=\'fp\';render()">Mot de passe oublié ?</button><p class="gsw">Pas encore de compte ? <button class="lnk" onclick="SY.gt=\'up\';render()">Inscris-toi avec ton code d’invitation</button></p>')
   else
     body = SY.roleErr
       ? '<p>Connexion internet nécessaire pour vérifier ton accès.</p><button class="big gbtn" onclick="syCheckMember()">Réessayer</button><button class="lnk" style="display:block;margin:6px auto 0" onclick="syOut()">Se déconnecter</button>'
@@ -736,7 +777,7 @@ function gate() {
   return (
     '<div class="gwrap"><div class="gbg" aria-hidden="true"><i class="g1"></i><i class="g2"></i><i class="g3"></i><svg class="ecg" viewBox="0 0 1200 200" preserveAspectRatio="none"><path d="M0 120 H380 L410 120 L430 60 L455 175 L480 25 L505 150 L525 120 H760 L785 120 L800 95 L815 120 H1200"/></svg></div><div class="gcol"><div class="glogo">' +
     LOGO +
-    '</div><h1 class="gtt">MedRevise</h1><p class="gtag">Ta prépa médecine, organisée.</p><div class="gfeat"><span>Méthode des J</span><span>Flashcards intelligentes</span><span>QCM au barème de Nancy</span></div><div class="gcard">' +
+    '</div><h1 class="gtt">MedRevise</h1><p class="gtag">Ton outil de révision n°1</p><div class="gfeat"><span>Méthode des J</span><span>Flashcards intelligentes</span><span>QCM au barème de Nancy</span></div><div class="gcard">' +
     body +
     '<p id="sym" class="gmsg" role="status"></p></div><p class="gfoot">' +
     icn("shield") +
@@ -802,137 +843,6 @@ function durVal(id) {
   if (v === "c") return Math.min(8784, Math.max(1, Math.round((+$(id + "n").value || 0) * +$(id + "u").value)));
   return +v;
 }
-function syAdmin(noMem) {
-  return SY.role == "admin"
-    ? '<div class="c"><b>Inviter quelqu’un</b> ' +
-        helpBtn("inv") +
-        '<label class="f">Le code doit être utilisé dans les</label>' +
-        durPick("dcode", 24) +
-        '<label class="f">Durée de l’accès, une fois le code utilisé</label>' +
-        durPick("dacc", "", 1) +
-        '<div class="r"><button class="b p" onclick="syInvite()">Créer le code</button></div><div id="synew"></div></div>' +
-        (noMem ? "" : '<div class="c"><b>Membres</b><div id="symem">' + (SY.memH || '<p class="m">Chargement…</p>') + "</div></div>") +
-        '<div class="c"><b>Codes d’invitation</b><div id="syinv">' +
-        (SY.invH || '<p class="m">Chargement…</p>') +
-        "</div></div>"
-    : "";
-}
-async function syInvite() {
-  const h = durVal("dcode"),
-    acc = durVal("dacc"),
-    { data, error } = await SY.sb.rpc("creer_invitation", { p_heures: h, p_acces: acc });
-  if (error) return ($("synew").innerHTML = '<p class="wnl">' + esc(syTr(error.message)) + "</p>");
-  $("synew").innerHTML =
-    '<div class="bn good"><b>Nouveau code : <span style="font:700 1.4rem ui-monospace,monospace;letter-spacing:.08em">' +
-    esc(data) +
-    "</span></b><p>À utiliser dans les " +
-    durLab(h) +
-    ", une seule fois. Accès donné : " +
-    durLab(acc) +
-    '.</p><button class="b" onclick="navigator.clipboard.writeText(\'' +
-    esc(data) +
-    "').then(()=>this.textContent='Copié ✔').catch(()=>{})\">Copier</button></div>";
-  syInvLoad();
-}
-async function syInvLoad() {
-  if (SY.role != "admin" || !$("syinv")) return;
-  const now = Date.now(),
-    [inv, mem] = await Promise.all([SY.sb.rpc("liste_invitations"), SY.sb.rpc("liste_membres")]);
-  if ($("syinv"))
-    $("syinv").innerHTML = SY.invH = inv.error
-      ? '<p class="wnl">' + esc(syTr(inv.error.message)) + "</p>"
-      : inv.data.length
-        ? inv.data
-            .map((i) => {
-              const used = !!i.utilise_le,
-                exp = !used && new Date(i.expire) < now;
-              return (
-                '<div class="hl1" style="align-items:center"><span style="flex:1"><b style="font-family:ui-monospace,monospace">' +
-                esc(i.code) +
-                "</b> <small>· accès " +
-                durLab(i.acces_heures ?? null) +
-                "</small><br><small>" +
-                (used
-                  ? "utilisé par " + esc(i.email || "un compte supprimé") + " le " + fdt(i.utilise_le)
-                  : exp
-                    ? "expiré le " + fdt(i.expire)
-                    : "à utiliser avant le " + fdt(i.expire)) +
-                "</small></span>" +
-                (!used && !exp ? "<button class=\"b\" onclick=\"syCancel('" + esc(i.code) + "')\">Annuler</button>" : "") +
-                "</div>"
-              );
-            })
-            .join("")
-        : '<p class="m">Aucun code pour l’instant.</p>';
-  if ($("symem"))
-    $("symem").innerHTML = SY.memH = mem.error
-      ? '<p class="wnl">' + esc(syTr(mem.error.message)) + "</p>"
-      : mem.data
-          .map((m) => {
-            const ex = m.expire && new Date(m.expire) < now;
-            return (
-              '<div class="hl1" style="align-items:center"><span style="flex:1;min-width:150px"><b>' +
-              esc(m.email || "?") +
-              "</b><br><small>" +
-              (m.role == "admin"
-                ? "administrateur (toi)"
-                : !m.expire
-                  ? "accès illimité"
-                  : ex
-                    ? "accès expiré le " + fdt(m.expire)
-                    : "accès jusqu’au " + fdt(m.expire)) +
-              "</small></span>" +
-              (m.role == "admin"
-                ? ""
-                : "<button class=\"b\" onclick=\"syMemDur('" +
-                  esc(m.user_id) +
-                  "')\">Durée</button><button class=\"b\" onclick=\"syMemOut('" +
-                  esc(m.user_id) +
-                  "')\">Retirer</button>") +
-              "</div>"
-            );
-          })
-          .join("");
-}
-async function syCancel(c) {
-  await SY.sb.rpc("annuler_invitation", { p_code: c });
-  syInvLoad();
-}
-const adEmail = (uid) => {
-  const m = (AD.list || []).find((x) => x.user_id === uid);
-  return (m && m.email) || "ce membre";
-};
-function syMemDur(uid) {
-  const d = document.createElement("div");
-  d.id = "md";
-  d.innerHTML =
-    '<div class="mb" role="dialog" aria-modal="true"><h3>Durée d’accès</h3><p class="m" style="font-weight:500">' +
-    esc(adEmail(uid)) +
-    ' aura accès pendant, à partir de maintenant :</p>' +
-    durPick("dmem", 720, 1) +
-    '<p id="em" class="m" role="status"></p><div class="r2"><button class="big" style="background:var(--mut)" id="mn">Annuler</button><button class="big" id="my">Appliquer</button></div></div>';
-  document.body.appendChild(d);
-  $("mn").onclick = () => d.remove();
-  $("my").onclick = async () => {
-    const { error } = await SY.sb.rpc("modifier_acces", { p_user: uid, p_heures: durVal("dmem") });
-    if (error) return ($("em").textContent = syTr(error.message));
-    d.remove();
-    syInvLoad();
-    adLoad();
-  };
-}
-function syMemOut(uid) {
-  ask(
-    "Retirer l’accès de " + adEmail(uid) + " ? Ses données restent dans la base, mais il ne pourra plus utiliser l’app sans nouveau code.",
-    async () => {
-      await SY.sb.rpc("retirer_membre", { p_user: uid });
-      syInvLoad();
-      adLoad();
-    },
-    "Retirer l’accès",
-  );
-}
-
 // ================= Profil envoyé au serveur =================
 async function syProfil() {
   const m = syMeta();
@@ -976,147 +886,4 @@ async function syProfil() {
   m.prof = h;
   delete m.noProf;
   syMetaSave();
-}
-// ================= Interface d'administration =================
-let AD = { list: null, q: "", err: "" };
-const adPhoto = (p) => (p && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(p) ? p : ""),
-  adNum = (x) => (Number.isFinite(+x) ? +x : 0),
-  adAgo = (d) => {
-    if (!d) return "jamais";
-    const s = (Date.now() - new Date(d)) / 1000;
-    return s < 3600 ? "il y a " + Math.max(1, Math.round(s / 60)) + " min" : s < 86400 ? "il y a " + Math.round(s / 3600) + " h" : s < 86400 * 30 ? "il y a " + Math.round(s / 86400) + " j" : "le " + new Date(d).toLocaleDateString("fr-FR");
-  },
-  adSize = (n) => (n > 1e6 ? (n / 1e6).toFixed(1).replace(".", ",") + " Mo" : Math.round(n / 1e3) + " Ko");
-async function adLoad() {
-  let r = await SY.sb.rpc("admin_membres");
-  AD.err = "";
-  if (r.error) {
-    if (/function|schema cache/i.test(r.error.message || "")) {
-      AD.err = "Pour voir les profils, exécute le fichier supabase.sql dans Supabase (SQL Editor).";
-      r = await SY.sb.rpc("liste_membres");
-    }
-    if (r.error) {
-      AD.err = syTr(r.error.message);
-      AD.list = [];
-      return adDraw();
-    }
-  }
-  AD.list = r.data || [];
-  adDraw();
-}
-function adCard(m) {
-  const st = m.stats || {},
-    nm = [m.prenom, m.nom].filter(Boolean).join(" ") || (m.email || "?").split("@")[0],
-    ph = adPhoto(m.photo),
-    ex = m.expire && new Date(m.expire) < Date.now();
-  return (
-    '<button class="adm" data-u="' +
-    esc(m.user_id) +
-    '"><span class="adp">' +
-    (ph ? '<img src="' + ph + '" alt="">' : esc(nm[0].toUpperCase())) +
-    '</span><span style="flex:1;min-width:0"><b>' +
-    esc(nm) +
-    (m.role == "admin" ? ' <span class="tag">admin</span>' : "") +
-    "</b><br><small>" +
-    esc(m.email || "") +
-    "</small><br><small>" +
-    (m.role == "admin" ? "accès permanent" : !m.expire ? "accès illimité" : ex ? "⚠ accès expiré" : "accès jusqu’au " + fdt(m.expire)) +
-    " · actif " +
-    adAgo(st.derniere ? st.derniere + "T12:00" : m.derniere_connexion) +
-    '</small></span><span class="adst"><b>' +
-    adNum(st.qcm) +
-    "</b><small>QCM</small></span></button>"
-  );
-}
-function adDraw() {
-  const box = $("adbox");
-  if (!box) return;
-  const L = AD.list || [],
-    q = AD.q.toLowerCase(),
-    f = L.filter((m) => !q || [m.prenom, m.nom, m.email, m.filiere].join(" ").toLowerCase().includes(q)),
-    now = Date.now(),
-    soon = L.filter((m) => m.expire && new Date(m.expire) > now && new Date(m.expire) - now < 7 * 864e5).length,
-    act = L.filter((m) => !m.expire || new Date(m.expire) > now).length;
-  box.innerHTML =
-    (AD.err ? '<p class="wnl">' + esc(AD.err) + "</p>" : "") +
-    '<div class="tls"><div class="tl" style="--sc:var(--c1)"><b>' +
-    act +
-    '</b><small>membres actifs</small></div><div class="tl" style="--sc:var(--wn)"><b>' +
-    soon +
-    '</b><small>accès qui finissent sous 7 j</small></div><div class="tl" style="--sc:var(--c2)"><b>' +
-    L.filter((m) => m.stats && m.stats.derniere === day()).length +
-    "</b><small>actifs aujourd’hui</small></div></div>" +
-    (L.length > 4 ? '<input type="text" placeholder="Rechercher un membre…" value="' + esc(AD.q) + '" oninput="AD.q=this.value;adDraw();this.focus()" id="adq">' : "") +
-    '<div class="adl">' +
-    (f.map(adCard).join("") || '<p class="m">Aucun membre trouvé.</p>') +
-    "</div>";
-  box.onclick = (e) => {
-    const b = e.target.closest("[data-u]");
-    if (b) adDetail(b.dataset.u);
-  };
-  const qi = $("adq");
-  if (qi && AD.q) qi.setSelectionRange(AD.q.length, AD.q.length);
-}
-function adDetail(uid) {
-  const m = (AD.list || []).find((x) => x.user_id === uid);
-  if (!m) return;
-  const st = m.stats || {},
-    nm = [m.prenom, m.nom].filter(Boolean).join(" ") || (m.email || "?").split("@")[0],
-    ph = adPhoto(m.photo),
-    row = (l, v) => '<div class="ln" style="cursor:default;padding-left:0"><span>' + l + "</span><i></i><b>" + v + "</b></div>",
-    d = document.createElement("div");
-  d.id = "md";
-  d.innerHTML =
-    '<div class="mb" role="dialog" aria-modal="true" style="max-width:460px"><div style="text-align:center"><span class="adp big">' +
-    (ph ? '<img src="' + ph + '" alt="">' : esc(nm[0].toUpperCase())) +
-    "</span><h3 style=\"margin:8px 0 0\">" +
-    esc(nm) +
-    '</h3><small class="m">' +
-    esc(m.email || "") +
-    "</small>" +
-    (m.bio ? '<p style="margin:.4em 0;font-style:italic">« ' + esc(m.bio) + " »</p>" : "") +
-    "</div>" +
-    row("Filière", esc(m.filiere || "—")) +
-    row("Faculté", esc(m.fac || "—")) +
-    row("Membre depuis", m.depuis ? new Date(m.depuis).toLocaleDateString("fr-FR") : "—") +
-    row("Accès", m.role == "admin" ? "administrateur" : !m.expire ? "illimité" : (new Date(m.expire) < Date.now() ? "expiré le " : "jusqu’au ") + fdt(m.expire)) +
-    row("Dernière connexion", adAgo(m.derniere_connexion)) +
-    row("Dernière activité", st.derniere ? new Date(st.derniere + "T12:00").toLocaleDateString("fr-FR") : "—") +
-    '<div class="lb">Progression</div>' +
-    row("QCM répondus", adNum(st.qcm)) +
-    row("Moyenne", st.moy == null ? "—" : String(adNum(st.moy)).replace(".", ",") + " /20") +
-    row("Flamme", adNum(st.flamme) + " jour(s)" + (st.gel ? " · ❄ gel dispo" : "")) +
-    row("Journées bouclées", adNum(st.jours)) +
-    row("Cartes révisées", adNum(st.cartes)) +
-    row("Chapitres commencés", adNum(st.commences) + " / " + adNum(st.chapitres)) +
-    row("Erreurs en attente", adNum(st.erreurs)) +
-    row("Temps de travail", fmtH(adNum(st.temps) * 60)) +
-    (m.taille_donnees != null ? row("Données stockées", adSize(adNum(m.taille_donnees)) + " · " + adNum(m.nb_fichiers) + " fichier(s)") : "") +
-    (m.role == "admin"
-      ? ""
-      : '<div class="r"><button class="b" id="adu">Changer la durée d’accès</button><button class="b ko2" id="adr">Retirer l’accès</button></div>') +
-    '<button class="big" id="mn">Fermer</button></div>';
-  document.body.appendChild(d);
-  $("mn").onclick = () => d.remove();
-  if ($("adu"))
-    $("adu").onclick = () => {
-      d.remove();
-      syMemDur(uid);
-    };
-  if ($("adr"))
-    $("adr").onclick = () => {
-      d.remove();
-      syMemOut(uid);
-    };
-}
-function admin() {
-  setTimeout(() => {
-    adLoad();
-    syInvLoad();
-  }, 0);
-  return (
-    "<h3>Membres</h3><div id=\"adbox\"><p class=\"m\">Chargement…</p></div>" +
-    "<h3>Invitations</h3>" +
-    syAdmin(1)
-  );
 }

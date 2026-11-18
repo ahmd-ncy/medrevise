@@ -25,6 +25,7 @@ async function pdfPages(id) {
   let a = await pdfGet(id + ":t").catch(() => null);
   if (!a) {
     const buf = await pdfGet(id);
+    if (buf) await pdfLib().catch(() => {});
     if (!buf || !window.pdfjsLib) return [];
     pdfjsLib.GlobalWorkerOptions.workerSrc = WK;
     const doc = await pdfjsLib.getDocument({ data: buf.slice(0) }).promise;
@@ -288,6 +289,7 @@ async function peek(src) {
   if (!c.pdf) return;
   try {
     const buf = await pdfGet(c.id);
+    if (buf) await pdfLib().catch(() => {});
     if (!buf || !window.pdfjsLib) throw 0;
     pdfjsLib.GlobalWorkerOptions.workerSrc = WK;
     const doc = await pdfjsLib.getDocument({ data: buf.slice(0) }).promise,

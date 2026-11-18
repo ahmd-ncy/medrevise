@@ -120,6 +120,23 @@ function aChap() {
   save();
   done("Chapitre ajouté ✔");
 }
+// pdf.js n'est chargé qu'au premier PDF ouvert (il pèse 1,4 Mo avec son « worker »).
+let PDFL = null;
+const pdfLib = () =>
+  window.pdfjsLib
+    ? Promise.resolve()
+    : (PDFL =
+        PDFL ||
+        new Promise((ok, ko) => {
+          const sc = document.createElement("script");
+          sc.src = "vendor/pdf.min.js";
+          sc.onload = ok;
+          sc.onerror = () => {
+            PDFL = null;
+            ko(new Error("bibliothèque PDF non chargée"));
+          };
+          document.head.appendChild(sc);
+        }));
 const WK = "vendor/pdf.worker.min.js",
   DB = () =>
     new Promise((ok, ko) => {
@@ -213,6 +230,7 @@ async function pdfInit() {
           "</p>";
         return;
       }
+      await pdfLib();
       if (!window.pdfjsLib) throw new Error("bibliothèque PDF non chargée");
       pdfjsLib.GlobalWorkerOptions.workerSrc = WK;
       PD = { id: c.id, doc: await pdfjsLib.getDocument({ data: buf.slice(0) }).promise };
