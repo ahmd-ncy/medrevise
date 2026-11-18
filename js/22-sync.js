@@ -385,7 +385,20 @@ const syTr = (m) =>
 const syMsg = (t) => {
   if ($("sym")) $("sym").textContent = t;
 };
+// Empêche un double envoi (double appui, Entrée + clic) pendant qu'une demande est en cours.
 async function syLogin(signup) {
+  if (SY.busy) return;
+  SY.busy = true;
+  const bt = document.querySelector(".gcard .gbtn");
+  if (bt) bt.disabled = true;
+  try {
+    await syLogin1(signup);
+  } finally {
+    SY.busy = false;
+    if (bt && bt.isConnected) bt.disabled = false;
+  }
+}
+async function syLogin1(signup) {
   const e = ($("sye").value || "").trim();
   if (!/^\S+@\S+\.\S+$/.test(e)) return syMsg("Indique une adresse e-mail valide.");
   let code = "",
@@ -432,6 +445,13 @@ async function syLogin(signup) {
           : "Le serveur d’e-mails ne répond pas, ton compte n’a pas pu être finalisé. Réessaie dans quelques minutes ou préviens l’administrateur.",
       );
     }
+  }
+  // « after N seconds » à l'inscription : un e-mail de confirmation vient justement de partir pour cette adresse
+  if (signup && r2.error && /after \d+ second/i.test(r2.error.message || "")) {
+    try {
+      localStorage.setItem("mr_code", code);
+    } catch (x) {}
+    return syMsg("Un e-mail de confirmation vient d’être envoyé à cette adresse : ouvre le lien qu’il contient (pense aux spams), puis reviens te connecter ici.");
   }
   if (r2.error) return syMsg(syTr(r2.error.message));
   if (signup) {
@@ -497,6 +517,7 @@ function syMailErr(er) {
 async function syForgot() {
   const e = ($("sye").value || "").trim(),
     b = $("fpb");
+  if (b && b.disabled) return; // envoi déjà en cours
   if (!/^\S+@\S+\.\S+$/.test(e)) return syMsg("Indique l’adresse e-mail de ton compte.");
   if (b) {
     b.disabled = true;
