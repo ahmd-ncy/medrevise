@@ -18,6 +18,7 @@ const tabsAdd = () =>
     ["qcm", "QCM"],
     ["card", "Flashcard"],
     ["json", "Import depuis Claude"],
+    ["dossier", "Importer un dossier"],
     ["oc", "Schéma à trous"],
     ["cours", "Livret"],
     ["chap", "Chapitre"],
@@ -36,85 +37,213 @@ const tabsAdd = () =>
     )
     .join("") +
   "</div>";
+// ================= Gérer : trois vues, filtres et pagination =================
+// « Mes UE » (structure), « Contenu » (QCM, cartes, livrets filtrés et paginés), « À vérifier » (QCM importés).
+// Les filtres ne redessinent que la liste (#glist) pour garder le focus dans la recherche.
+const GPP = 20, // éléments par page
+  GK = {
+    qcm: ["QCM", "check", (x) => x.enonce],
+    cards: ["Flashcards", "cards", (x) => x.recto || (x.oc ? "Schéma à trous" : "")],
+    courses: ["Livrets", "file", (x) => x.titre],
+  };
 function gerer() {
-  const it = [
-    ["courses", "" + icn("file") + "", "titre"],
-    ["cards", "" + icn("cards") + "", "recto"],
-    ["qcm", "" + icn("check") + "", "enonce"],
-  ];
-  const un = S.qcm.filter((q) => q.ai);
+  const v = R.gv || "ue",
+    un = S.qcm.filter((q) => q.ai).length,
+    tb = (k, l) => '<button class="' + (v == k ? "on" : "") + '" onclick="R.gv=\'' + k + "';R.gp=0;render()\">" + l + "</button>";
   return (
-    '<p class="m">Modifier, déplacer (en changeant de chapitre) ou supprimer ton contenu.</p>' +
-    (un.length
-      ? '<div class="c" style="border-left:6px solid var(--wn)"><b>QCM générés par IA à vérifier (' +
-        un.length +
-        ')</b><p class="m" style="margin:.3em 0">Compare chaque correction à ton cours, puis valide, corrige ou supprime.</p>' +
-        un
-          .map(
-            (q) =>
-              '<div class="hl1"><span style="flex:1;min-width:160px"><b>' +
-              esc(q.enonce) +
-              "</b><br><small>Vraies : " +
-              esc(
-                q.props
-                  .filter((p) => p.ok)
-                  .map((p) => p.t)
-                  .join(" · "),
-              ) +
-              "</small></span>" +
-              srcBtn(q) +
-              '<button class="b p" onclick="aiOk(\'' +
-              q.id +
-              "')\">Vérifié</button>" +
-              bt("qcm", q.id) +
-              "</div>",
-          )
-          .join("") +
-        "</div>"
-      : "") +
-    S.mat
-      .map(
-        (m) =>
-          '<div class="c"><div class="r" style="margin:0;align-items:center"><b style="flex:1">' +
-          ICO(m) +
-          " " +
-          esc(m.nom) +
-          "</b>" +
-          bt("mat", m.id) +
-          "</div>" +
-          S.chap
-            .filter((c) => c.mid === m.id)
-            .map(
-              (c) =>
-                '<details style="margin-top:8px"><summary><b>' +
-                esc(c.titre) +
-                '</b></summary><div class="r" style="margin:4px 0">' +
-                bt("chap", c.id) +
-                "</div>" +
-                it
-                  .map(([k, i, f]) =>
-                    S[k]
-                      .filter((x) => x.ch === c.id)
-                      .map(
-                        (x) =>
-                          '<div class="r" style="align-items:center;margin:4px 0"><span style="flex:1">' +
-                          i +
-                          " " +
-                          esc(String(x[f]).slice(0, 60)) +
-                          "</span>" +
-                          bt(k, x.id) +
-                          "</div>",
-                      )
-                      .join(""),
-                  )
-                  .join("") +
-                "</details>",
-            )
-            .join("") +
-          "</div>",
-      )
-      .join("")
+    '<div class="seg gseg">' +
+    tb("ue", icn("book") + " Mes UE") +
+    tb("ct", icn("cards") + " Contenu") +
+    tb("av", icn("alert") + " À vérifier" + (un ? ' <span class="gbad">' + un + "</span>" : "")) +
+    "</div>" +
+    (v == "ue" ? gUE() : gFilters(v == "av") + '<div id="glist">' + gList() + "</div>")
   );
+}
+// ---------- vue « Mes UE » ----------
+function gUE() {
+  if (!S.mat.length) return '<p class="m">Aucune UE pour l’instant. Ajoute-en une, ou importe un dossier.</p>';
+  const n = (k, chs) => S[k].filter((x) => chs.includes(x.ch)).length;
+  return S.mat
+    .map((m) => {
+      const chs = S.chap.filter((c) => c.mid === m.id).sort((a, b) => natCmp(a.titre, b.titre)),
+        ids = chs.map((c) => c.id),
+        op = R.gm === m.id;
+      return (
+        '<div class="c gue' +
+        (op ? " op" : "") +
+        '"><div class="gueh" onclick="R.gm=R.gm===\'' +
+        m.id +
+        "'?'':'" +
+        m.id +
+        '\';render()"><span class="gic" style="--uc:' +
+        esc(m.couleur || "var(--ac)") +
+        '">' +
+        ICO(m) +
+        '</span><span style="flex:1;min-width:0"><b>' +
+        esc(m.nom) +
+        "</b><small>" +
+        chs.length +
+        " chapitre" +
+        (chs.length > 1 ? "s" : "") +
+        " · " +
+        n("courses", ids) +
+        " livrets · " +
+        n("qcm", ids) +
+        " QCM · " +
+        n("cards", ids) +
+        ' cartes</small></span><span class="gchev">' +
+        icn("chev") +
+        "</span></div>" +
+        (op
+          ? '<div class="r" style="margin:8px 0">' +
+            bt("mat", m.id) +
+            '<button class="b" onclick="R.gv=\'ct\';R.gfm=\'' +
+            m.id +
+            "';R.gfc='';R.gp=0;render()\">Voir tout le contenu</button></div>" +
+            (chs.length
+              ? chs
+                  .map(
+                    (c) =>
+                      '<div class="gch"><span style="flex:1;min-width:0"><b>' +
+                      esc(c.titre) +
+                      "</b><small>" +
+                      n("courses", [c.id]) +
+                      " livrets · " +
+                      n("qcm", [c.id]) +
+                      " QCM · " +
+                      n("cards", [c.id]) +
+                      " cartes</small></span><button class=\"b\" onclick=\"R.gv='ct';R.gfm='" +
+                      m.id +
+                      "';R.gfc='" +
+                      c.id +
+                      "';R.gp=0;render()\">Contenu</button>" +
+                      bt("chap", c.id) +
+                      "</div>",
+                  )
+                  .join("")
+              : '<p class="m">Aucun chapitre.</p>')
+          : "") +
+        "</div>"
+      );
+    })
+    .join("");
+}
+// ---------- filtres (UE, chapitre, type, recherche) ----------
+function gFilters(av) {
+  const mid = R.gfm || "",
+    chs = S.chap.filter((c) => !mid || c.mid === mid).sort((a, b) => natCmp(a.titre, b.titre)),
+    k = av ? "qcm" : R.gk || "qcm";
+  return (
+    '<div class="c gflt"><div class="gfr"><select onchange="R.gfm=this.value;R.gfc=\'\';R.gp=0;render()"><option value="">Toutes les UE</option>' +
+    S.mat.map((m) => '<option value="' + m.id + '"' + (m.id === mid ? " selected" : "") + ">" + esc(m.nom) + "</option>").join("") +
+    '</select><select onchange="R.gfc=this.value;R.gp=0;gPaint()"><option value="">Tous les chapitres</option>' +
+    chs
+      .map((c) => '<option value="' + c.id + '"' + (c.id === R.gfc ? " selected" : "") + ">" + esc((mid ? "" : M(c.mid).nom + " · ") + c.titre) + "</option>")
+      .join("") +
+    "</select></div>" +
+    (av
+      ? ""
+      : '<div class="lcr" style="margin:10px 0 0">' +
+        Object.entries(GK)
+          .map(([key, d]) => '<button class="' + (k == key ? "on" : "") + '" onclick="R.gk=\'' + key + "';R.gp=0;render()\">" + icn(d[1]) + d[0] + "</button>")
+          .join("") +
+        "</div>") +
+    '<input type="text" inputmode="search" enterkeyhint="search" class="gq" placeholder="Rechercher…" value="' +
+    esc(R.gq || "") +
+    '" oninput="R.gq=this.value;R.gp=0;clearTimeout(R.gqt);R.gqt=setTimeout(gPaint,200)"></div>'
+  );
+}
+const gPaint = () => {
+  const e = $("glist");
+  if (e) e.innerHTML = gList();
+};
+function gItems() {
+  const av = R.gv == "av",
+    k = av ? "qcm" : R.gk || "qcm",
+    q = nrmT(R.gq || ""),
+    chs = new Set(S.chap.filter((c) => (!R.gfm || c.mid === R.gfm) && (!R.gfc || c.id === R.gfc)).map((c) => c.id));
+  return S[k].filter(
+    (x) =>
+      chs.has(x.ch) &&
+      (!av || x.ai) &&
+      (!q || nrmT([GK[k][2](x), x.verso, x.expl, x.texte, (x.props || []).map((p) => p.t).join(" ")].join(" ")).includes(q)),
+  );
+}
+// ---------- liste paginée ----------
+function gList() {
+  const av = R.gv == "av",
+    k = av ? "qcm" : R.gk || "qcm",
+    L = gItems(),
+    np = Math.max(1, Math.ceil(L.length / GPP)),
+    p = Math.min(R.gp || 0, np - 1),
+    pg = L.slice(p * GPP, p * GPP + GPP);
+  if (!L.length)
+    return '<p class="m" style="text-align:center;padding:18px 0">' + (av ? "Rien à vérifier ici ✔" : "Aucun élément ne correspond.") + "</p>";
+  const row = (x) =>
+    '<div class="gro"><span class="gtx"><b>' +
+    esc(String(GK[k][2](x) || "(sans titre)").slice(0, 140)) +
+    "</b><small>" +
+    esc(M(CH(x.ch).mid).nom + " · " + CH(x.ch).titre) +
+    (k == "qcm" && av
+      ? " · Vraies : " +
+        esc(
+          x.props
+            .filter((o) => o.ok)
+            .map((o) => o.t)
+            .join(" · ")
+            .slice(0, 160),
+        )
+      : "") +
+    (k == "courses" && x.pdf ? " · PDF" : "") +
+    "</small></span>" +
+    srcBtn(x) +
+    (av ? '<button class="b p" onclick="aiOk(\'' + x.id + "')\">Vérifié</button>" : "") +
+    bt(k, x.id) +
+    "</div>";
+  return (
+    '<div class="ghd"><b>' +
+    L.length +
+    " " +
+    (av ? "QCM à vérifier" : k == "qcm" ? "QCM" : GK[k][0].toLowerCase()) +
+    "</b>" +
+    (av && (R.gfc || R.gfm) ? '<button class="b" onclick="gAllOk()">Tout marquer vérifié</button>' : "") +
+    (!av && (R.gfc || R.gq) && k != "courses" ? '<button class="b" onclick="gDelAll()">' + icn("trash") + " Supprimer ces " + L.length + "</button>" : "") +
+    "</div>" +
+    pg.map(row).join("") +
+    (np > 1
+      ? '<div class="gpg"><button class="b" ' +
+        (p ? "" : "disabled") +
+        ' onclick="R.gp=' +
+        (p - 1) +
+        ';gPaint();scrollTo(0,0)">‹ Précédent</button><span>Page ' +
+        (p + 1) +
+        " / " +
+        np +
+        '</span><button class="b" ' +
+        (p < np - 1 ? "" : "disabled") +
+        ' onclick="R.gp=' +
+        (p + 1) +
+        ';gPaint();scrollTo(0,0)">Suivant ›</button></div>'
+      : "")
+  );
+}
+function gAllOk() {
+  const L = gItems();
+  ask("Marquer ces " + L.length + " QCM comme vérifiés ?", () => {
+    L.forEach((q) => delete q.ai);
+    save();
+    render();
+  }, "Valider");
+}
+function gDelAll() {
+  const k = R.gk || "qcm",
+    L = new Set(gItems().map((x) => x.id));
+  ask("Supprimer définitivement ces " + L.size + " éléments ?", () => {
+    S[k] = S[k].filter((x) => !L.has(x.id));
+    S.err = S.err.filter((e) => S.qcm.some((q) => q.id === e));
+    save();
+    render();
+  });
 }
 function del(k, id) {
   ask(

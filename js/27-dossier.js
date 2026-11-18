@@ -74,7 +74,7 @@ async function dScan(files) {
           const t = await f.text(),
             b = jParse(t)[0] || {};
           if (b.chapitre && dChapNum(b.chapitre) === dChapNum(titre)) titre = String(b.chapitre).trim();
-          js.push({ f, t });
+          js.push({ f, t, liv: String(b.livret || "").trim().slice(0, 120) });
         } catch (e) {
           errs.push(ue + " / " + chf + " / " + f.name + " : fichier illisible.");
         }
@@ -87,7 +87,8 @@ async function dScan(files) {
             nP++;
             mo += f.size;
             if (!ex) nNew++;
-            return { f, titre: dLivret(f.name), ex };
+            const j = js.find((x) => dBase(x.f.name) === dBase(f.name));
+            return { f, titre: (j && j.liv) || dLivret(f.name), ex };
           });
       // compte des QCM et cartes (doublons exclus)
       let q = 0,
@@ -137,7 +138,7 @@ async function dScan(files) {
                 '<div class="dch"><b>' +
                 esc(c.titre) +
                 "</b>" +
-                (c.exCh ? ' <small class="m">(existe déjà)</small>' : "") +
+                (c.exCh ? ' <small class="m">(existe déjà' + (c.exCh.titre !== c.titre ? ", sera renommé" : "") + ")</small>" : "") +
                 "<small>" +
                 c.livs.map((l) => esc(l.titre) + (l.ex ? " ✓" : "")).join(" · ") +
                 (c.q || c.c ? " — " + c.q + " QCM, " + c.c + " cartes" : "") +
@@ -189,6 +190,8 @@ async function dImport() {
       for (const l of c.livs) {
         if (l.ex) {
           ids[dBase(l.f.name)] = l.ex.id;
+          // titre plus parlant fourni par le .json (« Livret 1 » → « Livret 1 – Unités »)
+          if (l.titre !== l.ex.titre && /^livret [\d.]+$/i.test(l.ex.titre)) l.ex.titre = l.titre;
           continue;
         }
         prog("Ajout de « " + esc(m.nom + " · " + ch.titre + " · " + l.titre) + " » (" + (i + 1) + "/" + P.nNew + ")…");

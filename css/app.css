@@ -3939,3 +3939,116 @@ html[data-fx="aurora"] .amc {
   background: linear-gradient(90deg, var(--c1), var(--c4));
   transition: width 0.3s;
 }
+
+/* ===== Gérer ===== */
+.gseg button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.gseg svg {
+  width: 15px;
+  height: 15px;
+}
+.gbad {
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--wn);
+  color: #1b1300;
+  font-size: 11px;
+  font-weight: 700;
+}
+.gueh {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+.gueh small,
+.gch small,
+.gtx small {
+  display: block;
+  color: var(--mut);
+  margin-top: 2px;
+}
+.gic {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--uc) 22%, transparent);
+  color: var(--uc);
+}
+.gic svg {
+  width: 22px;
+  height: 22px;
+}
+.gchev svg {
+  width: 18px;
+  height: 18px;
+  transition: transform 0.2s;
+}
+.gue.op .gchev svg {
+  transform: rotate(180deg);
+}
+.gch,
+.gro {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 10px 0;
+  border-top: 1px solid var(--bd);
+}
+.gch .b,
+.gro .b {
+  margin: 0;
+}
+.gtx {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.gtx b {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.gfr {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.gfr select {
+  margin: 0;
+}
+.gq {
+  margin-top: 10px;
+}
+.ghd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 4px 0 6px;
+}
+.ghd b {
+  flex: 1;
+}
+.gpg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 14px 0 4px;
+}
+.gpg .b:disabled {
+  opacity: 0.4;
+}
+@media (max-width: 520px) {
+  .gfr {
+    grid-template-columns: 1fr;
+  }
+}
