@@ -3882,3 +3882,60 @@ html[data-fx="aurora"] .amc {
   object-fit: cover;
   border-radius: 50%;
 }
+
+/* ===== Importer un dossier ===== */
+.dtree {
+  font-size: 13px;
+  line-height: 1.5;
+}
+.dsum {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 8px;
+  margin: 12px 0;
+}
+.dsum div {
+  text-align: center;
+  padding: 10px 6px;
+  border: 1px solid var(--bd);
+  border-radius: 12px;
+}
+.dsum b {
+  display: block;
+  font-size: 1.4rem;
+}
+.dsum small {
+  color: var(--mut);
+}
+.due {
+  border: 1px solid var(--bd);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin: 8px 0;
+}
+.due summary {
+  cursor: pointer;
+}
+.dch {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+  border-top: 1px solid var(--bd);
+  margin-top: 8px;
+}
+.dch small {
+  color: var(--mut);
+}
+.dbar {
+  height: 8px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--fg) 10%, transparent);
+  overflow: hidden;
+  margin: 8px 0;
+}
+.dbar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--c1), var(--c4));
+  transition: width 0.3s;
+}

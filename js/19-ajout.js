@@ -5,6 +5,7 @@ function add() {
     ["qcm", "QCM"],
     ["card", "Flashcard"],
     ["json", "Import depuis Claude"],
+    ["dossier", "Importer un dossier"],
     ["oc", "Schéma à trous"],
     ["cours", "Livret"],
     ["chap", "Chapitre"],
@@ -43,6 +44,7 @@ function add() {
       imgf() +
       '<button class="b p" onclick="aCours()">Ajouter le livret</button>';
   if (t === "json") f = jsonForm();
+  if (t === "dossier") f = dossierForm();
   if (t === "oc")
     f =
       '<label class="f">UE</label>' +
