@@ -4052,7 +4052,24 @@ html[data-fx="aurora"] .amc {
     grid-template-columns: 1fr;
   }
 }
-.pst {
+.pstd {
   margin-top: 4px;
   display: inline-block;
+}
+.ued summary {
+  cursor: pointer;
+  list-style: none;
+}
+.ued summary::-webkit-details-marker {
+  display: none;
+}
+.uedl {
+  margin: 8px 0 4px;
+}
+.uedl .pc {
+  align-items: center;
+  gap: 8px;
+}
+.uedl input[type="date"] {
+  max-width: 170px;
 }

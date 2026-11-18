@@ -131,7 +131,9 @@ const addD = (d, n) => {
     x.setDate(x.getDate() + n);
     return x.toLocaleDateString("sv");
   },
-  dShort = (d) => new Date(d + "T12:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+  // l'année n'est affichée que si ce n'est pas l'année en cours
+  dShort = (d) =>
+    new Date(d + "T12:00").toLocaleDateString("fr-FR", d.slice(0, 4) === day().slice(0, 4) ? { day: "numeric", month: "short" } : { day: "numeric", month: "short", year: "numeric" });
 // Réglages du planning (minutes).
 const PL = () => ({
   cap: S.pcap ?? 180, // temps de travail par jour
@@ -304,6 +306,15 @@ const jOut = (id) => {
     );
 // Simule les N prochains jours : place les rappels (les plus urgents d'abord) et les nouveaux chapitres
 // dans la limite du temps disponible, et reporte le reste au lendemain.
+// Date du concours d'une UE : la sienne si elle en a une, sinon la date générale.
+const ueExam = (mid) => {
+  const m = M(mid),
+    e = (m && m.exam) || S.exam;
+  return e && e > day() ? e : null;
+};
+// Simule les N prochains jours : place les rappels (les plus urgents d'abord) et les nouveaux chapitres
+// dans la limite du temps disponible, et reporte le reste au lendemain. Les chapitres sont regroupés par
+// date de concours (une par UE possible) : chaque groupe a son propre rythme pour être fini à temps.
 function jPlan(N) {
   N = N || 14;
   const P = PL(),
@@ -313,9 +324,18 @@ function jPlan(N) {
       .filter((c) => S.jm[c.id])
       .map((c) => ({ c, k: S.jm[c.id].k, next: S.jm[c.id].next, nom: S.jm[c.id].next })),
     queue = jOrder(),
-    ex = S.exam && S.exam > td ? S.exam : null,
-    dl = ex ? dBetween(td, ex) - P.buf : null,
-    rate = ex ? (dl > 0 ? queue.length / dl : 0) : P.nd;
+    gm = {};
+  queue.forEach((c) => {
+    const e = ueExam(c.mid) || "";
+    (gm[e] = gm[e] || { ex: e || null, q: [] }).q.push(c);
+  });
+  const G = Object.values(gm).sort((a, b) => (a.ex || "9") < (b.ex || "9") ? -1 : 1);
+  G.forEach((g) => {
+    g.dl = g.ex ? dBetween(td, g.ex) - P.buf : null;
+    g.rate = g.ex ? (g.dl > 0 ? g.q.length / g.dl : 0) : P.nd;
+    g.qi = 0;
+  });
+  const rate = G.reduce((a, g) => a + g.rate, 0);
   // ce qui est déjà fait aujourd'hui compte dans la journée
   S.chap.forEach((c) => {
     const j = S.jm[c.id];
@@ -329,10 +349,15 @@ function jPlan(N) {
       days[0].min += P.tn;
     }
   });
-  // s’il reste des chapitres, le premier commence dès aujourd’hui
-  let credit = Math.max(0, (queue.length && rate > 0 ? Math.max(1, rate) : rate) - days[0].neu.length),
-    qi = 0,
+  // s’il reste des chapitres, le premier groupe commence dès aujourd’hui
+  let done0 = days[0].neu.length,
     pn = 0;
+  G.forEach((g, i) => {
+    const r0 = g.rate > 0 ? (i ? g.rate : Math.max(1, g.rate)) : 0,
+      take = Math.min(done0, r0);
+    g.credit = r0 - take;
+    done0 -= take;
+  });
   for (let i = 0; i < N; i++) {
     const D = days[i],
       cand = st
@@ -349,29 +374,35 @@ function jPlan(N) {
       x.k++;
       x.next = x.nom = addD(D.d, jGapA(x.c.id, x.k));
     }
-    if (i) credit += rate;
-    while (credit >= 1 - 1e-9 && qi < queue.length && (D.min + P.tn <= P.cap || !D.min)) {
-      const c = queue[qi++];
+    if (i) G.forEach((g) => (g.credit += g.rate));
+    for (;;) {
+      if (!(D.min + P.tn <= P.cap || !D.min)) break;
+      // le groupe le plus en retard sur son rythme passe en premier (à égalité : le concours le plus proche)
+      const g = G.filter((g) => g.credit >= 1 - 1e-9 && g.qi < g.q.length).sort((a, b) => b.credit - a.credit)[0];
+      if (!g) break;
+      const c = g.q[g.qi++];
       D.neu.push({ c });
       D.min += P.tn;
-      credit -= 1;
+      g.credit -= 1;
       pn++;
       st.push({ c, k: 0, next: addD(D.d, jGapA(c.id, 0)), nom: addD(D.d, jGapA(c.id, 0)) });
     }
   }
   const back = st.filter((x) => x.next <= days[N - 1].d).length;
-  // pn : nouveaux chapitres réellement placés ; short : le temps disponible ne suffit pas pour tenir le rythme
-  const short = rate > 0 && queue.length > pn && pn < Math.min(queue.length, rate * N) * 0.85 - 0.5;
-  return { days, rate, left: queue.length, dl, back, cap: P.cap, pn, short };
+  // short : le temps disponible ne suffit pas pour tenir le rythme
+  const short = rate > 0 && queue.length > pn && pn < Math.min(queue.length, rate * N) * 0.85 - 0.5,
+    dl = G.length ? Math.max(...G.map((g) => g.dl ?? -1)) : null;
+  return { days, rate, left: queue.length, dl, back, cap: P.cap, pn, short, groups: G };
 }
 // Date prévue de la première étude (J0) de chaque chapitre pas encore commencé : on prolonge la
 // simulation jusqu'au concours (ou jusqu'à ce que tous les chapitres soient placés, 1 an maximum).
 function jStarts() {
   const P = PL(),
     q = jOrder(),
-    ex = S.exam && S.exam > day() ? S.exam : null;
+    exs = q.map((c) => ueExam(c.mid)),
+    ex = exs.every(Boolean) ? exs.sort()[exs.length - 1] : null;
   if (!q.length) return { at: {}, last: null, miss: 0, ex };
-  const N = ex ? Math.min(366, dBetween(day(), ex) + 1) : Math.min(366, Math.ceil(q.length / Math.max(0.1, P.nd)) + 21),
+  const N = ex ? Math.min(1100, dBetween(day(), ex) + 1) : Math.min(1100, Math.ceil(q.length / Math.max(0.1, P.nd)) + 21),
     p = jPlan(N),
     at = {};
   p.days.forEach((d) => d.neu.forEach((r) => !r.done && !at[r.c.id] && (at[r.c.id] = d.d)));
@@ -529,6 +560,14 @@ const PV = (v) => {
     render();
   };
 let PUE = "";
+function ueSetExam(id, v) {
+  const m = M(id);
+  if (!m) return;
+  if (v) m.exam = v;
+  else delete m.exam;
+  save();
+  render();
+}
 function plan() {
   const P = PL(),
     p = jPlan(28),
@@ -552,24 +591,56 @@ function plan() {
         : "";
     },
     fu = (l) => (PUE ? l.filter((c) => c.mid === PUE) : l);
+  const js0 = q.length ? jStarts() : null,
+    dY = (d) => new Date(d + "T12:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }),
+    gLast = (g) =>
+      js0 &&
+      g.q
+        .map((c) => js0.at[c.id])
+        .filter(Boolean)
+        .sort()
+        .pop(),
+    gLine = (g) => {
+      const n = g.q.length,
+        ues = S.mat.filter((m) => g.q.some((c) => c.mid === m.id)).map((m) => esc(m.nom)).join(", "),
+        lst = gLast(g),
+        miss = js0 ? g.q.filter((c) => !js0.at[c.id]).length : 0,
+        chs = "<b>" + n + "</b> chapitre" + (n > 1 ? "s" : "");
+      if (!g.ex) return (ues ? "<b>" + ues + "</b> : " : "") + chs + " à commencer, au rythme de " + fr(P.nd) + " par jour (pas de date de concours).";
+      if (g.dl <= 0) return "<b>" + ues + "</b> : dans la marge de révision avant le concours du " + dY(g.ex) + ", plus de nouveaux chapitres.";
+      return (
+        "<b>" + ues + "</b> : " + chs + " d’ici le concours du " + dY(g.ex) + ", environ <b>" + fr(g.rate * 7) + " par semaine</b>" +
+        (miss
+          ? ' <span class="wn">· ' + miss + " sans place</span>"
+          : lst
+            ? " · tout commencé le " + dY(lst) + " (" + dBetween(lst, g.ex) + " jours avant)"
+            : "") +
+        "."
+      );
+    };
   let rythme;
   if (!S.chap.length) rythme = "Ajoute tes UE et tes chapitres pour construire ton planning.";
-  else if (ex)
-    rythme =
-      p.dl > 0
-        ? "<b>" + q.length + "</b> chapitre" + (q.length > 1 ? "s" : "") + " à commencer en " + p.dl + " jours : environ <b>" + fr(p.rate * 7) + " par semaine</b>."
-        : "Tu es dans ta marge de révision avant le concours : plus de nouveaux chapitres, seulement des rappels.";
-  else
-    rythme =
-      "<b>" + q.length + "</b> chapitre" + (q.length > 1 ? "s" : "") + " à commencer, au rythme de " + fr(P.nd) + " par jour. Indique la date du concours dans les réglages pour que le rythme s’adapte tout seul.";
-  const js0 = q.length ? jStarts() : null,
-    fin = !js0
-      ? ""
-      : js0.miss
-        ? '<p class="wnl">' + icn("alert") + " " + js0.miss + " chapitre" + (js0.miss > 1 ? "s" : "") + " ne trouve" + (js0.miss > 1 ? "nt" : "") + " pas de place " + (js0.ex ? "avant ta marge de révision" : "dans l’année") + ". Augmente ton temps de travail par jour ou réduis la marge avant le concours.</p>"
-        : js0.last
-          ? '<p style="margin:.4em 0 0">' + icn("cal") + " Tous tes chapitres seront commencés le <b>" + dlab(js0.last) + "</b>" + (js0.ex ? ", " + dBetween(js0.last, js0.ex) + " jours avant le concours." : ".") + ' <a href="#" onclick="PV(\'todo\');return false">Voir la date de chaque chapitre</a></p>'
-          : "";
+  else if (!q.length) rythme = "Tous tes chapitres sont commencés : il ne reste que les rappels.";
+  else rythme = p.groups.map(gLine).join("<br>");
+  if (S.chap.length && !p.groups.some((g) => g.ex)) rythme += '<br><small class="m">Indique la date de ton concours (ci-dessous ou dans les réglages) pour que le rythme s’adapte tout seul.</small>';
+  const fin = !js0
+    ? ""
+    : js0.miss
+      ? '<p class="wnl">' + icn("alert") + " " + js0.miss + " chapitre" + (js0.miss > 1 ? "s" : "") + " ne trouve" + (js0.miss > 1 ? "nt" : "") + " pas de place avant la marge de révision. Augmente ton temps de travail par jour ou réduis la marge avant le concours.</p>"
+      : ' <p style="margin:.4em 0 0"><a href="#" onclick="PV(\'todo\');return false">' + icn("cal") + " Voir la date de chaque chapitre</a></p>";
+  // date de concours par UE (S1, S2…)
+  const ueDates =
+    S.mat.length > 0
+      ? '<details class="c ued"' + (R.ued ? " open" : "") + ' ontoggle="R.ued=this.open"><summary><b>' + icn("cal") + " Dates de concours par UE</b> <small class=\"m\">si tes UE n’ont pas toutes le même concours (S1, S2…)</small></summary>" +
+        '<div class="uedl">' +
+        S.mat
+          .map(
+            (m) =>
+              '<label class="pc" style="--sc:' + m.couleur + '"><span style="flex:1"><b>' + esc(m.nom) + "</b><br><small class=\"m\">" + (m.exam ? "date propre à l’UE" : S.exam ? "date générale" : "aucune date") + '</small></span><input type="date" min="' + day() + '" value="' + (m.exam || "") + '" onchange="ueSetExam(\'' + m.id + "',this.value)\"></label>",
+          )
+          .join("") +
+        '</div><small class="m">Laisse vide pour utiliser la date générale' + (S.exam ? " (" + dY(S.exam) + ")" : "") + ".</small></details>"
+      : "";
   const head =
     '<h2 class="ti">' +
     icn("cal") +
@@ -585,13 +656,11 @@ function plan() {
     fmtM(P.tn) +
     "</p>" +
     fin +
-    (p.short
-      ? '<p class="wnl">' + icn("alert") + " Avec " + fmtM(P.cap) + " par jour, tu ne peux commencer qu’environ " + fr((p.pn / 28) * 7) + " chapitre(s) par semaine au lieu de " + fr(p.rate * 7) + ". Augmente ton temps de travail ou réduis la durée prévue d’un nouveau chapitre.</p>"
-      : "") +
     (p.back ? '<p class="wnl">' + icn("alert") + " Surcharge : " + p.back + " rappels ne tiennent pas dans les 4 prochaines semaines.</p>" : "") +
     '<div class="r"><button class="b" onclick="profGo(\'reg\');setTimeout(()=>jump(\'rg_plan\'),80)">' +
     icn("gear") +
     " Réglages du planning</button></div></div>" +
+    ueDates +
     '<div class="seg">' +
     [
       ["jours", "Jours"],
@@ -722,8 +791,8 @@ function plan() {
                 esc(M(c.mid).nom) +
                 "</small>" +
                 (js0 && js0.at[c.id]
-                  ? '<br><span class="tag pst">' + (js0.at[c.id] === day() ? "à commencer aujourd’hui" : "à commencer le " + dShort(js0.at[c.id])) + "</span>"
-                  : '<br><span class="tag pst" style="background:var(--wnb);color:var(--wn)">pas de place avant le concours</span>') +
+                  ? '<br><span class="tag pstd">' + (js0.at[c.id] === day() ? "à commencer aujourd’hui" : "à commencer le " + dShort(js0.at[c.id])) + "</span>"
+                  : '<br><span class="tag pstd" style="background:var(--wnb);color:var(--wn)">pas de place avant le concours</span>') +
                 '</div><label class="dv"><small>Déjà vu le</small><input type="date" max="' +
                 day() +
                 '" onchange="if(this.value){jStart(\'' +
