@@ -58,6 +58,7 @@ function admin() {
 function adPaint() {
   const e = $("adm");
   if (e) e.innerHTML = adView();
+  routeSync();
 }
 function adView() {
   if (!AD.list) return '<p class="m">Chargement…</p>';
@@ -321,7 +322,7 @@ function adMember(uid) {
     '<div class="pcov" style="margin-top:10px"><div class="pcbg" style="' +
     banCss(m.banniere) +
     '"></div>' +
-    adAv(m, "av2 pcav big") +
+    adAv(m, "pcav2") +
     '<div class="pcin"><h2>' +
     esc(adName(m)) +
     '</h2><div class="pcch">' +
@@ -428,7 +429,7 @@ function adDur(uid) {
 async function adReset(uid) {
   const em = adMail(uid);
   if (!em) return;
-  const { error } = await SY.sb.auth.resetPasswordForEmail(em, { redirectTo: location.origin + location.pathname });
+  const { error } = await SY.sb.auth.resetPasswordForEmail(em, { redirectTo: location.origin + "/" });
   toast(error ? esc(syMailErr(error)) : "Lien de mot de passe envoyé à " + esc(em));
 }
 // ---------- codes d'invitation ----------

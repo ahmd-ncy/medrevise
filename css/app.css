@@ -3131,6 +3131,7 @@ html[data-fx="aurora"] .ti {
     linear-gradient(120deg, var(--c1), var(--c4));
 }
 .av2.ph.pcav {
+  z-index: 1;
   width: 104px;
   height: 104px;
   margin: -52px auto 0;
@@ -3847,4 +3848,24 @@ html[data-fx="aurora"] .amc {
   .banl {
     grid-template-columns: repeat(5, 1fr);
   }
+}
+
+/* photo de la fiche membre (administration) : ronde, au-dessus de la bannière */
+.adp.pcav2 {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 104px;
+  height: 104px;
+  margin: -52px auto 0;
+  border-radius: 50%;
+  border: 4px solid var(--card);
+  font: 700 2.6rem "Source Serif 4", serif;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+.adp.pcav2 img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
 }

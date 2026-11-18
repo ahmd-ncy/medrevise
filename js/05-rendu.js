@@ -77,6 +77,7 @@ function render() {
   if (!(tab === "cours" && R.id)) document.body.classList.remove("pf");
   if (tab === "cours" && !R.id && R.sq) pdfSearchSoon();
   if (typeof tutoAuto == "function") tutoAuto();
+  if (typeof routeSync == "function") routeSync();
 }
 function resetDlg() {
   const d = document.createElement("div");

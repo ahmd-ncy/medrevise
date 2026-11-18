@@ -55,6 +55,7 @@ def page(css, scripts):
 <html lang="fr">
 <head>
 <meta charset="utf-8">
+<base href="/">
 <meta http-equiv="Content-Security-Policy" content=\"""" + csp + """\">
 <meta name="referrer" content="no-referrer">
 <title>MedRevise</title>
@@ -84,6 +85,8 @@ def page(css, scripts):
 
 
 open(P("index.html"), "w").write(page(CSSF, [JSF]))
+# GitHub Pages sert 404.html pour toute adresse inconnue (/cours, /planning…) : l'app lit l'adresse et affiche la bonne page
+open(P("404.html"), "w").write(page(CSSF, [JSF]))
 open(P("dev.html"), "w").write(page("css/app.css", ["js/" + f for f in js]))
 
 # service worker : fichiers gardés pour le hors connexion (pdf.js est mis en cache au premier usage)

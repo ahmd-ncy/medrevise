@@ -412,7 +412,7 @@ async function syLogin(signup) {
     ? await SY.sb.auth.signUp({
         email: e,
         password: p,
-        options: { emailRedirectTo: location.href.split("#")[0], data: { prenom: nm } },
+        options: { emailRedirectTo: location.origin + "/", data: { prenom: nm } },
       })
     : await SY.sb.auth.signInWithPassword({ email: e, password: p });
   let r2 = r;
@@ -476,7 +476,7 @@ function syChangePass() {
   };
 }
 async function syForgotMe() {
-  const { error } = await SY.sb.auth.resetPasswordForEmail(SY.user.email, { redirectTo: location.href.split("#")[0] });
+  const { error } = await SY.sb.auth.resetPasswordForEmail(SY.user.email, { redirectTo: location.origin + "/" });
   toast(error ? syMailErr(error) : "E-mail envoyé à " + esc(SY.user.email) + " : ouvre le lien pour choisir un nouveau mot de passe.");
 }
 // Erreurs d'envoi d'e-mail : Supabase a deux limites différentes.
@@ -506,7 +506,7 @@ async function syForgot() {
   let r;
   try {
     r = await Promise.race([
-      SY.sb.auth.resetPasswordForEmail(e, { redirectTo: location.origin + location.pathname }),
+      SY.sb.auth.resetPasswordForEmail(e, { redirectTo: location.origin + "/" }),
       new Promise((_, ko) => setTimeout(() => ko(new Error("délai")), 15000)),
     ]);
   } catch (x) {

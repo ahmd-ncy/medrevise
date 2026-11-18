@@ -22,6 +22,7 @@ onkeydown = (e) => {
     BOOT = (await pdfOp("get", "__etat")) ?? null;
   } catch (e) {}
   load();
+  routeIn();
   syncInit();
   render();
   // Mise à jour automatique : quand une nouvelle version est publiée, elle s'installe et l'app se recharge.
