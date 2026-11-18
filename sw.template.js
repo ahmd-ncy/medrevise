@@ -6,7 +6,12 @@ const FILES = [
   __FILES__
 ];
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(FILES)).then(() => self.skipWaiting()));
+  e.waitUntil(
+    caches
+      .open(VERSION)
+      .then((c) => c.addAll(FILES.map((f) => new Request(f, { cache: "reload" }))))
+      .then(() => self.skipWaiting()),
+  );
 });
 self.addEventListener("activate", (e) => {
   e.waitUntil(
@@ -22,7 +27,8 @@ self.addEventListener("fetch", (e) => {
   if (req.method !== "GET") return;
   if (u.origin === location.origin) {
     e.respondWith(
-      fetch(req)
+      // « no-cache » : toujours vérifier auprès du serveur s'il y a une nouvelle version (sinon copie locale)
+      fetch(req, { cache: "no-cache" })
         .then((r) => {
           if (r.ok) {
             const c = r.clone();

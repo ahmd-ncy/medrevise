@@ -3,6 +3,16 @@
 import os, hashlib
 R = os.path.dirname(os.path.abspath(__file__))
 js = sorted(f for f in os.listdir(os.path.join(R, "js")) if f.endswith(".js"))
+# numéro de version (empreinte des fichiers), affiché dans Profil → Aide
+_h = hashlib.sha1()
+for _f in sorted(js):
+    if _f != "00-version.js":
+        _h.update(open(os.path.join(R, "js", _f), "rb").read())
+_h.update(open(os.path.join(R, "css", "app.css"), "rb").read())
+APPV = _h.hexdigest()[:7]
+open(os.path.join(R, "js", "00-version.js"), "w").write('// Généré par build.py : numéro de la version publiée.\nconst APPV = "%s";\n' % APPV)
+if "00-version.js" not in js:
+    js = sorted(js + ["00-version.js"])
 import re
 cfg = open(os.path.join(R, "js", "00-config.js")).read()
 sb = re.search(r'SB_URL = "([^"]+)"', cfg).group(1)

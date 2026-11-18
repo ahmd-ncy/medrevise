@@ -1,13 +1,14 @@
 // Service worker de MedRevise (généré par build.py à partir de sw.template.js : ne pas modifier sw.js à la main).
 // Garde une copie de l'application pour qu'elle s'ouvre hors connexion.
 // Fichiers de l'app : réseau d'abord (toujours la dernière version en ligne), copie locale si hors connexion.
-const VERSION = "medrevise-b5a7766ded";
+const VERSION = "medrevise-330dde131b";
 const FILES = [
   "./",
   "index.html",
   "manifest.webmanifest",
   "css/app.css",
   "js/00-config.js",
+  "js/00-version.js",
   "js/01-icones.js",
   "js/02-etat.js",
   "js/03-demo.js",
@@ -43,7 +44,12 @@ const FILES = [
   "icons/icon-maskable-512.png"
 ];
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(FILES)).then(() => self.skipWaiting()));
+  e.waitUntil(
+    caches
+      .open(VERSION)
+      .then((c) => c.addAll(FILES.map((f) => new Request(f, { cache: "reload" }))))
+      .then(() => self.skipWaiting()),
+  );
 });
 self.addEventListener("activate", (e) => {
   e.waitUntil(
@@ -59,7 +65,8 @@ self.addEventListener("fetch", (e) => {
   if (req.method !== "GET") return;
   if (u.origin === location.origin) {
     e.respondWith(
-      fetch(req)
+      // « no-cache » : toujours vérifier auprès du serveur s'il y a une nouvelle version (sinon copie locale)
+      fetch(req, { cache: "no-cache" })
         .then((r) => {
           if (r.ok) {
             const c = r.clone();

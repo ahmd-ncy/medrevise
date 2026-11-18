@@ -319,7 +319,9 @@ function prof() {
   else if (sec[0] == "admin") body = SY.role == "admin" ? admin() : "";
   else if (sec[0] == "aide")
     body =
-      '<div class="c"><b>Visite guidée</b><p class="m" style="margin:.3em 0 .6em">Refais le tour de l’application, écran par écran.</p><button class="b p" onclick="tutoStart(1)">Lancer la visite guidée</button></div><h3>Explications</h3><div class="pmenu">' +
+      '<div class="c"><b>Visite guidée</b><p class="m" style="margin:.3em 0 .6em">Refais le tour de l’application, écran par écran.</p><button class="b p" onclick="tutoStart(1)">Lancer la visite guidée</button></div><div class="c"><b>Version de l’app</b><p class="m" style="margin:.3em 0 .6em">Version <b>' +
+      (typeof APPV == "string" ? APPV : "?") +
+      '</b>. Les mises à jour s’installent toutes seules quand l’app est ouverte avec internet.</p><button class="b" onclick="appRefresh()">Rechercher une mise à jour</button></div><h3>Explications</h3><div class="pmenu">' +
       Object.keys(HELP)
         .filter((k) => k != "inv" || SY.role == "admin")
         .map(
