@@ -3,10 +3,18 @@
 import os, hashlib
 R = os.path.dirname(os.path.abspath(__file__))
 js = sorted(f for f in os.listdir(os.path.join(R, "js")) if f.endswith(".js"))
+import re
+cfg = open(os.path.join(R, "js", "00-config.js")).read()
+sb = re.search(r'SB_URL = "([^"]+)"', cfg).group(1)
+csp = ("default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+       "font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' " + sb + " " + sb.replace("https", "wss") + " data: blob:; "
+       "worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'none'; manifest-src 'self'")
 html = """<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="""+'"'+csp+'"'+""">
+<meta name="referrer" content="no-referrer">
 <title>MedRevise</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#2d4876">

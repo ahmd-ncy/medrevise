@@ -3,7 +3,7 @@
 const HELP = {
   j: [
     "La méthode des J",
-    "<p>C’est une méthode de révision espacée <b>par chapitre</b>. Le jour où tu travailles un chapitre pour la première fois, c’est son <b>J0</b>. Tu le revois ensuite à <b>J1, J3, J7, J14 et J30</b>, puis tous les 30 jours.</p><p>Chaque rappel arrive juste avant que tu commences à oublier : c’est ce qui fixe le cours dans la mémoire à long terme, avec beaucoup moins d’heures qu’en relisant tout en boucle.</p><p><b>Dans MedRevise :</b> un rappel se valide tout seul quand tu fais 5 QCM ou cartes du chapitre (ou avec « ✓ Fait »). Les écarts raccourcissent si tu réussis moins de 60 % du chapitre, et s’allongent au-delà de 85 %. Tu peux changer les jours dans le Planning.</p>",
+    "<p>C’est une méthode de révision espacée <b>par chapitre</b>. Le jour où tu travailles un chapitre pour la première fois, c’est son <b>J0</b>. Tu le revois ensuite à <b>J1, J3, J7, J14 et J30</b>, puis tous les 30 jours.</p><p>Chaque rappel arrive juste avant que tu commences à oublier : c’est ce qui fixe le cours dans la mémoire à long terme, avec beaucoup moins d’heures qu’en relisant tout en boucle.</p><p><b>Dans MedRevise :</b> un rappel se valide tout seul quand tu as vraiment travaillé le chapitre : 5 réponses à ses QCM ou ses cartes dans la journée, ou, s’il n’a qu’un livret, 10 minutes de lecture. Le bouton « Faire le rappel » lance directement ce travail, et une barre montre où tu en es. Les écarts raccourcissent si tu réussis moins de 60 % du chapitre, et s’allongent au-delà de 85 %. Tu peux changer les jours dans le Planning.</p>",
   ],
   plan: [
     "Le planning",
@@ -24,6 +24,10 @@ const HELP = {
   obj: [
     "Objectifs du jour et flamme",
     "<p>Chaque jour, l’app te fixe jusqu’à trois objectifs tirés de ton planning : tes rappels de la méthode des J, tes nouveaux chapitres, tes cartes du jour ou un nombre de QCM.</p><p>Quand tous les objectifs sont faits, la journée est <b>bouclée</b> et ta <b>flamme</b> gagne un jour. Si tu sautes une journée, elle repart de zéro. L’anneau autour de la flamme montre où tu en es aujourd’hui.</p>",
+  ],
+  gel: [
+    "Le gel de flamme",
+    "<p>Un gel protège ta flamme si tu rates <b>une journée</b> : il s’utilise tout seul le lendemain, et ta série continue (sans gagner de jour).</p><p>Tu reçois <b>un gel par mois</b>. Tu peux aussi en gagner un en tenant une série de <b>60 jours d’affilée</b>. Les gels ne se cumulent pas : tu en as au plus un à la fois, et un gel inutilisé ne s’ajoute pas à celui du mois suivant.</p>",
   ],
   inv: [
     "Inviter quelqu’un",
@@ -53,4 +57,54 @@ function helpShow(k) {
   };
   $("mn").onclick = () => d.remove();
   $("mn").focus();
+}
+
+// Petit message temporaire en bas de l'écran.
+function toast(msg) {
+  let t = $("toast");
+  if (!t) {
+    t = document.createElement("div");
+    t.id = "toast";
+    t.setAttribute("role", "status");
+    document.body.appendChild(t);
+  }
+  t.innerHTML = msg;
+  t.className = "on";
+  clearTimeout(toast.t);
+  toast.t = setTimeout(() => (t.className = ""), 4500);
+}
+// ================= Gel de flamme =================
+// Un gel par mois (non cumulable), ou un gel gagné après 60 jours d'affilée. Il protège une journée manquée.
+function gelTick() {
+  const g = (S.gel = S.gel || { has: 0, m: "", used: [] }),
+    mo = day().slice(0, 7);
+  let ch = 0;
+  if (g.m !== mo) {
+    if (!g.has) {
+      g.has = 1;
+      ch = 1;
+      setTimeout(() => toast("❄ Ton gel de flamme du mois est disponible."), 900);
+    }
+    g.m = mo;
+    ch = 1;
+  }
+  const y = day(-1),
+    has = (d) => S.days.includes(d) || g.used.includes(d);
+  if (g.has && !has(y) && has(day(-2))) {
+    g.used = g.used.concat(y).slice(-24);
+    g.has = 0;
+    ch = 1;
+    setTimeout(() => toast("❄ Ton gel de flamme a protégé ta série hier : ta flamme continue !"), 900);
+  }
+  if (ch) save();
+}
+// Après une journée bouclée : un gel gagné tous les 60 jours d'affilée (si tu n'en as pas déjà un).
+function gelEarn() {
+  const g = (S.gel = S.gel || { has: 0, m: "", used: [] }),
+    f = flame();
+  if (f > 0 && f % 60 === 0 && !g.has && g.e !== day()) {
+    g.has = 1;
+    g.e = day();
+    setTimeout(() => toast("❄ 60 jours d’affilée : tu gagnes un gel de flamme !"), 600);
+  }
 }

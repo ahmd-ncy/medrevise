@@ -60,11 +60,14 @@ async function flushSave() {
     }
   }
 }
+// Flamme : jours bouclés d'affilée. Un jour protégé par un gel garde la série sans l'allonger.
 function flame() {
+  const g = (S.gel && S.gel.used) || [],
+    has = (d) => S.days.includes(d) || g.includes(d);
   let o = S.days.includes(day()) ? 0 : -1,
     n = 0;
-  while (S.days.includes(day(o))) {
-    n++;
+  while (has(day(o))) {
+    if (S.days.includes(day(o))) n++;
     o--;
   }
   return n;
@@ -182,29 +185,70 @@ function ask(m, fn, ok) {
   };
   $("mn").focus();
 }
+// Réglages, rangés par thème, avec une explication sous chaque champ.
 function settings() {
+  const P = PL(),
+    ex = S.exam && S.exam > day(),
+    num = (lab, val, set, help, o) =>
+      '<label class="f">' +
+      lab +
+      '</label><input type="number" value="' +
+      val +
+      '"' +
+      (o || "") +
+      ' onchange="' +
+      set +
+      ';save();render()">' +
+      (help ? '<small class="hl">' + help + "</small>" : ""),
+    grp = (id, t, body) => '<div class="c rg" id="' + id + '"><b>' + t + "</b>" + body + "</div>";
   return (
-    '<div class="c"><label class="f">Ton prénom</label><input type="text" value="' +
-    esc(S.name || "") +
-    '" onchange="S.name=this.value.trim();save();render()"><label class="f">Date du concours</label><input type="date" value="' +
-    (S.exam || "") +
-    '" onchange="S.exam=this.value;save()"><label class="f">Nombre de QCM pour l’objectif « QCM du jour »</label><input type="number" min="1" value="' +
-    (S.goal || 20) +
-    '" onchange="S.goal=Math.max(1,+this.value||20);save()"><label class="f">Mode concentration : minutes de travail, puis de pause</label><div class="r" style="margin:0;flex-wrap:nowrap"><input type="number" min="1" value="' +
-    (S.fw || 25) +
-    '" onchange="S.fw=Math.max(1,+this.value||25);save()"><input type="number" min="1" value="' +
-    (S.fb || 5) +
-    '" onchange="S.fb=Math.max(1,+this.value||5);save()"></div><label class="f">Mémorisation visée par la répétition espacée (%)</label><input type="number" min="70" max="97" value="' +
-    Math.round(fRet() * 100) +
-    '" onchange="S.ret=Math.min(.97,Math.max(.7,(+this.value||90)/100));save()"><small>90 % est un bon réglage. Plus haut, tu révises plus souvent pour moins oublier.</small><label class="f">Nouvelles flashcards par jour</label><input type="number" min="0" value="' +
-    (S.ncd ?? 20) +
-    '" onchange="S.ncd=Math.max(0,+this.value||0);save()"><small>Les rappels de la méthode des J et le temps de travail se règlent dans le Planning.</small><label class="f">Seuil d’alerte par UE (/20)</label><input type="number" min="0" max="20" value="' +
-    (S.seuil ?? 7) +
-    '" onchange="S.seuil=+this.value;save()"><label class="f">Barème : points pour 1 faute puis 2 fautes (0 faute = 1, 3 fautes ou plus = 0)</label><div class="r" style="margin:0"><input type="number" step="0.1" min="0" max="1" value="' +
-    (S.bt || [1, 0.5, 0.2])[1] +
-    '" onchange="S.bt=[1,+this.value,(S.bt||[1,.5,.2])[2]];save()"><input type="number" step="0.1" min="0" max="1" value="' +
-    (S.bt || [1, 0.5, 0.2])[2] +
-    '" onchange="S.bt=[1,(S.bt||[1,.5,.2])[1],+this.value];save()"></div></div>'
+    grp(
+      "rg_obj",
+      "Concours et objectifs",
+      '<label class="f">Date du concours</label><input type="date" value="' +
+        (S.exam || "") +
+        '" onchange="S.exam=this.value;save();render()"><small class="hl">Sert au compte à rebours et à calculer combien de nouveaux chapitres commencer par semaine.</small>' +
+        num("Nombre de QCM pour l’objectif « QCM du jour »", S.goal || 20, "S.goal=Math.max(1,+this.value||20)", "Un objectif atteignable tous les jours vaut mieux qu’un gros objectif raté : 20 à 40 est un bon départ.", ' min="1"'),
+    ) +
+    grp(
+      "rg_plan",
+      "Planning et méthode des J " + helpBtn("j"),
+      num("Temps de travail par jour (minutes)", P.cap, "S.pcap=Math.max(0,+this.value||0)", "Le temps que tu peux vraiment consacrer à tes chapitres chaque jour, en dehors des cours. Exemple : 3 h = 180.", ' min="0" step="15"') +
+        num("Durée d’un rappel (minutes)", P.tr, "S.ptr=Math.max(1,+this.value||20)", "Le temps moyen pour revoir un chapitre déjà vu : relire sa fiche et faire quelques QCM. En général 15 à 30 min.", ' min="1"') +
+        num("Durée d’un nouveau chapitre (minutes)", P.tn, "S.ptn=Math.max(1,+this.value||60)", "La première étude complète d’un chapitre (J0) : lecture du livret, fiche, premières questions. En général 45 à 90 min.", ' min="1"') +
+        (ex
+          ? num("Marge de révision avant le concours (jours)", P.buf, "S.pbuf=Math.max(0,+this.value||0)", "Pendant ces derniers jours, aucun nouveau chapitre n’est proposé : seulement des rappels. 14 jours est un bon réglage.", ' min="0"')
+          : num("Nouveaux chapitres par jour", P.nd, "S.pnd=Math.max(0,+this.value||0)", "Utilisé tant que la date du concours n’est pas indiquée. 0,5 = un chapitre tous les deux jours.", ' min="0" max="10" step="0.5"')) +
+        '<label class="f">Jours des rappels après J0</label><input type="text" value="' +
+        JS().join(", ") +
+        '" onchange="setJs(this.value)"><small class="hl">Les jours où tu revois un chapitre, séparés par des virgules. Par défaut 1, 3, 7, 14, 30 : ensuite, un rappel tous les 30 jours.</small>' +
+        num("Lecture minimale pour valider un rappel (minutes)", S.jrl ?? 10, "S.jrl=Math.max(1,+this.value||10)", "Seulement pour un chapitre qui n’a ni QCM ni cartes : son rappel se valide après ce temps de lecture du livret.", ' min="1"'),
+    ) +
+    grp(
+      "rg_fc",
+      "Flashcards " + helpBtn("fsrs"),
+      num("Mémorisation visée (%)", Math.round(fRet() * 100), "S.ret=Math.min(.97,Math.max(.7,(+this.value||90)/100))", "La probabilité de te souvenir d’une carte le jour où elle revient. 90 % est un bon réglage ; plus haut, les cartes reviennent plus souvent.", ' min="70" max="97"') +
+        num("Nouvelles flashcards par jour", S.ncd ?? 20, "S.ncd=Math.max(0,+this.value||0)", "Les nouvelles cartes arrivent progressivement pour ne pas te noyer. 20 par jour représente environ 10 minutes.", ' min="0"'),
+    ) +
+    grp(
+      "rg_qcm",
+      "QCM et barème",
+      '<label class="f">Barème : points pour 1 faute puis 2 fautes</label><div class="r" style="margin:0;flex-wrap:nowrap"><input type="number" step="0.1" min="0" max="1" value="' +
+        (S.bt || [1, 0.5, 0.2])[1] +
+        '" onchange="S.bt=[1,+this.value,(S.bt||[1,.5,.2])[2]];save()"><input type="number" step="0.1" min="0" max="1" value="' +
+        (S.bt || [1, 0.5, 0.2])[2] +
+        '" onchange="S.bt=[1,(S.bt||[1,.5,.2])[1],+this.value];save()"></div><small class="hl">0 faute = 1 point, 3 fautes ou plus = 0. Une proposition fausse cochée ou une juste oubliée compte comme une faute. Barème de Nancy : 0,5 et 0,2.</small>' +
+        num("Seuil d’alerte par UE (/20)", S.seuil ?? 7, "S.seuil=+this.value", "Une UE dont ta note estimée passe sous ce seuil est signalée dans ton calendrier et tes notes.", ' min="0" max="20"'),
+    ) +
+    grp(
+      "rg_fo",
+      "Mode concentration",
+      '<label class="f">Minutes de travail, puis minutes de pause</label><div class="r" style="margin:0;flex-wrap:nowrap"><input type="number" min="1" value="' +
+        (S.fw || 25) +
+        '" onchange="S.fw=Math.max(1,+this.value||25);save()"><input type="number" min="1" value="' +
+        (S.fb || 5) +
+        '" onchange="S.fb=Math.max(1,+this.value||5);save()"></div><small class="hl">Le minuteur du mode concentration (bouton cible pendant une séance ou une lecture). 25 et 5 : la méthode Pomodoro.</small>',
+    )
   );
 }
 let IV;

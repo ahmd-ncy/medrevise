@@ -14,7 +14,9 @@ Adresse : https://ahmd-ncy.github.io/medrevise/
 2. Colle tout le contenu du fichier [`supabase.sql`](supabase.sql), puis clique sur **Run**.
 3. Dans **Authentication** → **URL Configuration**, mets `https://ahmd-ncy.github.io/medrevise/` dans **Site URL**, et ajoute-la aussi dans **Redirect URLs**. C'est l'adresse où mènent les liens de confirmation et de mot de passe oublié.
 
-4. **Accès sur invitation** : après avoir créé ton propre compte dans l'app, vérifie dans **Authentication → Users** que tu es le seul compte, puis exécute de la même façon le fichier [`supabase-invitations.sql`](supabase-invitations.sql). Ton compte devient administrateur. Exécute ensuite [`supabase-maj-2.sql`](supabase-maj-2.sql) (durées et gestion des membres). Ensuite, personne ne peut utiliser l'app ni stocker de données sans un code d'invitation que tu crées dans **Profil → Compte et synchronisation**. Tu choisis combien de temps le code reste utilisable et combien de temps dure l'accès (de 1 heure à 1 an, ou illimité), et tu peux modifier ou retirer l'accès de chaque membre.
+4. **Accès sur invitation** : après avoir créé ton propre compte dans l'app, vérifie dans **Authentication → Users** que tu es le seul compte, puis exécute de la même façon le fichier [`supabase-invitations.sql`](supabase-invitations.sql). Ton compte devient administrateur. Exécute ensuite [`supabase-maj-2.sql`](supabase-maj-2.sql) (durées et gestion des membres), puis [`supabase-maj-3.sql`](supabase-maj-3.sql) (profils pour l'administration et sécurité renforcée). Ensuite, personne ne peut utiliser l'app ni stocker de données sans un code d'invitation que tu crées dans **Profil → Compte et synchronisation**. Tu choisis combien de temps le code reste utilisable et combien de temps dure l'accès (de 1 heure à 1 an, ou illimité), et tu peux modifier ou retirer l'accès de chaque membre.
+
+5. **Sécurité de la connexion** : dans **Authentication → Sign In / Providers → Email**, règle **Minimum password length** sur 8 et **Password requirements** sur « Lowercase, uppercase letters, digits and symbols » (ou au moins lettres et chiffres).
 
 ### 2. Mise en ligne (GitHub Pages)
 

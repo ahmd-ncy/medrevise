@@ -19,6 +19,21 @@ const PALS = {
     d: ["#111418", "#1a1f26", "#e7ebf0", "#a2acb8", "#2c3440"],
     c: ["#3d4f6b", "#2f6f7a", "#8a5f1a", "#5d5488", "#a8443f", "#44705a"],
   },
+  rose: {
+    l: ["#fbf3f6", "#ffffff", "#2b1a22", "#7d6170", "#efd8e2"],
+    d: ["#1a1016", "#271820", "#f7e8ef", "#c9a6b8", "#45293a"],
+    c: ["#c2477a", "#8a4fb8", "#c0702a", "#3f7fb5", "#d0434f", "#3a8a6a"],
+  },
+  sable: {
+    l: ["#f6f1e8", "#fffdf8", "#2b241c", "#7a6d5e", "#e3d9c8"],
+    d: ["#17130e", "#221c15", "#f2eadf", "#c2b39f", "#3d3326"],
+    c: ["#a0642a", "#5f7a3a", "#b0802a", "#5a6f8f", "#a8453a", "#6b5a8a"],
+  },
+  contraste: {
+    l: ["#ffffff", "#ffffff", "#000000", "#2b2b2b", "#000000"],
+    d: ["#000000", "#000000", "#ffffff", "#e0e0e0", "#ffffff"],
+    c: ["#0040c0", "#006060", "#8a4b00", "#5a00b0", "#b00020", "#006b2a"],
+  },
   lavande: {
     l: ["#f5f3fb", "#ffffff", "#1d1830", "#655f80", "#dcd6ee"],
     d: ["#14111f", "#1f1a30", "#ece8f7", "#ada5c9", "#352d52"],
@@ -50,6 +65,25 @@ const isDark = () => {
     m == "dark" || (m == "auto" && !!window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches)
   );
 };
+// Polices proposées (chargées depuis Google Fonts seulement si on les choisit).
+const FONTS = {
+  inter: ["Moderne", ""],
+  nunito: ["Arrondie", "Nunito:wght@500;600;700;800", '"Nunito", sans-serif'],
+  serif: ["Classique", "Source+Serif+4:wght@400;600;700", '"Source Serif 4", Georgia, serif'],
+  lisible: ["Très lisible", "Atkinson+Hyperlegible:wght@400;700", '"Atkinson Hyperlegible", sans-serif'],
+  mono: ["Machine à écrire", "IBM+Plex+Mono:wght@400;600", '"IBM Plex Mono", monospace'],
+};
+// Thèmes prêts à l'emploi : un clic règle tout d'un coup.
+const THEMES = [
+  ["classique", "Classique", { mode: "auto", pal: "ocean", bg: "w", bgd: "p", fx: "none", font: "inter", rad: "n", mono: 0 }],
+  ["minuit", "Minuit", { mode: "dark", pal: "ocean", bg: "w", bgd: "b", fx: "none", font: "inter", rad: "n", mono: 0 }],
+  ["neon", "Néon", { mode: "dark", pal: "lavande", bg: "w", bgd: "n", fx: "glow", font: "inter", rad: "r", mono: 0 }],
+  ["pastel", "Pastel", { mode: "light", pal: "rose", bg: "l", bgd: "p", fx: "none", font: "nunito", rad: "r", mono: 0 }],
+  ["nature", "Nature", { mode: "auto", pal: "foret", bg: "v", bgd: "v", fx: "none", font: "nunito", rad: "n", mono: 0 }],
+  ["papier", "Papier", { mode: "light", pal: "sable", bg: "c", bgd: "m", fx: "none", font: "serif", rad: "s", mono: 0 }],
+  ["verre", "Verre", { mode: "auto", pal: "ocean", bg: "b", bgd: "b", fx: "glass", font: "inter", rad: "r", mono: 0 }],
+  ["contraste", "Contraste élevé", { mode: "light", pal: "contraste", bg: "p", bgd: "p", fx: "none", font: "lisible", rad: "n", mono: 0 }],
+];
 function applyLook() {
   const h = document.documentElement,
     m = S.mode || "auto",
@@ -60,25 +94,100 @@ function applyLook() {
   if (m == "auto") h.removeAttribute("data-theme");
   else h.dataset.theme = m;
   ["--bg", "--card", "--fg", "--mut", "--bd"].forEach((v, i) => st.setProperty(v, b[i]));
-  P.c.forEach((c, i) => st.setProperty("--c" + (i + 1), c));
+  P.c.forEach((c, i) => st.setProperty("--c" + (i + 1), S.mono && S.acc ? S.acc : c));
   h.dataset.fx = S.fx || "none";
   const g = (dark ? BGD : BGS).find((x) => x[0] == (dark ? S.bgd || "p" : S.bg || "w"));
-  if (g && g[2]) {
+  if (g && g[2] && S.pal !== "contraste") {
     st.setProperty("--bg", g[2]);
     st.setProperty("--card", g[3]);
     st.setProperty("--bd", g[4]);
   }
+  h.dataset.rad = S.rad || "n";
+  h.dataset.anim = S.anim === 0 ? "off" : "on";
+  h.style.setProperty("--zoom", (S.tsz || 100) / 100);
+  // police
+  const F = FONTS[S.font] || FONTS.inter;
+  let fl = $("ffl"),
+    fs = $("ffs");
+  if (F[1]) {
+    if (!fl) {
+      fl = document.createElement("link");
+      fl.id = "ffl";
+      fl.rel = "stylesheet";
+      document.head.appendChild(fl);
+    }
+    const href = "https://fonts.googleapis.com/css2?family=" + F[1] + "&display=swap";
+    if (fl.href !== href) fl.href = href;
+    if (!fs) {
+      fs = document.createElement("style");
+      fs.id = "ffs";
+      document.head.appendChild(fs);
+    }
+    fs.textContent = "body,body *:not(svg):not(svg *):not(.ic){font-family:" + F[2] + "!important}";
+  } else if (fs) fs.textContent = "";
+}
+const sLook = (k, v) => {
+    S[k] = v;
+    S.theme = "";
+    save();
+    render();
+  },
+  sTheme = (id) => {
+    const t = THEMES.find((x) => x[0] == id);
+    if (!t) return;
+    Object.assign(S, t[2]);
+    S.theme = id;
+    save();
+    render();
+  };
+function themeCard(t) {
+  const o = t[2],
+    P = PALS[o.pal],
+    dk = o.mode == "dark",
+    base = dk ? P.d : P.l,
+    g = (dk ? BGD : BGS).find((x) => x[0] == (dk ? o.bgd : o.bg)),
+    bg = o.pal != "contraste" && g && g[2] ? g[2] : base[0],
+    cd = o.pal != "contraste" && g && g[3] ? g[3] : base[1],
+    r = o.rad == "r" ? 10 : o.rad == "s" ? 2 : 6;
+  return (
+    '<button class="thc' +
+    (S.theme == t[0] ? " on" : "") +
+    '" onclick="sTheme(\'' +
+    t[0] +
+    '\')"><span class="thp" style="background:' +
+    bg +
+    ";border-radius:" +
+    r +
+    'px"><i style="background:' +
+    P.c[0] +
+    ";border-radius:" +
+    r +
+    "px" +
+    (o.fx == "glow" ? ";box-shadow:0 0 10px " + P.c[0] : "") +
+    '"></i><span style="background:' +
+    cd +
+    ";border-radius:" +
+    r +
+    'px">' +
+    P.c
+      .slice(1, 5)
+      .map((c) => '<b style="background:' + c + '"></b>')
+      .join("") +
+    '</span></span><span class="thn">' +
+    t[1] +
+    "</span></button>"
+  );
 }
 function appearance() {
-  const sw = (L, cur, fn) =>
+  const sw = (L, cur, k) =>
       '<div class="r" style="margin:4px 0">' +
       L.map(
         (b) =>
           '<button class="sw' +
           (b[0] == cur ? " on" : "") +
-          '" onclick="' +
-          fn +
-          "('" +
+          "\" onclick=\"sLook('" +
+          k +
+          "','" +
           b[0] +
           '\')" aria-label="Fond ' +
           b[1] +
@@ -89,25 +198,46 @@ function appearance() {
           '"></button>',
       ).join("") +
       "</div>",
-    lb = (L, cur) => (L.find((b) => b[0] == cur) || L[0])[1],
-    pal = PALS[S.pal] ? S.pal : "ocean";
+    ch = (L, cur, k) =>
+      '<div class="chips">' +
+      L.map(
+        (x) => '<button class="chip' + (String(cur) === String(x[0]) ? " on" : "") + "\" onclick=\"sLook('" + k + "'," + JSON.stringify(x[0]).replace(/"/g, "'") + ')">' + x[1] + "</button>",
+      ).join("") +
+      "</div>",
+    pal = PALS[S.pal] ? S.pal : "ocean",
+    PL2 = [
+      ["ocean", "Océan"],
+      ["foret", "Forêt"],
+      ["aurore", "Aurore"],
+      ["rose", "Rose"],
+      ["lavande", "Lavande"],
+      ["sable", "Sable"],
+      ["ardoise", "Ardoise"],
+      ["contraste", "Contraste élevé"],
+    ];
   return (
-    '<div class="c"><label class="f">Mode</label>' +
-    chips(
+    '<div class="c"><b>Thèmes</b><p class="m" style="margin:.2em 0 .6em">Un clic règle tout. Tu peux ensuite ajuster chaque détail ci-dessous.</p><div class="thg">' +
+    THEMES.map(themeCard).join("") +
+    "</div></div>" +
+    '<div class="c"><b>Mode</b>' +
+    ch(
       [
         ["auto", "Automatique"],
         ["light", "Clair"],
         ["dark", "Sombre"],
       ],
       S.mode || "auto",
-      "smode",
+      "mode",
     ) +
-    '<label class="f">Palette de couleurs (clair et sombre)</label><div class="r" style="margin:4px 0">' +
-    PAL.map(
+    "<small class=\"hl\">Automatique suit le réglage de ton téléphone ou de ton ordinateur (actuellement : " +
+    (isDark() ? "sombre" : "clair") +
+    ").</small></div>" +
+    '<div class="c"><b>Couleurs</b><label class="f">Palette</label><div class="r" style="margin:4px 0">' +
+    PL2.map(
       (p) =>
         '<button class="pal' +
         (pal == p[0] ? " on" : "") +
-        '" onclick="spal(\'' +
+        "\" onclick=\"sLook('pal','" +
         p[0] +
         "')\"><span>" +
         PALS[p[0]].c.map((c) => '<i style="background:' + c + '"></i>').join("") +
@@ -115,28 +245,81 @@ function appearance() {
         p[1] +
         "</button>",
     ).join("") +
-    '</div><label class="f">Fond en mode clair : ' +
-    lb(BGS, S.bg || "w") +
-    "</label>" +
-    sw(BGS, S.bg || "w", "sbg") +
-    '<label class="f">Fond en mode sombre : ' +
-    lb(BGD, S.bgd || "p") +
-    "</label>" +
-    sw(BGD, S.bgd || "p", "sbgd") +
+    '</div><label class="f">Couleur des onglets</label>' +
+    ch(
+      [
+        [0, "Une couleur par onglet"],
+        [1, "Une seule couleur"],
+      ],
+      S.mono ? 1 : 0,
+      "mono",
+    ) +
+    (S.mono
+      ? '<div class="r" style="align-items:center;margin:0"><input type="color" value="' +
+        (S.acc || "#3b5b92") +
+        '" onchange="sLook(\'acc\',this.value)" style="width:56px;height:40px;padding:2px;border:1px solid var(--bd);border-radius:8px;background:var(--card)"><small>Choisis ta couleur</small></div>'
+      : "") +
+    '<label class="f">Fond en mode clair</label>' +
+    sw(BGS, S.bg || "w", "bg") +
+    '<label class="f">Fond en mode sombre</label>' +
+    sw(BGD, S.bgd || "p", "bgd") +
+    "</div>" +
+    '<div class="c"><b>Texte</b><label class="f">Police</label><div class="r" style="margin:4px 0">' +
+    Object.keys(FONTS)
+      .map(
+        (k) =>
+          '<button class="chip' +
+          ((S.font || "inter") == k ? " on" : "") +
+          "\" onclick=\"sLook('font','" +
+          k +
+          "')\">" +
+          FONTS[k][0] +
+          "</button>",
+      )
+      .join("") +
+    '</div><label class="f">Taille du texte</label>' +
+    ch(
+      [
+        [90, "Petite"],
+        [100, "Normale"],
+        [112, "Grande"],
+        [125, "Très grande"],
+      ],
+      S.tsz || 100,
+      "tsz",
+    ) +
+    "</div>" +
+    '<div class="c"><b>Style</b><label class="f">Coins</label>' +
+    ch(
+      [
+        ["s", "Carrés"],
+        ["n", "Légèrement arrondis"],
+        ["r", "Très arrondis"],
+      ],
+      S.rad || "n",
+      "rad",
+    ) +
     '<label class="f">Effet visuel</label>' +
-    chips(
+    ch(
       [
         ["none", "Aucun"],
-        ["glow", "Lueur (glow)"],
+        ["glow", "Lueur"],
         ["glass", "Verre"],
         ["grad", "Dégradé"],
         ["relief", "Relief"],
       ],
       S.fx || "none",
-      "sfx",
+      "fx",
     ) +
-    "<small>Tu es actuellement en mode " +
-    (isDark() ? "sombre" : "clair") +
-    ".</small></div>"
+    '<label class="f">Animations</label>' +
+    ch(
+      [
+        [1, "Activées"],
+        [0, "Réduites"],
+      ],
+      S.anim === 0 ? 0 : 1,
+      "anim",
+    ) +
+    "</div>"
   );
 }

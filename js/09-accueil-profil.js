@@ -4,6 +4,7 @@ function stats() {
 }
 // ================= Accueil =================
 function home() {
+  gelTick();
   const fl = flame(),
     d = dd(),
     nd = d.o.filter(([t, n]) => OBJ[t].v(d) >= n).length,
@@ -47,7 +48,10 @@ function home() {
           ? "Encore " + (d.o.length - nd) + " objectif" + (d.o.length - nd > 1 ? "s" : "") + " pour garder ta flamme."
           : "Rien d’obligatoire aujourd’hui.") +
     "</p>" +
-    (jr !== null && jr >= 0 ? '<span class="pill">' + (jr > 0 ? "J-" + jr + " avant le concours" : "Jour J, courage !") + "</span>" : "") +
+    (jr !== null && jr >= 0 ? '<span class="pill">' + (jr > 0 ? "J-" + jr + " avant le concours" : "Jour J, courage !") + "</span> " : "") +
+    (S.gel && S.gel.has
+      ? '<span class="pill gel" title="Gel de flamme disponible">❄ Gel dispo</span>' + helpBtn("gel")
+      : '<span class="pill gel off" title="Pas de gel disponible">❄ 0</span>' + helpBtn("gel")) +
     '</div><div class="flm" title="Jours d’affilée"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="44" class="rg0"/><circle cx="50" cy="50" r="44" class="rg1" stroke-dasharray="' +
     C.toFixed(1) +
     '" stroke-dashoffset="' +
@@ -152,7 +156,9 @@ const profGo = (sec) => {
   render();
   scrollTo(0, 0);
 };
+const FIL = ["PASS", "LAS 1", "LAS 2", "LAS 3", "DFGSM 2", "DFGSM 3", "Autre"];
 const PSEC = [
+  ["moi", "Mon profil", "user", () => [S.name && S.name + (S.lname ? " " + S.lname : ""), S.fil].filter(Boolean).join(" · ") || "Prénom, photo, filière"],
   ["compte", "Compte et synchronisation", "cloud", () => (SY.user ? SYL[SY.st] + (SY.role == "admin" ? " · invitations" : "") : "Non connecté")],
   ["progres", "Ma progression", "chart", () => {
     const st = stats();
@@ -163,6 +169,7 @@ const PSEC = [
   ["app", "Apparence", "spark", () => "Couleurs, mode sombre, effets"],
   ["don", "Données et sauvegarde", "file", () => "Exporter, restaurer, réinitialiser"],
   ["aide", "Aide", "book", () => "Visite guidée et explications"],
+  ["admin", "Administration", "shield", () => "Membres, profils, invitations et accès", () => SY.role == "admin"],
 ];
 // Photo de profil : recadrée au centre en carré de 256 px.
 function setPhoto(inp) {
@@ -218,7 +225,7 @@ function prof() {
     return (
       head +
       '<div class="pmenu">' +
-      PSEC.map(
+      PSEC.filter((x) => !x[4] || x[4]()).map(
         ([k, t, ic, sub]) =>
           '<button class="pmi" onclick="R.ps=\'' +
           k +
@@ -243,7 +250,39 @@ function prof() {
       [fmtH(Object.values(S.tm || {}).reduce((a, b) => a + b, 0)), "temps de travail"],
     ];
   let body = "";
-  if (sec[0] == "compte") {
+  if (sec[0] == "moi") {
+    const f = (lab, k, ph, mx) =>
+      '<label class="f">' +
+      lab +
+      '</label><input type="text" maxlength="' +
+      (mx || 40) +
+      '" placeholder="' +
+      (ph || "") +
+      '" value="' +
+      esc(S[k] || "") +
+      '" onchange="S.' +
+      k +
+      '=this.value.trim();save()">';
+    body =
+      '<div class="c" style="text-align:center"><label class="av2 ph big" title="Changer la photo">' +
+      avatar(nm) +
+      '<input type="file" accept="image/*" hidden onchange="setPhoto(this)"><span class="phe">' +
+      icn("edit") +
+      '</span></label><div class="r" style="justify-content:center"><label class="b" style="cursor:pointer">Choisir une photo<input type="file" accept="image/*" hidden onchange="setPhoto(this)"></label>' +
+      (S.photo ? '<button class="b" onclick="setPhoto(null)">Retirer</button>' : "") +
+      '</div></div><div class="c">' +
+      f("Prénom", "name", "Ton prénom") +
+      f("Nom (facultatif)", "lname", "") +
+      '<label class="f">Filière</label><select onchange="S.fil=this.value;save()"><option value="">Non précisée</option>' +
+      FIL.map((x) => '<option' + (S.fil === x ? " selected" : "") + ">" + x + "</option>").join("") +
+      "</select>" +
+      f("Faculté", "fac", "Nancy") +
+      f("Mon objectif", "bio", "Ex. : passer en médecine du premier coup", 120) +
+      (SY.user && SY.role && SY.role != "admin"
+        ? '<small class="hl">Ton prénom, ta photo, ta filière et un résumé de ta progression (nombre de QCM, moyenne, flamme) sont visibles par l’administrateur de l’app. Tes cours, tes notes et tes réponses ne le sont pas.</small>'
+        : "") +
+      "</div>";
+  } else if (sec[0] == "compte") {
     body = '<div id="sybox">' + syBox() + "</div>";
     setTimeout(syInvLoad, 0);
   } else if (sec[0] == "progres")
@@ -277,6 +316,7 @@ function prof() {
     body =
       data().replace(/^<h2>[^<]*<\/h2>/, "") +
       '<h3>Recommencer à zéro</h3><div class="c"><p class="m" style="margin-top:0">Efface tout ton contenu pour repartir d’une application vide, ou avec le contenu de démonstration.</p><button class="big ko2" onclick="resetDlg()">Réinitialiser l’application</button></div>';
+  else if (sec[0] == "admin") body = SY.role == "admin" ? admin() : "";
   else if (sec[0] == "aide")
     body =
       '<div class="c"><b>Visite guidée</b><p class="m" style="margin:.3em 0 .6em">Refais le tour de l’application, écran par écran.</p><button class="b p" onclick="tutoStart(1)">Lancer la visite guidée</button></div><h3>Explications</h3><div class="pmenu">' +

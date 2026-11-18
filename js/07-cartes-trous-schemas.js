@@ -70,6 +70,7 @@ setInterval(() => {
   S.tm[day()] = (S.tm[day()] || 0) + 15;
   const u = ch && CH(ch).mid;
   if (u) S.tu[u] = (S.tu[u] || 0) + 15;
+  if (rd && ch) jRead(ch);
   TK = (TK + 1) % 4;
   if (!TK) save();
 }, 15000);
