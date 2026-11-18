@@ -3054,6 +3054,19 @@ html[data-rad="s"] :is(.c, .k, .hero2, .tl, .wd, details.sec, details.ue, .pmenu
   font-size: 14px;
   line-height: 1.5;
 }
+.gst {
+  text-align: left;
+  margin: 12px auto 16px;
+  padding: 12px 14px 12px 34px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.gok .lnk:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
 /* ===== Effet « Aurore boréale » (thème Signature) ===== */
 html[data-fx="aurora"] body {
   background:

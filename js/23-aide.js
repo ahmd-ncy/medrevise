@@ -60,7 +60,11 @@ function helpShow(k) {
 }
 
 // Petit message temporaire en bas de l'écran.
-function toast(msg) {
+// keep = message important (ex. bienvenue) : les autres messages attendent qu'il ait disparu.
+function toast(msg, keep) {
+  const now = Date.now();
+  if (!keep && toast.lock > now) return setTimeout(() => toast(msg), toast.lock - now + 300);
+  if (keep) toast.lock = now + 4500;
   let t = $("toast");
   if (!t) {
     t = document.createElement("div");

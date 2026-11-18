@@ -69,6 +69,8 @@ function syncInit() {
     SY.st = "off";
     return;
   }
+  // retour depuis le lien de l'e-mail de confirmation (avant que Supabase ne lise puis efface l'adresse)
+  SY.fromMail = /type=(signup|email|invite)/.test(location.hash) || /type=(signup|email)/.test(location.search);
   try {
     SY.sb = supabase.createClient(SB_URL, SB_KEY, {
       auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
@@ -84,6 +86,10 @@ function syncInit() {
     SY.user = u;
     SY.ready = 1;
     if (ev === "PASSWORD_RECOVERY") setTimeout(syNewPass, 50);
+    else if (u && SY.fromMail) {
+      SY.fromMail = false;
+      setTimeout(() => toast("Adresse e-mail confirmée ✔ Bienvenue sur MedRevise" + (u.user_metadata && u.user_metadata.prenom ? ", " + esc(u.user_metadata.prenom) : "") + " !", 1), 600);
+    }
     if (!u) {
       SY.st = "out";
       SY.role = null;
@@ -385,6 +391,50 @@ const syTr = (m) =>
 const syMsg = (t) => {
   if ($("sym")) $("sym").textContent = t;
 };
+// Écran « compte créé » : l'e-mail de confirmation est parti, avec un bouton pour le renvoyer.
+function syDone(e, nm, deja) {
+  const g = document.querySelector(".gcard");
+  if (!g) return;
+  SY.doneMail = e;
+  g.innerHTML =
+    '<div class="gok">' +
+    icn("mailok") +
+    "<h3>" +
+    (deja ? "E-mail de confirmation envoyé" : "Compte créé" + (nm ? ", bienvenue " + esc(nm) : "") + " !") +
+    "</h3><p>Un e-mail de confirmation a été envoyé à <b>" +
+    esc(e) +
+    '</b>.</p><ol class="gst"><li>Ouvre cet e-mail (regarde aussi dans les <b>spams</b>).</li><li>Clique sur <b>« Confirmer mon adresse »</b>.</li><li>Tu arrives directement dans l’app, ton code d’invitation est appliqué.</li></ol>' +
+    '<button class="big gbtn" onclick="SY.gt=\'in\';render()">J’ai confirmé, me connecter</button>' +
+    '<button class="lnk" id="syrs" style="display:block;margin:10px auto 0" onclick="syResend()">Je n’ai rien reçu : renvoyer l’e-mail</button>' +
+    '<p id="sym" class="gmsg" role="status"></p></div>';
+  syResendWait(deja ? 60 : 60);
+}
+// Le bouton « renvoyer » n'est actif qu'après 60 s (délai imposé par Supabase entre deux e-mails).
+function syResendWait(n) {
+  clearInterval(SY.rsT);
+  const b = () => $("syrs");
+  const tick = () => {
+    if (!b()) return clearInterval(SY.rsT);
+    b().disabled = n > 0;
+    b().textContent = n > 0 ? "Renvoyer l’e-mail (possible dans " + n + " s)" : "Je n’ai rien reçu : renvoyer l’e-mail";
+    if (n-- <= 0) clearInterval(SY.rsT);
+  };
+  tick();
+  SY.rsT = setInterval(tick, 1000);
+}
+async function syResend() {
+  const b = $("syrs");
+  if (!b || b.disabled || !SY.doneMail) return;
+  b.disabled = true;
+  const { error } = await SY.sb.auth.resend({ type: "signup", email: SY.doneMail, options: { emailRedirectTo: location.origin + "/" } });
+  if (error) {
+    syMsg(syMailErr(error));
+    const n = +((error.message || "").match(/after (\d+) second/) || [])[1];
+    return syResendWait(n || 0);
+  }
+  syMsg("Nouvel e-mail envoyé ✔");
+  syResendWait(60);
+}
 // Empêche un double envoi (double appui, Entrée + clic) pendant qu'une demande est en cours.
 async function syLogin(signup) {
   if (SY.busy) return;
@@ -451,7 +501,16 @@ async function syLogin1(signup) {
     try {
       localStorage.setItem("mr_code", code);
     } catch (x) {}
-    return syMsg("Un e-mail de confirmation vient d’être envoyé à cette adresse : ouvre le lien qu’il contient (pense aux spams), puis reviens te connecter ici.");
+    return syDone(e, nm, 1);
+  }
+  if (!signup && r2.error && /not confirmed/i.test(r2.error.message || "")) {
+    SY.doneMail = e;
+    syMsg("Ton adresse n’est pas encore confirmée : ouvre le lien reçu par e-mail (pense aux spams).");
+    const m = $("sym");
+    if (m && !$("syrs")) {
+      m.insertAdjacentHTML("afterend", '<button class="lnk" id="syrs" style="display:block;margin:6px auto 0" onclick="syResend()">Renvoyer l’e-mail de confirmation</button>');
+    }
+    return;
   }
   if (r2.error) return syMsg(syTr(r2.error.message));
   if (signup) {
@@ -463,7 +522,7 @@ async function syLogin1(signup) {
       try {
         localStorage.setItem("mr_code", code);
       } catch (x) {}
-      return syMsg("Compte créé. Ouvre le lien reçu par e-mail pour le confirmer, puis reviens te connecter ici.");
+      return syDone(e, nm);
     }
     const u = await SY.sb.rpc("utiliser_invitation", { p_code: code });
     if (u.error || !u.data) syMsg(u.error ? syTr(u.error.message) : "Le code n’a pas pu être utilisé : il vient peut-être d’expirer.");
@@ -545,7 +604,7 @@ async function syForgot() {
   if (g)
     g.innerHTML =
       '<div class="gok">' +
-      icn("check") +
+      icn("mailok") +
       '<h3>E-mail envoyé</h3><p>Si un compte existe pour <b>' +
       esc(e) +
       "</b>, tu vas recevoir un lien dans quelques instants. Pense à regarder dans les spams.</p><p>Le lien s’ouvre dans ton navigateur : choisis ton nouveau mot de passe, puis reviens te connecter ici.</p><button class=\"big gbtn\" onclick=\"SY.gt='in';render()\">Retour à la connexion</button></div>";

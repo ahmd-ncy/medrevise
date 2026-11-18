@@ -1,4 +1,5 @@
 const IC = {
+  mailok: '<rect class="df" x="2" y="4" width="20" height="16" rx="3"/><path d="M2.5 6.5l9.5 7 9.5-7"/>',
   tick: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   image: '<rect class="df" x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>',
   crown: '<path class="df" d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z"/><path d="M5 19h14"/>',
