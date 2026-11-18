@@ -369,7 +369,9 @@ const syTr = (m) =>
       ? "Confirme d’abord ton e-mail avec le lien reçu, puis reconnecte-toi."
       : /already registered|already exists/i.test(m)
         ? "Un compte existe déjà avec cet e-mail : connecte-toi."
-        : /rate limit|too many|security purposes/i.test(m)
+        : /email rate limit/i.test(m)
+          ? "Trop d’e-mails envoyés par l’app cette heure-ci (limite de Supabase). Réessaie plus tard ou préviens l’administrateur."
+          : /rate limit|too many|security purposes/i.test(m)
           ? "Trop de tentatives : réessaie dans quelques minutes."
           : /password/i.test(m) && /6|short|weak/i.test(m)
             ? "Mot de passe trop faible : au moins 8 caractères, avec des lettres, des chiffres et un symbole."
