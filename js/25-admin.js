@@ -86,10 +86,6 @@ function adDash() {
     week = L.filter((m) => adDays(m) <= 6).length,
     soon = L.filter((m) => m.expire && new Date(m.expire) > Date.now() && new Date(m.expire) - Date.now() < 7 * 864e5).length,
     pend = (AD.inv || []).filter((i) => invState(i) == "actifs").length,
-    top = act
-      .filter((m) => m.stats)
-      .sort((a, b) => adNum(b.stats.flamme) - adNum(a.stats.flamme) || adNum(b.stats.qcm) - adNum(a.stats.qcm))
-      .slice(0, 5),
     k = (ic, n, l, c) => '<div class="psi" style="--sc:' + c + '">' + icn(ic) + "<b>" + n + "</b><small>" + l + "</small></div>";
   return (
     '<div class="pst">' +
@@ -99,30 +95,126 @@ function adDash() {
     k("clock", soon, "accès finissent sous 7 j", "var(--c3)") +
     k("shield", pend, "codes en attente", "var(--c4)") +
     "</div>" +
-    (top.length
-      ? '<div class="c"><b>Les plus assidus</b><div class="lead">' +
-        top
-          .map(
-            (m, i) =>
-              '<button class="ldr" onclick="adOpen(\'' +
-              esc(m.user_id) +
-              '\')"><span class="rk">' +
-              ["🥇", "🥈", "🥉", "4", "5"][i] +
-              "</span>" +
-              adAv(m, "sm") +
-              '<span style="flex:1;min-width:0;text-align:left"><b>' +
-              esc(adName(m)) +
-              "</b><br><small>" +
-              esc(m.filiere || "") +
-              '</small></span><span class="lst">🔥 ' +
-              adNum(m.stats.flamme) +
-              "</span><span class=\"lst\">" +
-              adNum(m.stats.qcm) +
-              " QCM</span></button>",
-          )
-          .join("") +
-        "</div></div>"
-      : "")
+    adLead()
+  );
+}
+// ---------- classement (administrateur seulement : les données viennent de admin_membres) ----------
+const LCRIT = [
+  ["pts", "Score", "star", (t) => adPts(t), (v) => v + " pts"],
+  ["flamme", "Flamme", "flame", (t) => adNum(t.flamme), (v) => v + " j"],
+  ["qcm", "QCM", "check", (t) => adNum(t.qcm), (v) => v + " QCM"],
+  ["moy", "Moyenne", "target", (t) => (adNum(t.qcm) >= 10 && t.moy != null ? adNum(t.moy) : null), (v) => String(v).replace(".", ",") + "/20"],
+  ["temps", "Temps", "clock", (t) => adNum(t.temps), (v) => fmtH(v * 60)],
+  ["cartes", "Cartes", "cards", (t) => adNum(t.cartes), (v) => v + " cartes"],
+];
+// Score : régularité d'abord (journées bouclées, flamme), puis volume de travail.
+const adPts = (t) =>
+  Math.round(adNum(t.jours) * 10 + adNum(t.flamme) * 5 + adNum(t.qcm) + adNum(t.cartes) / 2 + adNum(t.temps) / 5),
+  // médaille dessinée : ruban + disque dégradé + numéro
+  adMedal = (r) =>
+    '<svg class="mdl" viewBox="0 0 40 48" aria-label="' +
+    r +
+    (r == 1 ? "er" : "e") +
+    '"><defs><linearGradient id="mg' +
+    r +
+    '" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="' +
+    ["#fde68a", "#f1f5f9", "#fed7aa"][r - 1] +
+    '"/><stop offset=".55" stop-color="' +
+    ["#f59e0b", "#94a3b8", "#c2410c"][r - 1] +
+    '"/><stop offset="1" stop-color="' +
+    ["#b45309", "#475569", "#7c2d12"][r - 1] +
+    '"/></linearGradient></defs><path d="M10 0h8l4 14-6 6zM30 0h-8l-4 14 6 6z" fill="' +
+    ["#3b82f6", "#a855f7", "#14b8a6"][r - 1] +
+    '"/><circle cx="20" cy="30" r="15" fill="url(#mg' +
+    r +
+    ')" stroke="rgba(255,255,255,.55)" stroke-width="1.5"/><circle cx="20" cy="30" r="10.5" fill="none" stroke="rgba(255,255,255,.35)"/><text x="20" y="35" text-anchor="middle" font-size="14" font-weight="800" fill="#fff" style="paint-order:stroke" stroke="rgba(0,0,0,.25)" stroke-width="1.2">' +
+    r +
+    "</text></svg>";
+function adLead() {
+  const k = AD.lc || "pts",
+    C = LCRIT.find((c) => c[0] == k),
+    rows = AD.list
+      .filter((m) => adActive(m) && m.stats)
+      .map((m) => ({ m, v: C[3](m.stats) }))
+      .filter((x) => x.v != null)
+      .sort((a, b) => b.v - a.v || adNum(b.m.stats.flamme) - adNum(a.m.stats.flamme)),
+    mx = Math.max(1, ...rows.map((x) => x.v)),
+    open = (m) => ' onclick="adOpen(\'' + esc(m.user_id) + "')\"",
+    pod = (x, r) =>
+      !x
+        ? '<div class="pdm e"></div>'
+        : '<button class="pdm r' +
+          r +
+          '"' +
+          open(x.m) +
+          ">" +
+          (r == 1 ? '<span class="crw">' + icn("crown") + "</span>" : "") +
+          '<span class="pda">' +
+          adAv(x.m) +
+          adMedal(r) +
+          "</span><b>" +
+          esc(adName(x.m)) +
+          "</b><small>" +
+          esc(C[4](x.v)) +
+          '</small><span class="pdb"><i>' +
+          r +
+          "</i></span></button>",
+    rest = rows.slice(3, AD.la ? 100 : 10);
+  if (!rows.length && k == "pts") return "";
+  return (
+    '<div class="c ldc"><div class="ldh"><span class="ldi">' +
+    icn("trophy") +
+    '</span><div style="flex:1"><b>Classement</b><br><small class="m">' +
+    rows.length +
+    " membre" +
+    (rows.length > 1 ? "s" : "") +
+    " classé" +
+    (rows.length > 1 ? "s" : "") +
+    (k == "moy" ? " · 10 QCM minimum" : "") +
+    '</small></div><span class="lpv">' +
+    icn("shield") +
+    " Visible par toi seul</span></div>" +
+    '<div class="lcr">' +
+    LCRIT.map((c) => '<button class="' + (c[0] == k ? "on" : "") + '" onclick="AD.lc=\'' + c[0] + "';adPaint()\">" + icn(c[2]) + c[1] + "</button>").join("") +
+    "</div>" +
+    (rows.length
+      ? '<div class="pod">' +
+        pod(rows[1], 2) +
+        pod(rows[0], 1) +
+        pod(rows[2], 3) +
+        "</div>" +
+        (rest.length
+          ? '<div class="lead">' +
+            rest
+              .map(
+                (x, i) =>
+                  '<button class="ldr"' +
+                  open(x.m) +
+                  '><span class="rk">' +
+                  (i + 4) +
+                  "</span>" +
+                  adAv(x.m, "sm") +
+                  '<span class="ldn"><b>' +
+                  esc(adName(x.m)) +
+                  '</b><span class="ldbar"><i style="width:' +
+                  Math.round((x.v / mx) * 100) +
+                  '%"></i></span></span><span class="lst">' +
+                  esc(C[4](x.v)) +
+                  "</span></button>",
+              )
+              .join("") +
+            "</div>"
+          : "") +
+        (rows.length > 10
+          ? '<button class="lnk" style="display:block;margin:8px auto 0" onclick="AD.la=!AD.la;adPaint()">' +
+            (AD.la ? "Réduire" : "Voir tout le classement (" + rows.length + ")") +
+            "</button>"
+          : "") +
+        (k == "pts"
+          ? '<small class="m" style="display:block;margin-top:10px">Score = 10 pts par journée bouclée, 5 par jour de flamme, 1 par QCM, 1 pour 2 cartes et 1 pour 5 min de travail.</small>'
+          : "")
+      : '<p class="m">Personne n’a encore assez répondu pour ce classement.</p>') +
+    "</div>"
   );
 }
 const adOpen = (uid) => {
@@ -174,7 +266,9 @@ function adList() {
         return (
           '<button class="amc" onclick="adOpen(\'' +
           esc(m.user_id) +
-          '\')"><span class="amb"></span>' +
+          '\')"><span class="amb" style="' +
+          banCss(m.banniere) +
+          '"></span>' +
           adAv(m) +
           "<b>" +
           esc(adName(m)) +
@@ -184,7 +278,7 @@ function adList() {
           s[0] +
           '">' +
           s[1] +
-          '</span><span class="ams"><span>🔥 ' +
+          '</span><span class="ams"><span class="amf">' + icn("flame") + ' ' +
           adNum(st.flamme) +
           "</span><span>" +
           adNum(st.qcm) +
@@ -224,7 +318,9 @@ function adMember(uid) {
     u = esc(uid);
   return (
     '<button class="b" onclick="R.adm=\'\';adPaint()">← Tous les membres</button>' +
-    '<div class="pcov" style="margin-top:10px"><div class="pcbg"></div>' +
+    '<div class="pcov" style="margin-top:10px"><div class="pcbg" style="' +
+    banCss(m.banniere) +
+    '"></div>' +
     adAv(m, "av2 pcav big") +
     '<div class="pcin"><h2>' +
     esc(adName(m)) +
@@ -333,7 +429,7 @@ async function adReset(uid) {
   const em = adMail(uid);
   if (!em) return;
   const { error } = await SY.sb.auth.resetPasswordForEmail(em, { redirectTo: location.origin + location.pathname });
-  toast(error ? esc(syTr(error.message)) : "Lien de mot de passe envoyé à " + esc(em));
+  toast(error ? esc(syMailErr(error)) : "Lien de mot de passe envoyé à " + esc(em));
 }
 // ---------- codes d'invitation ----------
 function adInv() {

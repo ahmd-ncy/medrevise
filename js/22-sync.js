@@ -455,7 +455,21 @@ function syChangePass() {
 }
 async function syForgotMe() {
   const { error } = await SY.sb.auth.resetPasswordForEmail(SY.user.email, { redirectTo: location.href.split("#")[0] });
-  toast(error ? syTr(error.message) : "E-mail envoyé à " + esc(SY.user.email) + " : ouvre le lien pour choisir un nouveau mot de passe.");
+  toast(error ? syMailErr(error) : "E-mail envoyé à " + esc(SY.user.email) + " : ouvre le lien pour choisir un nouveau mot de passe.");
+}
+// Erreurs d'envoi d'e-mail : Supabase a deux limites différentes.
+// - « you can only request this after N seconds » : délai entre deux demandes pour la même adresse ;
+// - « email rate limit exceeded » : quota d'e-mails par heure pour tout le projet (Authentication → Rate Limits).
+function syMailErr(er) {
+  const m = (er && er.message) || "",
+    c = (er && er.code) || "",
+    n = (m.match(/after (\d+) second/) || [])[1];
+  if (n) return "Un e-mail vient d’être envoyé à cette adresse. Tu pourras en redemander un dans " + n + " s.";
+  if (c == "over_email_send_rate_limit" || /email rate limit/i.test(m))
+    return "Trop d’e-mails envoyés par l’app cette heure-ci (limite de Supabase). Réessaie plus tard, ou demande à l’administrateur de relever la limite.";
+  if (c == "over_request_rate_limit" || /too many|rate limit/i.test(m)) return "Trop de demandes depuis cet appareil : réessaie dans quelques minutes.";
+  if (/sending|smtp|mail/i.test(m)) return "L’e-mail n’a pas pu partir (réglage d’envoi à vérifier côté administrateur).";
+  return syTr(m) + (c ? " (" + c + ")" : "");
 }
 // Envoi du lien « mot de passe oublié », avec un état visible et un délai maximum.
 async function syForgot() {
@@ -482,13 +496,7 @@ async function syForgot() {
   }
   if (r && r.error) {
     console.warn("Mot de passe oublié :", r.error);
-    return syMsg(
-      /after|seconds|security purposes|rate/i.test(r.error.message)
-        ? "Un e-mail vient déjà d’être envoyé : attends une minute avant de recommencer."
-        : /sending|smtp|mail/i.test(r.error.message)
-          ? "L’e-mail n’a pas pu partir (réglage d’envoi à vérifier côté administrateur)."
-          : syTr(r.error.message),
-    );
+    return syMsg(syMailErr(r.error));
   }
   const g = document.querySelector(".gcard");
   if (g)
@@ -857,6 +865,7 @@ async function syProfil() {
       fac: (S.fac || "").slice(0, 60) || null,
       bio: (S.bio || "").slice(0, 160) || null,
       photo: ph,
+      banniere: banOk(S.ban) ? S.ban : null,
       stats: {
         qcm: st.n,
         moy: st.moy === "–" ? null : +st.moy,
@@ -875,7 +884,12 @@ async function syProfil() {
     },
     h = hs(JSON.stringify(o));
   if (m.prof === h) return;
-  const { error } = await SY.sb.from("profils").upsert(o);
+  let { error } = await SY.sb.from("profils").upsert(o);
+  // colonne « banniere » pas encore créée (ancien supabase.sql) : on envoie le reste du profil
+  if (error && /banniere/i.test(error.message || "")) {
+    delete o.banniere;
+    ({ error } = await SY.sb.from("profils").upsert(o));
+  }
   if (error) {
     if (/relation|does not exist|schema cache/i.test(error.message || "")) {
       m.noProf = Date.now();

@@ -330,6 +330,12 @@ create table if not exists public.profils (
   stats jsonb check (stats is null or pg_column_size(stats) <= 4000),
   maj timestamptz not null default now()
 );
+-- bannière ajoutée après coup : on crée la colonne si la table existait déjà
+alter table public.profils add column if not exists banniere text;
+do $$ begin
+  alter table public.profils add constraint profils_banniere check (banniere is null or banniere ~ '^g[0-9]{1,2}$'
+    or (banniere ~ '^data:image/jpeg;base64,[A-Za-z0-9+/=]+$' and char_length(banniere) <= 300000));
+exception when duplicate_object then null; end $$;
 alter table public.profils enable row level security;
 revoke all on public.profils from anon;
 grant select, insert, update on public.profils to authenticated;
@@ -355,7 +361,7 @@ returns table (
   user_id uuid, email text, role text, depuis timestamptz, expire timestamptz,
   derniere_connexion timestamptz, cree_le timestamptz,
   prenom text, nom text, filiere text, fac text, bio text, photo text, stats jsonb, maj timestamptz,
-  taille_donnees bigint, nb_fichiers bigint, note text
+  taille_donnees bigint, nb_fichiers bigint, note text, banniere text
 )
 language plpgsql stable security definer set search_path = '' as $$
 begin
@@ -368,7 +374,7 @@ begin
            (select coalesce(sum(char_length(e.data)), 0)::bigint from public.etat e where e.user_id = m.user_id),
            (select count(*)::bigint from storage.objects o
              where o.bucket_id = 'fichiers' and (storage.foldername(o.name))[1] = m.user_id::text),
-           m.note
+           m.note, p.banniere
     from public.membres m
     join auth.users u on u.id = m.user_id
     left join public.profils p on p.user_id = m.user_id

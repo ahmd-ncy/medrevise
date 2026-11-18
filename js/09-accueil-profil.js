@@ -196,6 +196,71 @@ function setPhoto(inp) {
   };
   fr.readAsDataURL(f);
 }
+// Bannière du profil : un dégradé prédéfini (« g1 »…) ou une image importée, recadrée en 3:1.
+const BANS = {
+  g1: ["Aurore", "linear-gradient(120deg,#3b82f6,#a855f7)"],
+  g2: ["Lagon", "linear-gradient(120deg,#06b6d4,#3b82f6 60%,#1e3a8a)"],
+  g3: ["Coucher de soleil", "linear-gradient(120deg,#f97316,#ec4899 55%,#8b5cf6)"],
+  g4: ["Forêt", "linear-gradient(120deg,#065f46,#10b981 55%,#a3e635)"],
+  g5: ["Bloc opératoire", "linear-gradient(120deg,#0f766e,#14b8a6 50%,#99f6e4)"],
+  g6: ["Rose", "linear-gradient(120deg,#be185d,#f472b6 55%,#fda4af)"],
+  g7: ["Nuit", "radial-gradient(80% 140% at 80% 0%,#4f46e5,transparent 60%),linear-gradient(160deg,#0b1430,#1e1b4b)"],
+  g8: ["Or", "linear-gradient(120deg,#78350f,#f59e0b 50%,#fde68a)"],
+  g9: ["Ardoise", "linear-gradient(120deg,#1f2937,#475569 55%,#94a3b8)"],
+  g10: ["Néon", "linear-gradient(120deg,#22d3ee,#a3e635 50%,#f472b6)"],
+};
+const banOk = (b) => typeof b == "string" && (!!BANS[b] || (/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(b) && b.length <= 300000)),
+  banCss = (b) =>
+    !banOk(b) ? "" : BANS[b] ? "background:" + BANS[b][1] : "background:center/cover no-repeat url(" + b + ")";
+function setBan(v) {
+  if (v === null) delete S.ban;
+  else if (typeof v == "string") S.ban = v;
+  else {
+    const f = v.files[0];
+    if (!f) return;
+    const fr = new FileReader();
+    fr.onload = () => {
+      const i = new Image();
+      i.onload = () => {
+        // recadrage centré au format 3:1, 1200 × 400 px au plus
+        let w = i.width,
+          h = Math.round(w / 3);
+        if (h > i.height) {
+          h = i.height;
+          w = h * 3;
+        }
+        const W = Math.min(1200, w),
+          cv = document.createElement("canvas");
+        cv.width = W;
+        cv.height = Math.round(W / 3);
+        cv.getContext("2d").drawImage(i, (i.width - w) / 2, (i.height - h) / 2, w, h, 0, 0, cv.width, cv.height);
+        let q = 0.8,
+          u = cv.toDataURL("image/jpeg", q);
+        while (u.length > 290000 && q > 0.35) u = cv.toDataURL("image/jpeg", (q -= 0.1));
+        S.ban = u;
+        R.banp = 0;
+        save();
+        render();
+      };
+      i.src = fr.result;
+    };
+    fr.readAsDataURL(f);
+    return;
+  }
+  R.banp = 0;
+  save();
+  render();
+}
+const banPick = () =>
+  '<div class="banp"><div class="banl">' +
+  Object.entries(BANS)
+    .map(([k, v]) => '<button class="bano' + (S.ban === k ? " on" : "") + '" style="' + banCss(k) + '" title="' + v[0] + '" aria-label="' + v[0] + '" onclick="setBan(\'' + k + "')\"></button>")
+    .join("") +
+  '</div><div class="r" style="justify-content:center"><label class="b" style="cursor:pointer">' +
+  icn("image") +
+  ' Importer une image<input type="file" accept="image/*" hidden onchange="setBan(this)"></label>' +
+  (S.ban ? '<button class="b" onclick="setBan(null)">Bannière par défaut</button>' : "") +
+  "</div><small class=\"m\">L’image est recadrée au format bannière (3 × plus large que haute).</small></div>";
 const avatar = (nm) =>
   S.photo && /^data:image\//.test(S.photo) ? '<img src="' + esc(S.photo) + '" alt="Photo de profil">' : esc((nm || "?")[0].toUpperCase());
 function prof() {
@@ -242,7 +307,12 @@ function prof() {
       cards = PSEC.filter((x) => !x[4] || x[4]()),
       col = { moi: "var(--c1)", compte: "var(--c2)", progres: "var(--c4)", cal: "var(--c3)", reg: "var(--c6)", app: "var(--c5)", don: "var(--c2)", aide: "var(--c1)", admin: "var(--c4)" };
     return (
-      '<div class="pcov"><div class="pcbg"></div><label class="av2 ph pcav" title="Changer la photo de profil">' +
+      '<div class="pcov"><div class="pcbg" style="' +
+      banCss(S.ban) +
+      '"><button class="banb" onclick="R.banp=!R.banp;render()" aria-label="Changer la bannière">' +
+      icn("image") +
+      " Bannière</button></div>" +
+      '<label class="av2 ph pcav" title="Changer la photo de profil">' +
       avatar(nm) +
       '<input type="file" accept="image/*" hidden onchange="setPhoto(this)"><span class="phe">' +
       icn("edit") +
@@ -258,7 +328,9 @@ function prof() {
       (S.bio ? '<p class="pcq">« ' + esc(S.bio) + " »</p>" : "") +
       '<button class="b" onclick="R.ps=\'moi\';render()">' +
       icn("edit") +
-      " Modifier mon profil</button></div></div>" +
+      " Modifier mon profil</button></div>" +
+      (R.banp ? banPick() : "") +
+      "</div>" +
       '<div class="pst">' +
       tiles
         .map((t) => '<div class="psi" style="--sc:' + t[3] + '">' + icn(t[0]) + "<b>" + t[1] + "</b><small>" + t[2] + "</small></div>")
@@ -366,7 +438,11 @@ function prof() {
       icn("edit") +
       '</span></label><div class="r" style="justify-content:center"><label class="b" style="cursor:pointer">Choisir une photo<input type="file" accept="image/*" hidden onchange="setPhoto(this)"></label>' +
       (S.photo ? '<button class="b" onclick="setPhoto(null)">Retirer</button>' : "") +
-      '</div></div><div class="c">' +
+      '</div></div><div class="c"><b>Bannière</b><div class="banprev" style="' +
+      banCss(S.ban) +
+      '"></div>' +
+      banPick() +
+      '</div><div class="c">' +
       f("Prénom", "name", "Ton prénom") +
       f("Nom (facultatif)", "lname", "") +
       '<label class="f">Filière</label><select onchange="S.fil=this.value;save()"><option value="">Non précisée</option>' +
@@ -375,7 +451,7 @@ function prof() {
       f("Faculté", "fac", "Nancy") +
       f("Mon objectif", "bio", "Ex. : passer en médecine du premier coup", 120) +
       (SY.user && SY.role && SY.role != "admin"
-        ? '<small class="hl">Ton prénom, ta photo, ta filière et un résumé de ta progression (nombre de QCM, moyenne, flamme) sont visibles par l’administrateur de l’app. Tes cours, tes notes et tes réponses ne le sont pas.</small>'
+        ? '<small class="hl">Ton prénom, ta photo, ta bannière, ta filière et un résumé de ta progression (nombre de QCM, moyenne, flamme) sont visibles par l’administrateur de l’app. Tes cours, tes notes et tes réponses ne le sont pas.</small>'
         : "") +
       "</div>";
   } else if (sec[0] == "compte") {

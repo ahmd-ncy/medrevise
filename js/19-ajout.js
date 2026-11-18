@@ -37,7 +37,9 @@ function add() {
     f =
       '<label class="f">UE</label>' +
       chsel() +
-      '<label class="f">Titre du livret (ex. Livret 1)</label><input type="text" id="n"><label class="f">PDF du livret (facultatif)</label><input type="file" accept="application/pdf" id="pdfin"><label class="f">Texte du livret (facultatif si PDF)</label><textarea id="x" style="min-height:160px"></textarea>' +
+      '<label class="f">Titre du livret (ex. Livret 1)</label><input type="text" id="n"><label class="f">PDF du livret (facultatif)</label>' +
+      fDrop({ id: "pdfin", accept: "application/pdf,.pdf", icon: "file", t: "Ajoute le PDF du livret", s: "Touche pour le choisir, ou glisse-le ici" }) +
+      '<label class="f">Texte du livret (facultatif si PDF)</label><textarea id="x" style="min-height:160px"></textarea>' +
       imgf() +
       '<button class="b p" onclick="aCours()">Ajouter le livret</button>';
   if (t === "json") f = jsonForm();
@@ -45,7 +47,15 @@ function add() {
     f =
       '<label class="f">UE</label>' +
       chsel() +
-      '<label class="f">Image du schéma</label><input type="file" accept="image/*" onchange="if(!$(\'ch\').value)return $(\'fm\').textContent=NOCH;const ch=$(\'ch\').value;shrink(this,u=>ocCrop(u,v=>ocEdit(ch,v)),2400)"><small>Tu encadreras d’abord le schéma, puis tu dessineras un cache sur chaque légende à retrouver. Depuis un livret PDF, le bouton « Schéma à trous » capture directement la page affichée.</small>';
+      '<label class="f">Image du schéma</label>' +
+      fDrop({
+        accept: "image/*",
+        icon: "image",
+        t: "Choisis l’image du schéma",
+        s: "Photo, capture d’écran ou image du livret",
+        on: "if(!$(\'ch\').value)return $(\'fm\').textContent=NOCH;const ch=$(\'ch\').value;shrink(this,u=>ocCrop(u,v=>ocEdit(ch,v)),2400)",
+      }) +
+      '<small>Tu encadreras d’abord le schéma, puis tu dessineras un cache sur chaque légende à retrouver. Depuis un livret PDF, le bouton « Schéma à trous » capture directement la page affichée.</small>';
   if (t === "card")
     f =
       '<label class="f">UE</label>' +
@@ -88,8 +98,62 @@ function add() {
         '<p id="fm" class="m" role="status"></p></div>')
   );
 }
+// Zone de dépôt de fichier : on touche pour choisir, ou on glisse le fichier dessus (ordinateur).
+const fsz = (n) => (n >= 1e6 ? (n / 1e6).toFixed(1).replace(".", ",") + " Mo" : Math.max(1, Math.round(n / 1e3)) + " Ko");
+function fDrop(o) {
+  return (
+    '<label class="drop' +
+    (o.sm ? " sm" : "") +
+    '" ondragover="event.preventDefault();this.classList.add(\'ov\')" ondragleave="this.classList.remove(\'ov\')" ondrop="dropIn(event,this)"><span class="dri">' +
+    icn(o.icon || "upload") +
+    '</span><span class="drt"><b>' +
+    o.t +
+    "</b><small>" +
+    (o.s || "Touche pour choisir un fichier") +
+    '</small></span><span class="drb">' +
+    (o.btn || "Choisir") +
+    '</span><input type="file" hidden accept="' +
+    o.accept +
+    '"' +
+    (o.id ? ' id="' + o.id + '"' : "") +
+    ' onchange="dropShow(this);' +
+    (o.on || "") +
+    '"></label>'
+  );
+}
+function dropIn(e, l) {
+  e.preventDefault();
+  l.classList.remove("ov");
+  const i = l.querySelector("input"),
+    f = e.dataTransfer && e.dataTransfer.files[0];
+  if (!f) return;
+  const acc = i.accept;
+  if (acc && !(acc == "image/*" ? /^image\//.test(f.type) : acc.split(",").some((a) => f.type == a.trim() || f.name.toLowerCase().endsWith(a.trim()))))
+    return toast("Ce type de fichier n’est pas accepté ici.");
+  const dt = new DataTransfer();
+  dt.items.add(f);
+  i.files = dt.files;
+  i.dispatchEvent(new Event("change"));
+}
+function dropShow(i) {
+  const f = i.files[0],
+    l = i.closest(".drop");
+  if (!f || !l) return;
+  l.classList.add("has");
+  l.querySelector(".dri").innerHTML = icn("tick");
+  l.querySelector(".drt").innerHTML = "<b>" + esc(f.name) + "</b><small>" + fsz(f.size) + " · prêt</small>";
+  l.querySelector(".drb").textContent = "Changer";
+}
 const imgf = () =>
-  '<label class="f">Schéma (facultatif)</label><input type="file" accept="image/*" onchange="shrink(this,u=>{R.img=u;$(\'fm\').textContent=\'Image prête.\'})">';
+  '<label class="f">Schéma (facultatif)</label>' +
+  fDrop({
+    accept: "image/*",
+    icon: "image",
+    t: "Ajouter une image",
+    s: "Photo ou capture d’un schéma",
+    sm: 1,
+    on: "shrink(this,u=>{R.img=u;$(\'fm\').textContent=\'Image prête.\'})",
+  });
 const done = (m) => {
   R.img = "";
   add_reset();

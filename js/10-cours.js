@@ -234,14 +234,25 @@ function course() {
     c.ch +
     '\')">+ Créer une flashcard</button><button class="b" onpointerdown="SEL=String(getSelection())" onclick="mkCloze(\'' +
     c.ch +
-    '\')">+ Carte à trous</button></div><div class="r"><label class="b" style="cursor:pointer">+ Schéma<input type="file" accept="image/*" hidden onchange="shrink(this,u=>{(S.courses.find(x=>x.id===\'' +
+    '\')">+ Carte à trous</button></div>' +
+    (c.pdf
+      ? '<div class="pdfc"><span class="dri">' +
+        icn("file") +
+        '</span><span class="drt"><b>' +
+        esc(c.pdf.name || "PDF du livret") +
+        "</b><small>PDF" +
+        (c.pdf.size ? " · " + fsz(c.pdf.size) : "") +
+        '</small></span><span class="pdfa"><label class="b">Remplacer<input type="file" accept="application/pdf,.pdf" hidden onchange="addPdf(this,\'' +
+        c.id +
+        '\')"></label><button class="b" onclick="rmPdf(\'' +
+        c.id +
+        "')\">Retirer</button></span></div>"
+      : fDrop({ accept: "application/pdf,.pdf", icon: "file", t: "Ajouter le PDF du livret", s: "Il s’affichera ici, page par page", on: "addPdf(this,\'" + c.id + "\')" })) +
+    '<div class="r"><label class="b" style="cursor:pointer">' +
+    icn("image") +
+    ' Ajouter un schéma<input type="file" accept="image/*" hidden onchange="shrink(this,u=>{(S.courses.find(x=>x.id===\'' +
     c.id +
-    '\').imgs||[]).push(u);save();render()})"></label><label class="b" style="cursor:pointer">' +
-    (c.pdf ? "Remplacer" : "Ajouter") +
-    ' le PDF<input type="file" accept="application/pdf" hidden onchange="addPdf(this,\'' +
-    c.id +
-    "')\"></label>" +
-    (c.pdf ? '<button class="b" onclick="rmPdf(\'' + c.id + "')\">Retirer le PDF</button>" : "") +
+    '\').imgs||[]).push(u);save();render()})"></label>' +
     "<button class=\"b\" onclick=\"editor('courses','" +
     c.id +
     "')\">Modifier</button><button class=\"b\" onclick=\"del('courses','" +
