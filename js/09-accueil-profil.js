@@ -175,6 +175,7 @@ function prof() {
     '<h3 id="cpt">Compte et synchronisation</h3><div id="sybox">' +
     syBox() +
     "</div>" +
+    (setTimeout(syInvLoad, 0), "") +
     '<h3 id="p1">Chiffres clés</h3><div class="g">' +
     tl.map((t) => '<div class="k"><b>' + t[0] + "</b><small>" + t[1] + "</small></div>").join("") +
     "</div>" +

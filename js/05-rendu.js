@@ -1,6 +1,12 @@
 function render() {
   document.body.dataset.t = tab;
   applyLook();
+  // accès sur invitation : écran de connexion tant qu'il n'y a pas de compte membre
+  if (typeof syGate == "function" && syGate()) {
+    $("top").innerHTML = "";
+    $("app").innerHTML = gate();
+    return;
+  }
   const TB = [
       ["home", "Accueil", "var(--c1)", "home"],
       ["cours", "Cours", "var(--c2)", "book"],

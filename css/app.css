@@ -2157,3 +2157,41 @@ details.pd[open] > summary {
     padding-top: env(safe-area-inset-top, 0px);
   }
 }
+/* ===== Écran d'accès ===== */
+.gate {
+  max-width: 420px;
+  margin: 8vh auto 0;
+  text-align: center;
+}
+.gate h1 {
+  margin: 10px 0 0;
+  font-size: 2rem;
+}
+.glogo {
+  width: 76px;
+  height: 76px;
+  margin: 0 auto;
+  border-radius: 20px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(135deg, #3b5b92, #20345c);
+}
+.glogo .lg {
+  width: 50px;
+  height: 50px;
+}
+.gate .big {
+  margin-top: 14px;
+}
+input[type="email"],
+input[type="password"] {
+  font: 500 15px Inter, sans-serif;
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid var(--bd);
+  padding: 10px;
+  background: var(--card);
+  color: var(--fg);
+  margin: 4px 0;
+}

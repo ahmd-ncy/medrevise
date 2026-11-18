@@ -4,7 +4,7 @@
 // Les PDF et images vont dans le stockage « fichiers », dans un dossier propre à l'utilisateur.
 // Mémoire de synchronisation (localStorage « mr_sync ») : uid, sent (empreinte de chaque morceau envoyé),
 // remote (date distante de chaque morceau connu), pf (fichiers à envoyer), pd (fichiers à supprimer).
-const SY = { sb: null, user: null, st: "off", busy: 0, again: 0, t: 0, meta: null, last: 0, err: "" };
+const SY = { sb: null, user: null, st: "off", busy: 0, again: 0, t: 0, meta: null, last: 0, err: "", ready: 0, role: null, gt: "in" };
 const SYK = ["qcm", "cards", "courses"],
   STK = ["hist", "act", "tm", "tu", "rc", "cs", "ms", "cf", "er", "days", "jm", "fsq", "err"],
   DEMO = ["a1", "p1", "p2", "b1"];
@@ -82,9 +82,18 @@ function syncInit() {
     const u = (ses && ses.user) || null,
       was = SY.user && SY.user.id;
     SY.user = u;
+    SY.ready = 1;
     if (ev === "PASSWORD_RECOVERY") setTimeout(syNewPass, 50);
-    if (!u) SY.st = "out";
-    if (u && u.id !== was) setTimeout(() => syncNow(), 0);
+    if (!u) {
+      SY.st = "out";
+      SY.role = null;
+    }
+    if (u && u.id !== was) {
+      // rôle mémorisé (permet d'ouvrir l'app hors connexion), puis vérifié auprès du serveur
+      const c = syRoleCache();
+      SY.role = c && c.uid === u.id ? c.role : null;
+      setTimeout(syCheckMember, 0);
+    }
     syUI(true);
   });
   addEventListener("online", () => syncNow());
@@ -110,7 +119,7 @@ function syncSoon() {
 
 // ---------- synchronisation ----------
 async function syncNow() {
-  if (!SY.sb || !SY.user) return;
+  if (!SY.sb || !SY.user || !SY.role) return;
   if (SY.busy) return (SY.again = 1);
   if (!navigator.onLine) {
     SY.st = "offline";
@@ -369,13 +378,31 @@ async function syLogin(signup) {
     p = $("syp").value || "";
   if (!/^\S+@\S+\.\S+$/.test(e)) return syMsg("Indique une adresse e-mail valide.");
   if (p.length < 6) return syMsg("Le mot de passe doit faire au moins 6 caractères.");
+  let code = "";
+  if (signup) {
+    code = ($("syc") && $("syc").value.trim()) || "";
+    if (!code) return syMsg("Entre ton code d’invitation.");
+    syMsg("Vérification du code…");
+    const v = await SY.sb.rpc("invitation_valide", { p_code: code });
+    if (v.error) return syMsg(syTr(v.error.message));
+    if (!v.data) return syMsg("Code invalide, expiré ou déjà utilisé. Demande un nouveau code.");
+  }
   syMsg(signup ? "Création du compte…" : "Connexion…");
   const r = signup
     ? await SY.sb.auth.signUp({ email: e, password: p, options: { emailRedirectTo: location.href.split("#")[0] } })
     : await SY.sb.auth.signInWithPassword({ email: e, password: p });
   if (r.error) return syMsg(syTr(r.error.message));
-  if (signup && !r.data.session)
-    syMsg("Compte créé. Ouvre le lien reçu par e-mail pour le confirmer, puis reviens te connecter ici.");
+  if (signup) {
+    if (!r.data.session) {
+      try {
+        localStorage.setItem("mr_code", code);
+      } catch (e) {}
+      return syMsg("Compte créé. Ouvre le lien reçu par e-mail pour le confirmer, puis reviens te connecter ici.");
+    }
+    const u = await SY.sb.rpc("utiliser_invitation", { p_code: code });
+    if (u.error || !u.data) syMsg("Le code n’a pas pu être utilisé : il vient peut-être d’expirer.");
+    await syCheckMember();
+  }
 }
 async function syForgot() {
   const e = ($("sye").value || "").trim();
@@ -388,10 +415,7 @@ function syLogout() {
     "Te déconnecter ? Tes données restent sur cet appareil, mais ne seront plus sauvegardées dans ton compte.",
     async () => {
       await syncNow();
-      await SY.sb.auth.signOut();
-      SY.meta = {};
-      syMetaSave();
-      render();
+      await syOut();
     },
     "Me déconnecter",
   );
@@ -448,7 +472,8 @@ function syBox() {
     "</p>" +
     (SY.st == "err" ? '<p class="wnl">' + esc(syTr(SY.err)) + "</p>" : "") +
     (SY.big ? '<p class="wnl">Un PDF dépasse la taille maximale (50 Mo) : il reste seulement sur cet appareil.</p>' : "") +
-    '<div class="r"><button class="b p" onclick="syncNow()">Synchroniser maintenant</button><button class="b" onclick="syLogout()">Se déconnecter</button></div><small style="display:block;margin-top:8px">Tout est enregistré sur cet appareil, même hors connexion, puis envoyé dans ton compte quelques secondes après chaque modification.</small></div>'
+    '<div class="r"><button class="b p" onclick="syncNow()">Synchroniser maintenant</button><button class="b" onclick="syLogout()">Se déconnecter</button></div><small style="display:block;margin-top:8px">Tout est enregistré sur cet appareil, même hors connexion, puis envoyé dans ton compte quelques secondes après chaque modification.</small></div>' +
+    syAdmin()
   );
 }
 // Met à jour l'indicateur, le bloc Compte, et l'écran si les données ont changé.
@@ -458,4 +483,165 @@ function syUI(full) {
   if ($("sybox") && !(document.activeElement && /INPUT/.test(document.activeElement.tagName) && document.activeElement.closest("#sybox")))
     $("sybox").innerHTML = syBox();
   if (full && !R.run && !$("md") && !(tab == "cours" && R.id)) render();
+}
+
+// ================= Accès sur invitation =================
+// Seuls les « membres » (table membres) peuvent utiliser l'app et synchroniser : la base le vérifie elle-même.
+// On devient membre avec un code d'invitation à usage unique, créé par l'administrateur (24 h par défaut).
+function syRoleCache(v) {
+  try {
+    if (v !== undefined) localStorage.setItem("mr_mbr", JSON.stringify(v));
+    return JSON.parse(localStorage.getItem("mr_mbr"));
+  } catch (e) {
+    return null;
+  }
+}
+async function syCheckMember() {
+  if (!SY.user) return;
+  const uid = SY.user.id;
+  try {
+    let { data: role, error } = await SY.sb.rpc("mon_role");
+    if (error) throw error;
+    // code saisi à l'inscription, quand le compte devait d'abord être confirmé par e-mail
+    let pend = null;
+    try {
+      pend = localStorage.getItem("mr_code");
+    } catch (e) {}
+    if (!role && pend) {
+      const r = await SY.sb.rpc("utiliser_invitation", { p_code: pend });
+      if (!r.error && r.data) role = "membre";
+      try {
+        localStorage.removeItem("mr_code");
+      } catch (e) {}
+    }
+    SY.role = role || null;
+    SY.roleErr = 0;
+    syRoleCache(role ? { uid, role } : null);
+  } catch (e) {
+    SY.roleErr = 1; // hors connexion : on garde le rôle mémorisé
+  }
+  syUI(true);
+  if (SY.role) syncNow();
+}
+// L'app est-elle verrouillée (pas de compte membre) ?
+const syGate = () => !!SY.sb && !(SY.user && SY.role);
+async function syOut() {
+  await SY.sb.auth.signOut();
+  SY.meta = {};
+  syMetaSave();
+  syRoleCache(null);
+  SY.role = null;
+  render();
+}
+function gate() {
+  const inp = (id, lab, t, ac, ph) =>
+    '<label class="f">' +
+    lab +
+    '</label><input type="' +
+    (t || "text") +
+    '" id="' +
+    id +
+    '"' +
+    (ac ? ' autocomplete="' + ac + '"' : "") +
+    (ph ? ' placeholder="' + ph + '"' : "") +
+    ' autocapitalize="off">';
+  let body;
+  if (!SY.ready) body = '<p class="m">Chargement…</p>';
+  else if (!SY.user)
+    body =
+      '<div class="chips" style="justify-content:center">' +
+      ['in', "Se connecter", "up", "J’ai un code d’invitation"]
+        .reduce((a, x, i, A) => (i % 2 ? a : a.concat([[A[i], A[i + 1]]])), [])
+        .map(
+          ([k, l]) =>
+            '<button class="chip' + (SY.gt == k ? " on" : "") + '" onclick="SY.gt=\'' + k + "';render()\">" + l + "</button>",
+        )
+        .join("") +
+      "</div>" +
+      (SY.gt == "up"
+        ? inp("syc", "Code d’invitation", "text", "off", "XXXX-XXXX") +
+          inp("sye", "E-mail", "email", "email") +
+          inp("syp", "Choisis un mot de passe (6 caractères minimum)", "password", "new-password") +
+          '<button class="big" onclick="syLogin(1)">Créer mon compte</button>'
+        : inp("sye", "E-mail", "email", "email") +
+          inp("syp", "Mot de passe", "password", "current-password") +
+          '<button class="big" onclick="syLogin(0)">Se connecter</button><button class="b" style="width:100%" onclick="syForgot()">Mot de passe oublié</button>')
+  else
+    body = SY.roleErr
+      ? '<p>Connexion internet nécessaire pour vérifier ton accès.</p><button class="big" onclick="syCheckMember()">Réessayer</button><button class="b" style="width:100%" onclick="syOut()">Se déconnecter</button>'
+      : "<p>Connecté avec <b>" +
+        esc(SY.user.email || "") +
+        "</b>, mais ce compte n’a pas encore accès à l’app.</p>" +
+        inp("syc", "Code d’invitation", "text", "off", "XXXX-XXXX") +
+        '<button class="big" onclick="syJoin()">Valider le code</button><button class="b" style="width:100%" onclick="syOut()">Se déconnecter</button>';
+  return (
+    '<div class="gate"><div class="glogo">' +
+    LOGO +
+    '</div><h1>MedRevise</h1><p class="m" style="margin-top:0">Accès sur invitation</p><div class="c" style="text-align:left">' +
+    body +
+    '<p id="sym" class="m" role="status"></p></div></div>'
+  );
+}
+async function syJoin() {
+  const c = ($("syc").value || "").trim();
+  if (!c) return syMsg("Entre ton code d’invitation.");
+  syMsg("Vérification…");
+  const { data, error } = await SY.sb.rpc("utiliser_invitation", { p_code: c });
+  if (error) return syMsg(syTr(error.message));
+  if (!data) return syMsg("Code invalide, expiré ou déjà utilisé. Demande un nouveau code.");
+  await syCheckMember();
+}
+// ---------- panneau administrateur ----------
+function syAdmin() {
+  return SY.role == "admin"
+    ? '<div class="c"><b>Invitations</b><p class="m" style="margin:.3em 0 .6em">Chaque code ne sert qu’une fois et expire après la durée choisie. Donne-le à la personne avec l’adresse de l’app.</p><div class="r" style="margin:0"><button class="b p" onclick="syInvite(24)">Créer un code (24 h)</button><button class="b" onclick="syInvite(168)">Créer un code (7 jours)</button></div><div id="synew"></div><div id="syinv">' + (SY.invH || '<p class="m">Chargement des invitations…</p>') + "</div></div>"
+    : "";
+}
+async function syInvite(h) {
+  const { data, error } = await SY.sb.rpc("creer_invitation", { p_heures: h });
+  if (error) return ($("synew").innerHTML = '<p class="wnl">' + esc(syTr(error.message)) + "</p>");
+  $("synew").innerHTML =
+    '<div class="bn good"><b>Nouveau code : <span style="font:700 1.4rem ui-monospace,monospace;letter-spacing:.08em">' +
+    esc(data) +
+    "</span></b><p>Valable " +
+    (h >= 48 ? h / 24 + " jours" : h + " heures") +
+    ', une seule fois.</p><button class="b" onclick="navigator.clipboard.writeText(\'' +
+    esc(data) +
+    "').then(()=>this.textContent='Copié ✔').catch(()=>{})\">Copier</button></div>";
+  syInvLoad();
+}
+async function syInvLoad() {
+  const box = $("syinv");
+  if (!box || SY.role != "admin") return;
+  const { data, error } = await SY.sb.rpc("liste_invitations");
+  if (error) return (box.innerHTML = '<p class="m">Liste indisponible : ' + esc(syTr(error.message)) + "</p>");
+  const now = Date.now(),
+    fd = (d) => new Date(d).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  box.innerHTML = SY.invH = data.length
+    ? data
+        .map((i) => {
+          const used = !!i.utilise_le,
+            exp = !used && new Date(i.expire) < now;
+          return (
+            '<div class="hl1" style="align-items:center"><span style="flex:1"><b style="font-family:ui-monospace,monospace">' +
+            esc(i.code) +
+            "</b><br><small>" +
+            (used
+              ? "utilisé par " + esc(i.email || "un compte supprimé") + " le " + fd(i.utilise_le)
+              : exp
+                ? "expiré le " + fd(i.expire)
+                : "valable jusqu’au " + fd(i.expire)) +
+            "</small></span>" +
+            (!used && !exp
+              ? "<button class=\"b\" onclick=\"syCancel('" + esc(i.code) + "')\">Annuler</button>"
+              : "") +
+            "</div>"
+          );
+        })
+        .join("")
+    : '<p class="m">Aucune invitation pour l’instant.</p>';
+}
+async function syCancel(c) {
+  await SY.sb.rpc("annuler_invitation", { p_code: c });
+  syInvLoad();
 }

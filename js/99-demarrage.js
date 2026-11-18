@@ -22,8 +22,8 @@ onkeydown = (e) => {
     BOOT = (await pdfOp("get", "__etat")) ?? null;
   } catch (e) {}
   load();
-  render();
   syncInit();
+  render();
   if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost"))
     navigator.serviceWorker.register("sw.js").catch(() => {});
 })();
