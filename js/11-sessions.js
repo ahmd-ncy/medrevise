@@ -1,7 +1,5 @@
 function intro(k) {
-  const all = pick(k).length,
-    dueMode = k == "cards" && R.due !== false,
-    c = dueMode ? cardsToday(pick(k)).all.length : all,
+  const c = pick(k).length,
     q = k == "qcm",
     ex = R.mode == "exam",
     tm = ex ? "t" : R.tm || "n";
@@ -11,7 +9,7 @@ function intro(k) {
     "</h2>" +
     (R.done || "") +
     '<div class="c"><div class="lb">Sujet <small>(' +
-    (dueMode ? c + " à réviser aujourd’hui sur " + all + " cartes" : c + " disponible" + (c > 1 ? "s" : "")) +
+    (k == "cards" ? c + " carte" + (c > 1 ? "s" : "") : c + " disponible" + (c > 1 ? "s" : "")) +
     ")</small></div>" +
     scope() +
     (q && ANS().length

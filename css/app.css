@@ -4144,3 +4144,7 @@ html[data-fx="aurora"] .amc {
   width: 26px;
   height: 26px;
 }
+.onl {
+  color: var(--ok, #22c55e);
+  font-weight: 700;
+}

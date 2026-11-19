@@ -113,7 +113,7 @@ function pkSend(uid) {
     s = PK.sent[uid];
   if (!s) setTimeout(() => pkLoadSent(uid), 0);
   const sel = PK.sel[uid] || (PK.sel[uid] = {}),
-    ues = S.mat.filter((m) => S.chap.some((c) => c.mid === m.id)),
+    ues = S.mat.filter((m) => S.chap.some((c) => c.mid === m.id && !DEMO.includes(c.id))), // la démo n'est jamais envoyée
     lab = { attente: ["en attente", "var(--wn)"], accepte: ["accepté ✔", "var(--ok)"], refuse: ["refusé", "var(--ko)"], annule: ["annulé", "var(--mut)"] };
   let h =
     '<div class="c"><b>Lui envoyer des cours</b><p class="m" style="margin:.3em 0 .6em">Choisis tes UE à lui envoyer : livrets PDF, QCM et flashcards compris. Il reçoit une demande dans son app et choisit d’accepter ou de refuser. Rien n’est ajouté sans son accord, et ce qu’il a déjà n’est pas ajouté deux fois.</p>';
@@ -180,7 +180,7 @@ function pkSend(uid) {
 }
 // Prépare le contenu du pack à partir des UE choisies (sans tes révisions, surlignages ni notes).
 function pkBuild(mids) {
-  const chs = S.chap.filter((c) => mids.includes(c.mid)),
+  const chs = S.chap.filter((c) => mids.includes(c.mid) && !DEMO.includes(c.id)),
     cid = new Set(chs.map((c) => c.id)),
     strip = (x, ks) => {
       const o = { ...x };
@@ -294,7 +294,7 @@ function pkAsk(p) {
     esc(p.titre) +
     '</b></p><p class="m" style="margin:.2em 0 .8em">' +
     [pkN(s.ch || 0, "chapitre"), pkN(s.l || 0, "livret PDF", "livrets PDF"), pkN(s.q || 0, "QCM", "QCM"), pkN(s.c || 0, "flashcard")].join(" · ") +
-    '</p><p class="m" style="font-weight:500">Si tu acceptes, ils s’ajoutent à ton app. Ce que tu as déjà n’est pas ajouté deux fois, et tes révisions ne sont pas touchées.</p><div id="pkp" role="status"></div><div class="r" id="pkb" style="margin-top:12px"><button class="b p" id="pky">Accepter</button><button class="b" id="pkn">Refuser</button><button class="b" id="pkl" style="background:none">Plus tard</button></div></div>';
+    '</p><p class="m" style="font-weight:500">Si tu acceptes, ils s’ajoutent à ton app. Ce que tu as déjà n’est pas ajouté deux fois, et tes révisions ne sont pas touchées.' + (S.chap.some((c) => DEMO.includes(c.id)) ? " Le contenu de démonstration (« EXEMPLE ») sera retiré." : "") + '</p><div id="pkp" role="status"></div><div class="r" id="pkb" style="margin-top:12px"><button class="b p" id="pky">Accepter</button><button class="b" id="pkn">Refuser</button><button class="b" id="pkl" style="background:none">Plus tard</button></div></div>';
   document.body.appendChild(d);
   const close = () => {
     d.remove();
@@ -332,11 +332,26 @@ function pkAsk(p) {
   };
 }
 // Télécharge les fichiers du pack, puis ajoute son contenu sans doublons, puis confirme au serveur.
+// Retire le contenu de démonstration (UE, chapitres, livrets, QCM, cartes d'exemple), sans toucher au reste
+function pkDropDemo() {
+  const dc = new Set(S.chap.filter((c) => DEMO.includes(c.id)).map((c) => c.id));
+  if (!dc.size) return 0;
+  const gone = new Set(S.qcm.filter((q) => dc.has(q.ch)).map((q) => q.id));
+  S.chap = S.chap.filter((c) => !dc.has(c.id));
+  S.courses = S.courses.filter((x) => !dc.has(x.ch));
+  S.qcm = S.qcm.filter((x) => !dc.has(x.ch));
+  S.cards = S.cards.filter((x) => !dc.has(x.ch));
+  S.err = (S.err || []).filter((e) => !gone.has(e));
+  dc.forEach((id) => S.jm && delete S.jm[id]);
+  S.mat = S.mat.filter((m) => !["ma", "mp", "mb"].includes(m.id) || S.chap.some((c) => c.mid === m.id));
+  return 1;
+}
 async function pkAccept(p, prog) {
   prog("Préparation…");
   const r = await SY.sb.from("packs").select("de,contenu").eq("id", p.id).single();
   if (r.error) throw r.error;
   if (!r.data || !r.data.contenu) throw new Error("Ce pack n’est plus disponible.");
+  pkDropDemo();
   const D = JSON.parse(r.data.contenu),
     de = r.data.de,
     norm = (t) =>

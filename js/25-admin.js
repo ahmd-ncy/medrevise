@@ -20,6 +20,15 @@ const adPhoto = (p) => (p && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(p)
           ? "il y a " + Math.round(s / 86400) + " j"
           : "le " + new Date(d).toLocaleDateString("fr-FR");
   },
+  // dernière présence : la plus récente entre la connexion et le dernier envoi du profil (toutes les ~4 min quand l'app est ouverte)
+  adSeen = (m) => {
+    const t = Math.max(m.maj ? +new Date(m.maj) : 0, m.derniere_connexion ? +new Date(m.derniere_connexion) : 0);
+    return t ? new Date(t) : null;
+  },
+  adSeenTxt = (m) => {
+    const t = adSeen(m);
+    return t && Date.now() - t < 6 * 60e3 ? '<b class="onl">● en ligne</b>' : t ? "vu " + adAgo(t) : "jamais vu";
+  },
   adSize = (n) => (n > 1e6 ? (n / 1e6).toFixed(1).replace(".", ",") + " Mo" : Math.max(1, Math.round(n / 1e3)) + " Ko"),
   adSt = (m) => {
     if (m.role == "admin") return ["ad", "Administrateur"];
@@ -285,8 +294,8 @@ function adList() {
           adNum(st.qcm) +
           " QCM</span><span>" +
           (st.moy == null ? "–" : String(adNum(st.moy)).replace(".", ",")) +
-          "/20</span></span><small>actif " +
-          adAgo(st.derniere ? st.derniere + "T12:00" : m.derniere_connexion) +
+          "/20</span></span><small>" +
+          adSeenTxt(m) +
           "</small></button>"
         );
       })
@@ -356,6 +365,7 @@ function adMember(uid) {
     row("Flashcards dans son app", adNum(st.nbcartes)) +
     '</div><div class="c"><b>Informations</b>' +
     row("Membre depuis", m.depuis ? new Date(m.depuis).toLocaleDateString("fr-FR") : "—") +
+    row("Dernière présence", adSeenTxt(m)) +
     row("Dernière connexion", adAgo(m.derniere_connexion)) +
     row("Dernière activité", st.derniere ? new Date(st.derniere + "T12:00").toLocaleDateString("fr-FR") : "—") +
     (m.taille_donnees != null ? row("Données stockées", adSize(adNum(m.taille_donnees))) + row("Fichiers (PDF, schémas)", adNum(m.nb_fichiers)) : "") +

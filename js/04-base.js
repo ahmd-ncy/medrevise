@@ -374,7 +374,7 @@ function scope() {
       const o = R.f;
       R.f = f;
       const l = pick(k),
-        n = k == "cards" && R.due !== false ? cardsToday(l).all.length + '<span class="m"> / ' + l.length + "</span>" : l.length;
+        n = l.length;
       R.f = o;
       return n;
     },

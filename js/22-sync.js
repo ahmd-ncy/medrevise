@@ -987,7 +987,8 @@ async function syProfil() {
       },
     },
     h = hs(JSON.stringify(o));
-  if (m.prof === h) return;
+  // même sans changement, on signale sa présence toutes les 4 min environ (« vu il y a … » côté admin)
+  if (m.prof === h && Date.now() - (m.profT || 0) < 230000) return;
   let { error } = await SY.sb.from("profils").upsert(o);
   // colonne « banniere » pas encore créée (ancien supabase.sql) : on envoie le reste du profil
   if (error && /banniere/i.test(error.message || "")) {
@@ -1002,6 +1003,7 @@ async function syProfil() {
     throw error;
   }
   m.prof = h;
+  m.profT = Date.now();
   delete m.noProf;
   syMetaSave();
 }
