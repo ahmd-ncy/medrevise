@@ -4073,3 +4073,74 @@ html[data-fx="aurora"] .amc {
 .uedl input[type="date"] {
   max-width: 170px;
 }
+/* ---------- contenu des membres et packs de cours ---------- */
+.pkue {
+  border-left: 3px solid var(--sc);
+  border-radius: 10px;
+  background: var(--bd);
+  margin: 6px 0;
+  padding: 2px 10px;
+}
+.pkue summary {
+  cursor: pointer;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 8px 0;
+  list-style: none;
+}
+.pkue summary::-webkit-details-marker {
+  display: none;
+}
+.pkue summary small {
+  margin-left: auto;
+  opacity: 0.75;
+}
+.pkch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 0;
+  border-top: 1px solid var(--bd);
+}
+.pkue .pkch {
+  border-top-color: rgba(127, 127, 127, 0.18);
+}
+.pksel .pc {
+  cursor: pointer;
+  align-items: center;
+  gap: 10px;
+}
+.pksel input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+.pkm {
+  position: fixed;
+  inset: 0;
+  z-index: 19;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 16px;
+}
+.pkm .mb {
+  max-width: 440px;
+  width: 100%;
+}
+.pkic {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: var(--acb, var(--bd));
+  color: var(--ac);
+  margin-bottom: 8px;
+}
+.pkic svg {
+  width: 26px;
+  height: 26px;
+}

@@ -373,7 +373,8 @@ function scope() {
     cnt = (f) => {
       const o = R.f;
       R.f = f;
-      const n = k == "cards" && R.due !== false ? cardsToday(pick(k)).all.length : pick(k).length;
+      const l = pick(k),
+        n = k == "cards" && R.due !== false ? cardsToday(l).all.length + '<span class="m"> / ' + l.length + "</span>" : l.length;
       R.f = o;
       return n;
     },

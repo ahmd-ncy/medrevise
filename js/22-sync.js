@@ -237,6 +237,8 @@ async function syncNow() {
     await syFiles();
     // 5) profil visible par l'administrateur (prénom, photo, filière, résumé de progression)
     await syProfil();
+    // 6) cours envoyés par l'administrateur, en attente de réponse
+    if (typeof pkCheck == "function") setTimeout(pkCheck, 800);
     SY.st = "ok";
     SY.err = "";
     SY.last = Date.now();

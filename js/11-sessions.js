@@ -1,5 +1,7 @@
 function intro(k) {
-  const c = (k == "cards" && R.due !== false ? cardsToday(pick(k)).all : pick(k)).length,
+  const all = pick(k).length,
+    dueMode = k == "cards" && R.due !== false,
+    c = dueMode ? cardsToday(pick(k)).all.length : all,
     q = k == "qcm",
     ex = R.mode == "exam",
     tm = ex ? "t" : R.tm || "n";
@@ -9,8 +11,8 @@ function intro(k) {
     "</h2>" +
     (R.done || "") +
     '<div class="c"><div class="lb">Sujet <small>(' +
-    c +
-    " disponibles)</small></div>" +
+    (dueMode ? c + " à réviser aujourd’hui sur " + all + " cartes" : c + " disponible" + (c > 1 ? "s" : "")) +
+    ")</small></div>" +
     scope() +
     (q && ANS().length
       ? '<div class="lb">Annales</div>' +
@@ -119,7 +121,14 @@ function intro(k) {
         ],
         R.due === false ? "0" : "1",
         "sd",
-      );
+      ) +
+      "<small>" +
+      (R.due === false
+        ? "Toutes les cartes du sujet choisi, nouvelles ou déjà vues."
+        : "Les cartes à revoir aujourd’hui, plus les nouvelles cartes au rythme de " +
+          (S.ncd ?? 20) +
+          " par jour (réglable dans Profil → Réglages). Choisis « Toutes » pour voir toutes les cartes.") +
+      "</small>";
   return (
     h +
     '<button class="big" ' +

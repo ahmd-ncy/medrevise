@@ -410,3 +410,103 @@ update storage.buckets
    set allowed_mime_types = array['application/pdf', 'text/plain'], file_size_limit = 52428800, public = false
  where id = 'fichiers';
 
+
+-- ============ Contenu d'un membre, en lecture seule pour l'administrateur ============
+-- UE, chapitres, livrets, nombre de QCM et de cartes par chapitre, chapitres commencés et réussite.
+create or replace function public.admin_contenu(p_user uuid) returns json
+language plpgsql stable security definer set search_path = '' as $$
+declare b json; s json;
+begin
+  if coalesce(public.mon_role(), '') <> 'admin' then
+    raise exception 'Réservé à l''administrateur';
+  end if;
+  select e.data::json into b from public.etat e where e.user_id = p_user and e.cle = 'base';
+  select e.data::json into s from public.etat e where e.user_id = p_user and e.cle = 'stats';
+  return json_build_object(
+    'mat', coalesce(b->'mat', '[]'::json),
+    'chap', coalesce(b->'chap', '[]'::json),
+    'exam', b->'exam',
+    'jm', coalesce(s->'jm', '{}'::json),
+    'cs', coalesce(s->'cs', '{}'::json),
+    'n', (select coalesce(json_object_agg(e.cle, json_array_length(e.data::json)), '{}'::json)
+            from public.etat e where e.user_id = p_user and e.cle ~ '^(qcm|cards):'),
+    'livrets', (select coalesce(json_agg(json_build_object('ch', x->>'ch', 'titre', x->>'titre', 'pdf', (x->'pdf') is not null)), '[]'::json)
+                  from public.etat e, json_array_elements(e.data::json) x
+                 where e.user_id = p_user and e.cle like 'courses:%')
+  );
+end $$;
+revoke all on function public.admin_contenu(uuid) from public, anon;
+grant execute on function public.admin_contenu(uuid) to authenticated;
+
+-- ============ Packs de cours envoyés par l'administrateur ============
+-- L'administrateur prépare un pack (UE, chapitres, livrets, QCM, cartes) pour un membre.
+-- Rien n'est ajouté chez le membre tant qu'il n'a pas accepté depuis son app.
+-- Pendant l'attente, le membre peut lire les PDF du pack dans le dossier de l'administrateur.
+create table if not exists public.packs (
+  id uuid primary key default gen_random_uuid(),
+  de uuid not null references auth.users (id) on delete cascade,
+  pour uuid not null references auth.users (id) on delete cascade,
+  titre text not null check (char_length(titre) <= 200),
+  resume jsonb check (resume is null or pg_column_size(resume) <= 4000),
+  contenu text check (contenu is null or char_length(contenu) <= 12000000),
+  fichiers text[] not null default '{}',
+  statut text not null default 'attente' check (statut in ('attente', 'accepte', 'refuse', 'annule')),
+  cree timestamptz not null default now(),
+  repondu timestamptz
+);
+alter table public.packs enable row level security;
+revoke all on public.packs from anon, authenticated;
+grant select on public.packs to authenticated;
+drop policy if exists "packs lecture" on public.packs;
+create policy "packs lecture" on public.packs for select to authenticated
+  using ((auth.uid() = pour or auth.uid() = de) and public.est_membre());
+
+create or replace function public.envoyer_pack(p_user uuid, p_titre text, p_resume jsonb, p_contenu text, p_fichiers text[])
+returns uuid language plpgsql security definer set search_path = '' as $$
+declare v uuid;
+begin
+  if coalesce(public.mon_role(), '') <> 'admin' then
+    raise exception 'Réservé à l''administrateur';
+  end if;
+  if p_user = auth.uid() or not exists (select 1 from public.membres m where m.user_id = p_user) then
+    raise exception 'Membre introuvable';
+  end if;
+  if (select count(*) from public.packs p where p.pour = p_user and p.statut = 'attente') >= 5 then
+    raise exception 'Ce membre a déjà 5 packs en attente';
+  end if;
+  insert into public.packs (de, pour, titre, resume, contenu, fichiers)
+  values (auth.uid(), p_user, left(p_titre, 200), p_resume, p_contenu, coalesce(p_fichiers, '{}'))
+  returning id into v;
+  return v;
+end $$;
+revoke all on function public.envoyer_pack(uuid, text, jsonb, text, text[]) from public, anon;
+grant execute on function public.envoyer_pack(uuid, text, jsonb, text, text[]) to authenticated;
+
+-- Le membre accepte ou refuse ; le contenu est effacé une fois la réponse donnée.
+create or replace function public.repondre_pack(p_id uuid, p_ok boolean) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  update public.packs set statut = case when p_ok then 'accepte' else 'refuse' end, repondu = now(), contenu = null
+   where id = p_id and pour = auth.uid() and statut = 'attente';
+end $$;
+revoke all on function public.repondre_pack(uuid, boolean) from public, anon;
+grant execute on function public.repondre_pack(uuid, boolean) to authenticated;
+
+-- L'administrateur peut annuler un pack pas encore accepté.
+create or replace function public.annuler_pack(p_id uuid) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  update public.packs set statut = 'annule', repondu = now(), contenu = null
+   where id = p_id and de = auth.uid() and statut = 'attente';
+end $$;
+revoke all on function public.annuler_pack(uuid) from public, anon;
+grant execute on function public.annuler_pack(uuid) to authenticated;
+
+-- PDF et images d'un pack en attente : lisibles par son destinataire, dans le dossier de l'expéditeur.
+drop policy if exists "fichiers pack lecture" on storage.objects;
+create policy "fichiers pack lecture" on storage.objects for select to authenticated
+  using (bucket_id = 'fichiers' and public.est_membre() and exists (
+    select 1 from public.packs p
+     where p.pour = auth.uid() and p.statut = 'attente'
+       and (storage.foldername(name))[1] = p.de::text
+       and storage.filename(name) = any (p.fichiers)));

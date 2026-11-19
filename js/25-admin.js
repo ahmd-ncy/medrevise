@@ -379,6 +379,7 @@ function adMember(uid) {
         '<button class="b ko2" onclick="adConfirm(\'Retirer définitivement l’accès de ce membre ? Il devra recevoir un nouveau code pour revenir. Ses données sont conservées.\',\'retirer_membre\',{p_user:\'' +
         u +
         "'},'Accès retiré','Retirer l’accès')\">Retirer l’accès</button></div></div>") +
+    (adm ? "" : pkContent(uid) + pkSend(uid)) +
     '<div class="c"><b>Contact</b><div class="r"><a class="b" href="mailto:' +
     encodeURIComponent(em).replace(/%40/g, "@") +
     '">' +
