@@ -3,7 +3,7 @@ window.matchMedia &&
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyLook);
 onkeydown = (e) => {
   if (tab === "cours" && R.id && $("pgc") && !$("md") && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) {
-    if (e.key === "Escape" && document.body.classList.contains("pf")) pfs();
+    if (e.key === "Escape" && document.body.classList.contains("pf")) pfs(false);
     if (e.key === "ArrowRight") pdfGo(1, 1);
     if (e.key === "ArrowLeft") pdfGo(-1, 1);
   }

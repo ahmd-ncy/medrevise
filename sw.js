@@ -1,13 +1,13 @@
 // Service worker de MedRevise (généré par build.py à partir de sw.template.js : ne pas modifier sw.js à la main).
 // Garde une copie de l'application pour qu'elle s'ouvre hors connexion.
 // Fichiers de l'app : réseau d'abord (toujours la dernière version en ligne), copie locale si hors connexion.
-const VERSION = "medrevise-eacb9fd";
+const VERSION = "medrevise-987d1fe";
 const FILES = [
   "./",
   "index.html",
   "manifest.webmanifest",
-  "css/app.eacb9fd.min.css",
-  "app.eacb9fd.min.js",
+  "css/app.987d1fe.min.css",
+  "app.987d1fe.min.js",
   "vendor/supabase.js",
   "fonts/inter-latin-500-normal.woff2",
   "fonts/inter-latin-600-normal.woff2",

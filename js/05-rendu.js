@@ -74,7 +74,7 @@ function render() {
   if (tab === "cours" && R.id) pdfInit();
   if ($("oci")) ocLoad();
   $("app").classList.toggle("wide", tab === "cours" && !!R.id);
-  if (!(tab === "cours" && R.id)) document.body.classList.remove("pf");
+  if (!(tab === "cours" && R.id) && document.body.classList.contains("pf")) pfs(false);
   if (tab === "cours" && !R.id && R.sq) pdfSearchSoon();
   if (typeof tutoAuto == "function") tutoAuto();
   if (typeof routeSync == "function") routeSync();

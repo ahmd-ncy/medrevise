@@ -4148,3 +4148,111 @@ html[data-fx="aurora"] .amc {
   color: var(--ok, #22c55e);
   font-weight: 700;
 }
+/* ---- lecteur PDF : barre d'outils compacte et vrai plein écran ---- */
+.ptb {
+  margin: 0 0 8px;
+  align-items: center;
+}
+.pzg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+#pzl {
+  min-width: 48px;
+  text-align: center;
+  font-weight: 600;
+}
+@media (max-width: 600px) {
+  .ptb {
+    gap: 6px;
+  }
+  .ptb .b {
+    padding: 7px 10px;
+    font-size: 13.5px;
+  }
+  .ptop {
+    display: none;
+  }
+}
+.pfbar {
+  display: none;
+}
+body.pf {
+  overflow: hidden;
+}
+body.pf #pdfv {
+  z-index: 16;
+  padding: env(safe-area-inset-top, 0px) 0 0;
+  overscroll-behavior: contain;
+}
+body.pf .ptop,
+body.pf .ptb,
+body.pf .pbot,
+body.pf .fob,
+body.pf header {
+  display: none !important;
+}
+body.pf .pzw {
+  margin: 0;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+body.pf .pgw {
+  border: 0;
+  margin: auto;
+  flex-shrink: 0;
+}
+body.pf .pfbar {
+  display: flex;
+  position: fixed;
+  left: 50%;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 17;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+  border: 1px solid var(--bd);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  transition:
+    opacity 0.2s,
+    transform 0.2s;
+  max-width: calc(100vw - 16px);
+}
+body.pf .pfbar .b {
+  min-width: 40px;
+  height: 40px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 16px;
+}
+body.pf .pfn {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+}
+body.pf .pfn .pin {
+  width: 46px !important;
+  padding: 6px 2px !important;
+  margin: 0 3px !important;
+}
+body.pf.pfh .pfbar {
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 20px);
+}
+/* un flou posé sur body (effets d'apparence) casse les éléments « fixed » : on l'enlève pendant la lecture */
+body.pf {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  filter: none !important;
+  transform: none !important;
+}

@@ -311,19 +311,26 @@ async function pdfInit() {
         n +
         '</span><button class="b" onclick="pdfGo(1,1)" aria-label="Page suivante">→</button></div>';
     box.innerHTML =
-      nav +
-      '<div class="r" style="margin:0 0 8px"><button class="b" onpointerdown="hlGrab()" onclick="hlAdd()">' +
+      nav.replace('class="pnav"', 'class="pnav ptop"') +
+      '<div class="r ptb"><button class="b" onpointerdown="hlGrab()" onclick="hlAdd()">' +
       icn("pen") +
       ' Surligner</button><button class="b" onclick="ocFromPdf()">' +
       icn("eye") +
-      ' Schéma à trous</button><button class="b" onclick="pz(-1)" aria-label="Zoom arrière">−</button><span id="pzl" style="align-self:center;font-weight:600">' +
+      ' Schéma à trous</button><span class="pzg"><button class="b" onclick="pz(-1)" aria-label="Zoom arrière">−</button><span id="pzl">' +
       PZ * 100 +
-      ' %</span><button class="b" onclick="pz(1)" aria-label="Zoom avant">+</button><button class="b" id="pfb" onclick="pfs()">' +
-      (document.body.classList.contains("pf") ? "Quitter le plein écran" : "Plein écran") +
-      '</button></div><div class="pzw"><div class="pgw" id="pgw" style="width:' +
+      ' %</span><button class="b" onclick="pz(1)" aria-label="Zoom avant">+</button></span><button class="b" id="pfb" onclick="pfs()">' +
+      icn("scan") +
+      " Plein écran</button></div>" +
+      '<div class="pzw" id="pzw"><div class="pgw" id="pgw" style="width:' +
       PZ * 100 +
       '%"><canvas id="pgc" class="pgc"></canvas><div id="phl"></div><div class="textLayer" id="ptl"></div></div></div>' +
-      nav;
+      nav.replace('class="pnav"', 'class="pnav pbot"') +
+      // barre du plein écran : seulement l'essentiel, touche la page pour la cacher ou l'afficher
+      '<div class="pfbar" role="toolbar" aria-label="Lecture en plein écran"><button class="b" onclick="pfs()" aria-label="Quitter le plein écran">✕</button><button class="b" onclick="pdfGo(-1,1)" aria-label="Page précédente">←</button><span class="pfn"><input type="number" class="pin" min="1" max="' +
+      n +
+      '" aria-label="Numéro de page" onchange="pdfGo(+this.value)"> / ' +
+      n +
+      '</span><button class="b" onclick="pdfGo(1,1)" aria-label="Page suivante">→</button><button class="b" onclick="pz(-1)" aria-label="Zoom arrière">−</button><button class="b" onclick="pz(1)" aria-label="Zoom avant">+</button></div>';
     const w = $("pgw");
     let x0 = null;
     w.ontouchstart = (e) => {
@@ -335,6 +342,10 @@ async function pdfInit() {
       x0 = null;
       if (PZ > 1 || String(getSelection())) return;
       if (Math.abs(dx) > 60) pdfGo(dx < 0 ? 1 : -1, 1);
+    };
+    // en plein écran, un simple toucher sur la page cache ou réaffiche la barre
+    w.onclick = () => {
+      if (document.body.classList.contains("pf") && !String(getSelection())) document.body.classList.toggle("pfh");
     };
     await pdfGo((S.pp || {})[c.id] || 1);
   } catch (e) {

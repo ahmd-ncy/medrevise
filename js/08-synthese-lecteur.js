@@ -199,12 +199,30 @@ function pz(d) {
   $("pzl").textContent = PZ * 100 + " %";
   pdfGo((S.pp || {})[PD.id] || 1);
 }
-function pfs() {
-  const on = document.body.classList.toggle("pf");
-  const b = $("pfb");
-  if (b) b.textContent = on ? "Quitter le plein écran" : "Plein écran";
+function pfs(force) {
+  const on = document.body.classList.toggle("pf", force);
+  document.body.classList.remove("pfh");
+  // vrai plein écran du navigateur quand il existe (Android, ordinateur) : cache aussi les barres du navigateur
+  const fe = document.fullscreenElement || document.webkitFullscreenElement;
+  try {
+    if (on && !fe) {
+      const d = document.documentElement,
+        rq = d.requestFullscreen || d.webkitRequestFullscreen;
+      if (rq) Promise.resolve(rq.call(d)).catch(() => {});
+    } else if (!on && fe) {
+      const ex = document.exitFullscreen || document.webkitExitFullscreen;
+      if (ex) Promise.resolve(ex.call(document)).catch(() => {});
+    }
+  } catch (e) {}
   if (PD) pdfGo((S.pp || {})[PD.id] || 1);
 }
+// sortie du plein écran par le geste « retour » ou la touche Échap : on quitte aussi le mode lecture
+["fullscreenchange", "webkitfullscreenchange"].forEach((ev) =>
+  document.addEventListener(ev, () => {
+    if (!(document.fullscreenElement || document.webkitFullscreenElement) && document.body.classList.contains("pf")) pfs(false);
+  }),
+);
+
 const CNT = (v) => {
   const c = S.courses.find((x) => x.id === R.id);
   if (c) {
