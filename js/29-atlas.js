@@ -14,6 +14,10 @@ const ATL = {
     { id: "membre-sup", titre: "Membre supérieur", sous: "Os de l’épaule à la main, muscles par loges, plexus brachial, nerfs, vaisseaux" },
     { id: "tete-cou", titre: "Tête et cou", sous: "Crâne, face, muscles masticateurs et du cou, larynx, thyroïde, carotides, jugulaires" },
     { id: "encephale", titre: "Encéphale", sous: "Lobes et gyri, noyaux gris, ventricules, tronc cérébral, cervelet, nerfs crâniens, polygone de Willis" },
+    { id: "rachis", titre: "Rachis et dos", sous: "Vertèbres une à une, disques, ligaments, moelle spinale, muscles du dos par couches" },
+    { id: "bassin", titre: "Bassin et périnée", sous: "Os coxaux, sacrum, plancher pelvien, vessie, prostate, organes génitaux masculins, vaisseaux iliaques" },
+    { id: "oeil", titre: "Œil et orbite", sous: "Globe oculaire, muscles oculomoteurs, appareil lacrymal, nerfs et vaisseaux de l’orbite" },
+    { id: "oreille", titre: "Oreille", sous: "Tympan, osselets, trompe auditive, cochlée, vestibule et nerfs VII et VIII" },
   ],
   detail: {
     coeur: ["right atrium", "left atrium", "right ventricle", "left ventricle", "ascending aorta", "pulmonary trunk", "superior vena cava", "inferior vena cava"],
@@ -37,6 +41,10 @@ const ATL_ICO = {
   "membre-sup": '<path d="M9 3c-1 2-1 4 0 6l1 5-1 4c-.5 2 .5 3 2 3h2c1 0 2-1 1.5-2.5L13 15l1-5c1-2 1-4 0-7"/><path d="M10 9h4"/>',
   "tete-cou": '<path d="M12 3c-3.3 0-5.5 2.4-5.5 5.6 0 2 .8 3.6 2 4.6V16c0 1 .8 1.6 1.6 1.6h3.8c.8 0 1.6-.6 1.6-1.6v-2.8c1.2-1 2-2.6 2-4.6C17.5 5.4 15.3 3 12 3z"/><path d="M10 17.6V21M14 17.6V21M9.5 9.5h.01M14.5 9.5h.01"/>',
   encephale: '<path d="M12 5c-1-1.5-4-1.8-5.3.2C4.8 5.6 4 7.6 4.8 9.3 3.6 10.5 3.8 13 5.4 13.8c-.2 1.8 1.3 3.2 3 3 .8 1.3 2.6 1.6 3.6.6 1 1 2.8.7 3.6-.6 1.7.2 3.2-1.2 3-3 1.6-.8 1.8-3.3.6-4.5.8-1.7 0-3.7-1.9-4.1C16 3.2 13 3.5 12 5z"/><path d="M12 5v12.4M12 9c-1.4 0-2.4-.8-3-1.8M12 12.5c1.4 0 2.6-.8 3.2-2"/>',
+  rachis: '<path d="M12 3v18"/><rect x="9.5" y="3.5" width="5" height="2.6" rx="1"/><rect x="9.3" y="7.4" width="5.4" height="2.6" rx="1"/><rect x="9.1" y="11.3" width="5.8" height="2.8" rx="1"/><rect x="8.9" y="15.4" width="6.2" height="2.8" rx="1"/>',
+  bassin: '<path d="M4 6c0 5 2 8 5 9l1 4h4l1-4c3-1 5-4 5-9-2 1-4 1-6-.5-1 .8-1.5 1.5-2 3-.5-1.5-1-2.2-2-3C8 7 6 7 4 6z"/><circle cx="8" cy="15" r="1.6"/><circle cx="16" cy="15" r="1.6"/>',
+  oeil: '<path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z"/><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="1" fill="currentColor"/>',
+  oreille: '<path d="M8 17c0 2 1.5 3.5 3.5 3.5S15 19 15 17c0-2 3-3.5 3-8A6 6 0 0 0 6 9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 2-2.5 2.5-2.5 4.5"/>',
   abdomen: '<path d="M7 4c-2 3-3 6-3 9a8 8 0 0 0 16 0c0-3-1-6-3-9"/><path d="M9 10c1.5 1 4.5 1 6 0M8.5 14c2 1.5 5 1.5 7 0"/><circle cx="12" cy="17.5" r=".8"/>',
   poumons: '<path d="M12 3v8M12 11c-1.5 0-2.5 1-3.5 2M12 11c1.5 0 2.5 1 3.5 2"/><path d="M9 7c-3 1-5 5-5 10 0 2 1.5 3 3 3s2-1 2-3zM15 7c3 1 5 5 5 10 0 2-1.5 3-3 3s-2-1-2-3z"/>',
 };
@@ -3100,6 +3108,78 @@ function atlasView(L, buf, model, focusName) {
           { t: "Le polygone de Willis", x: "Anastomose à la base du cerveau grâce aux communicantes antérieure et postérieures.", view: "persp", iso: ["internal carotid", "vertebral artery", "circle of willis", "cerebral arteries", "brainstem"], sel: ["circle of willis"] },
           { t: "Les trois artères cérébrales", x: "Antérieure (face médiale), moyenne (face latérale, la plus touchée par les AVC), postérieure (lobe occipital).", view: "side", iso: ["cerebral arteries", "circle of willis", "internal carotid", "brainstem", "cerebellum"], sel: ["cerebral arteries"] },
           { t: "Le drainage veineux", x: "Les sinus de la dure-mère conduisent le sang vers les veines jugulaires internes.", view: "q34", iso: ["dural sinuses", "brainstem", "cerebellum"], sel: ["dural sinuses"] },
+        ],
+      },
+    ],
+    rachis: [
+      {
+        id: "verteb", n: "La colonne vertébrale",
+        steps: [
+          { t: "33 vertèbres", x: "7 cervicales, 12 thoraciques, 5 lombaires, puis le sacrum (5 soudées) et le coccyx.", view: "side", iso: ["atlas axis", "cervical vertebra", "thoracic vertebra", "lumbar vertebra", "sacrum", "coccyx", "intervertebral disk"] },
+          { t: "Les courbures", x: "Lordoses cervicale et lombaire (concaves en arrière), cyphoses thoracique et sacrale.", view: "side", iso: ["atlas axis", "cervical vertebra", "thoracic vertebra", "lumbar vertebra", "sacrum", "coccyx", "intervertebral disk"] },
+          { t: "Atlas et axis", x: "C1 n’a pas de corps ; il tourne autour de la dent de C2 : la moitié de la rotation de la tête.", view: "q34", iso: ["atlas axis", "cervical vertebra", "cranial bones"], sel: ["atlas axis"] },
+          { t: "Les disques", x: "Anneau fibreux et noyau pulpeux ; les hernies sont surtout lombaires basses (L4-L5, L5-S1) et cervicales basses.", view: "side", iso: ["lumbar vertebra", "sacrum", "intervertebral disk", "spinal nerves", "cauda equina"], sel: ["Disques intervertébraux lombaires"] },
+          { t: "Moelle et queue de cheval", x: "La moelle s’arrête vers L1-L2 ; dessous, la queue de cheval : on ponctionne entre L3 et L5.", view: "back", iso: ["spinal cord", "cauda equina", "lumbar vertebra", "thoracic vertebra", "sacrum"], sel: ["cauda equina"] },
+        ],
+      },
+      {
+        id: "dos", n: "Les muscles du dos",
+        steps: [
+          { t: "Plan superficiel", x: "Trapèze et grand dorsal relient le tronc au membre supérieur.", view: "back", layer: 0, sel: ["trapezius", "latissimus dorsi"] },
+          { t: "Plan intermédiaire", x: "Rhomboïdes et élévateur de la scapula ; dentelés postérieurs, muscles respiratoires accessoires.", view: "back", layer: 1, sel: ["rhomboids", "levator scapulae"] },
+          { t: "Érecteurs du rachis", x: "De dehors en dedans : ilio-costal, longissimus, épineux.", view: "back", layer: 1, sel: ["erector spinae"] },
+          { t: "Plan profond", x: "Semi-épineux, multifide, rotateurs : de petits muscles qui stabilisent chaque étage.", view: "back", layer: 2, sel: ["transversospinalis"] },
+        ],
+      },
+    ],
+    bassin: [
+      {
+        id: "plancher", n: "Le plancher pelvien",
+        steps: [
+          { t: "Le bassin osseux", x: "Deux os coxaux et le sacrum, unis par les articulations sacro-iliaques et la symphyse pubienne.", view: "front", iso: ["hip bone", "sacrum", "coccyx", "pelvic joints", "lumbar vertebra"] },
+          { t: "L’élévateur de l’anus", x: "Hamac musculaire tendu du pubis au coccyx, qui soutient les viscères.", view: "persp", iso: ["hip bone", "sacrum", "coccyx", "levator ani", "anal sphincter", "deep hip rotators"], sel: ["levator ani"] },
+          { t: "Les foramens ischiatiques", x: "Les ligaments sacro-épineux et sacro-tubéral ferment les incisures : passage du piriforme et du nerf ischiatique.", view: "back", iso: ["hip bone", "sacrum", "coccyx", "pelvic ligaments", "deep hip rotators", "sciatic nerve", "pudendal"], sel: ["pelvic ligaments"] },
+          { t: "Le pédicule pudendal", x: "Il sort par le grand foramen, contourne l’épine ischiatique et rentre par le petit : nerf du périnée.", view: "back", iso: ["hip bone", "sacrum", "pelvic ligaments", "pudendal", "levator ani"], sel: ["pudendal"] },
+        ],
+      },
+      {
+        id: "uro", n: "Organes pelviens masculins",
+        steps: [
+          { t: "La vessie", x: "Derrière la symphyse pubienne ; l’uretère y entre par sa face postérieure.", view: "side", iso: ["hip bone", "sacrum", "bladder", "ureter", "prostate", "seminal glands", "ductus deferens", "urethra", "sigmoid colon"], sel: ["bladder"] },
+          { t: "La prostate", x: "Sous la vessie, autour de l’urètre ; palpable par le toucher rectal.", view: "side", iso: ["hip bone", "sacrum", "bladder", "prostate", "seminal glands", "urethra"], sel: ["prostate"] },
+          { t: "Le conduit déférent", x: "Du testicule à la prostate par le canal inguinal ; il passe au-dessus de l’uretère.", view: "q34", iso: ["hip bone", "bladder", "ureter", "ductus deferens", "seminal glands", "prostate", "testis"], sel: ["ductus deferens", "ureter"] },
+          { t: "Les vaisseaux iliaques", x: "L’iliaque interne pour le pelvis et le périnée, l’externe pour le membre inférieur.", view: "front", iso: ["hip bone", "sacrum", "common iliac artery", "external iliac artery", "internal iliac artery", "gluteal arteries", "pudendal", "bladder"], sel: ["internal iliac artery", "external iliac artery"] },
+        ],
+      },
+    ],
+    oeil: [
+      {
+        id: "oculo", n: "Les muscles oculomoteurs",
+        steps: [
+          { t: "Six muscles", x: "Quatre droits nés de l’anneau tendineux commun et deux obliques.", view: "q34", layer: 1, sel: ["extraocular muscles", "superior oblique"] },
+          { t: "Droit latéral : VI", x: "Abduction ; sa paralysie donne un strabisme convergent.", view: "front", layer: 1, sel: ["Muscle droit latéral", "Nerf abducens (VI)"] },
+          { t: "Oblique supérieur : IV", x: "Son tendon passe dans la trochlée ; il abaisse l’œil en adduction.", view: "q34", layer: 1, sel: ["superior oblique", "Nerf trochléaire (IV)"] },
+          { t: "Tous les autres : III", x: "Droits supérieur, inférieur et médial, oblique inférieur, releveur de la paupière.", view: "q34", layer: 1, sel: ["Muscle droit supérieur", "Muscle droit inférieur", "Muscle droit médial", "Muscle oblique inférieur", "levator palpebrae", "Nerf oculomoteur (III)"] },
+        ],
+      },
+      {
+        id: "globe", n: "Le globe oculaire",
+        steps: [
+          { t: "La cornée", x: "La lentille principale de l’œil, transparente et sans vaisseaux.", view: "side", layer: 1, sel: ["cornea"] },
+          { t: "Iris et cristallin", x: "L’iris règle la pupille ; le cristallin se bombe pour voir de près.", view: "side", layer: 2, sel: ["uvea", "lens"] },
+          { t: "La rétine", x: "Les photorécepteurs ; ses axones forment le nerf optique.", view: "side", layer: 2, sel: ["retina", "Nerf optique (II)"] },
+        ],
+      },
+    ],
+    oreille: [
+      {
+        id: "audition", n: "Le trajet du son",
+        steps: [
+          { t: "Le tympan", x: "Les vibrations de l’air font vibrer le tympan, au fond du méat acoustique externe.", view: "front", layer: 1, sel: ["middle ear"] },
+          { t: "Les osselets", x: "Malléus, incus et stapes amplifient les vibrations jusqu’à la fenêtre ovale.", view: "front", layer: 1, sel: ["ossicles"] },
+          { t: "La cochlée", x: "Les liquides de la cochlée font vibrer l’organe spiral : aigus à la base, graves à l’apex.", view: "q34", layer: 1, sel: ["cochlea"] },
+          { t: "Le nerf VIII", x: "Il gagne le tronc cérébral par le méat acoustique interne, avec le nerf facial.", view: "q34", layer: 1, sel: ["vestibulocochlear", "facial nerve"] },
+          { t: "L’équilibre", x: "Vestibule et canaux semi-circulaires renseignent sur la position et les rotations de la tête.", view: "side", layer: 1, sel: ["vestibule"] },
         ],
       },
     ],
