@@ -72,6 +72,9 @@ function render() {
   }[tab]();
   if ($("tm")) upd();
   if (tab === "cours" && R.id) pdfInit();
+  // atlas 3D : noms de structures cliquables dans les livrets et les corrections de QCM
+  if (typeof atlasCourseLinks == "function" && tab === "cours" && R.id) atlasCourseLinks();
+  if (typeof atlasLinkify == "function" && tab === "qcm" && R.run) document.querySelectorAll("#app .bn p").forEach((e) => atlasLinkify(e));
   if ($("oci")) ocLoad();
   $("app").classList.toggle("wide", tab === "cours" && !!R.id);
   if (!(tab === "cours" && R.id) && document.body.classList.contains("pf")) pfs(false);
