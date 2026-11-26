@@ -2,9 +2,9 @@
 // Chaque page a sa propre adresse (medrevise.fr/cours, /planning, /profil/reglages, /admin/invitations…) :
 // on peut la mettre en favori, la partager, et les boutons Précédent / Suivant du navigateur fonctionnent.
 // GitHub Pages ne connaît que index.html : 404.html (copie de index.html) sert toutes les autres adresses.
-const RT_TAB = { home: "", cours: "cours", cards: "cartes", qcm: "qcm", err: "erreurs", plan: "planning", add: "ajouter", prof: "profil" },
+const RT_TAB = { home: "", cours: "cours", cards: "cartes", qcm: "qcm", err: "erreurs", plan: "planning", add: "ajouter", prof: "profil", atlas: "atlas" },
   RT_SEC = { moi: "mon-profil", compte: "compte", progres: "progression", cal: "calendrier", reg: "reglages", app: "apparence", don: "donnees", aide: "aide" },
-  RT_NOM = { home: "Accueil", cours: "Cours", cards: "Flashcards", qcm: "QCM", err: "Erreurs", plan: "Planning", add: "Ajouter", prof: "Profil" },
+  RT_NOM = { home: "Accueil", cours: "Cours", cards: "Flashcards", qcm: "QCM", err: "Erreurs", plan: "Planning", add: "Ajouter", prof: "Profil", atlas: "Atlas 3D" },
   RT_INV = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [v, k]));
 let RT_LAST = null;
 // Adresse correspondant à l'écran affiché
@@ -16,6 +16,7 @@ function routeOf() {
     return "/profil" + (RT_SEC[ps] ? "/" + RT_SEC[ps] : "");
   }
   if (t == "cours" && R.id && S.courses.some((c) => c.id === R.id)) return "/cours/" + encodeURIComponent(R.id);
+  if (t == "atlas" && R.atl) return "/atlas/" + encodeURIComponent(R.atl);
   return "/" + (RT_TAB[t] ?? "");
 }
 function routeTitle() {
@@ -24,6 +25,7 @@ function routeTitle() {
   if (t == "prof" && R.ps == "admin") n = "Administration";
   else if (t == "prof" && R.ps) n = ((PSEC.find((x) => x[0] == R.ps) || [])[1]) || n;
   else if (t == "cours" && R.id) n = ((S.courses.find((c) => c.id === R.id) || {}).titre) || n;
+  else if (t == "atlas" && R.atl && typeof ATL != "undefined") n = "Atlas 3D · " + (((ATL.models.find((m) => m.id == R.atl) || {}).titre) || R.atl);
   return (t == "home" ? "" : n + " · ") + "MedRevise";
 }
 // Appelée après chaque affichage : met l'adresse et le titre de l'onglet à jour.
@@ -68,6 +70,7 @@ function routeIn() {
     tab = T[seg[0]];
     if (tab == "add") R.add = "qcm";
     if (tab == "cours" && seg[1] && S.courses.some((c) => c.id === seg[1])) R.id = seg[1];
+    if (tab == "atlas" && seg[1]) R.atl = seg[1];
   } else tab = "home";
   RT_LAST = location.pathname;
 }

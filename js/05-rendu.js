@@ -10,6 +10,7 @@ function render() {
   const TB = [
       ["home", "Accueil", "var(--c1)", "home"],
       ["cours", "Cours", "var(--c2)", "book"],
+      ...(typeof atlasOk == "function" && atlasOk() ? [["atlas", "Atlas", "var(--c3)", "bone"]] : []),
       ["cards", "Cartes", "var(--c3)", "cards"],
       ["qcm", "QCM", "var(--c4)", "check"],
       ["err", "Erreurs", "var(--c5)", "errors"],
@@ -17,7 +18,7 @@ function render() {
       ["add", "Ajouter", "var(--c6)", "plus"],
     ],
     pn =
-      { prof: "Profil", data: "Données", veille: "Veille d’examen", syn: "Fiche de synthèse" }[tab] ||
+      { prof: "Profil", data: "Données", veille: "Veille d’examen", syn: "Fiche de synthèse", atlas: "Atlas 3D" }[tab] ||
       (TB.find((t) => t[0] === tab) || [])[1] ||
       "";
   $("top").innerHTML =
@@ -69,6 +70,7 @@ function render() {
     cards: () => (R.run ? card() : intro("cards")),
     qcm: () => (R.run ? (R.k == "vf" ? vfq() : qcm()) : intro("qcm")),
     add,
+    atlas: () => (typeof atlasPage == "function" ? atlasPage() : ""),
   }[tab]();
   if ($("tm")) upd();
   if (tab === "cours" && R.id) pdfInit();
@@ -76,6 +78,7 @@ function render() {
   if (typeof atlasCourseLinks == "function" && tab === "cours" && R.id) atlasCourseLinks();
   if (typeof atlasLinkify == "function" && tab === "qcm" && R.run) document.querySelectorAll("#app .bn p").forEach((e) => atlasLinkify(e));
   if ($("oci")) ocLoad();
+  if (typeof atlasSync == "function") atlasSync();
   $("app").classList.toggle("wide", tab === "cours" && !!R.id);
   if (!(tab === "cours" && R.id) && document.body.classList.contains("pf")) pfs(false);
   if (tab === "cours" && !R.id && R.sq) pdfSearchSoon();

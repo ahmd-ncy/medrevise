@@ -1,5 +1,5 @@
 // ================= Atlas 3D =================
-// Modèles anatomiques en 3D (BodyParts3D), ouverts depuis la page Cours.
+// Modèles anatomiques en 3D (BodyParts3D, Z-Anatomy), dans la page Atlas (/atlas, /atlas/<modèle>).
 // Un seul fichier .glb par modèle, dans l'espace privé « atlas » de Supabase, partagé par tous :
 // la base ne le donne qu'à l'administrateur et aux membres à qui il a ouvert l'accès (voir supabase.sql).
 // Une copie est gardée sur l'appareil (cache « mr-atlas ») pour l'ouvrir hors connexion ; elle est effacée si l'accès est retiré.
@@ -24,27 +24,113 @@ const ATL = {
 };
 const atlasOk = () => !!(SY.sb && SY.user && SY.role && (SY.role == "admin" || (SY.acc ? SY.acc.atlas : SY.atl)));
 
-// ---------- carte dans la page Cours ----------
-function atlasCard() {
-  if (!atlasOk()) return "";
+// ---------- page « Atlas 3D » (/atlas) : galerie des modèles, et fichiers pour l'administrateur ----------
+const ATL_ICO = {
+  thorax: '<path d="M12 3v18M12 6c-3 0-6 1-7 3M12 6c3 0 6 1 7 3M12 9.5c-3 0-6 1-7 3M12 9.5c3 0 6 1 7 3M12 13c-2.6 0-5 .9-6 2.6M12 13c2.6 0 5 .9 6 2.6M12 16.5c-2 0-3.6.6-4.4 1.6M12 16.5c2 0 3.6.6 4.4 1.6"/>',
+  coeur: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/><path d="M12 7.4V4M9 5l1.5 2"/>',
+  poumons: '<path d="M12 3v8M12 11c-1.5 0-2.5 1-3.5 2M12 11c1.5 0 2.5 1 3.5 2"/><path d="M9 7c-3 1-5 5-5 10 0 2 1.5 3 3 3s2-1 2-3zM15 7c3 1 5 5 5 10 0 2-1.5 3-3 3s-2-1-2-3z"/>',
+};
+const atlasIco = (id) => '<svg viewBox="0 0 24 24" aria-hidden="true">' + (ATL_ICO[id] || ATL_ICO.thorax) + "</svg>";
+ATL.files = null; // liste des fichiers en ligne (null = pas encore lue)
+async function atlasFilesLoad() {
+  if (!SY.sb) return;
+  const r = await SY.sb.storage.from("atlas").list("", { limit: 100 });
+  ATL.files = r.error ? [] : r.data || [];
+  if (tab == "atlas" && !R.atl) {
+    const g = $("atgal"),
+      a = $("atadm");
+    if (g) g.innerHTML = atlasGallery();
+    if (a) a.innerHTML = atlasAdminFiles();
+  }
+}
+const atlasHas = (id) => !ATL.files || ATL.files.some((f) => f.name == id + ".glb" || f.name == id + "-hd.glb");
+function atlasGallery() {
   return ATL.models
-    .map(
-      (m) =>
-        '<button class="rs atc" style="--sc:#2f5d62" onclick="atlasOpen(\'' +
-        m.id +
-        '\')">' +
-        icn("bone") +
-        "<span style=\"flex:1\"><small>Atlas 3D" +
-        (SY.role == "admin" ? " · accès choisi par toi" : "") +
-        "</small><br><b>" +
-        esc(m.titre) +
-        "</b><br><small>" +
-        esc(m.sous) +
-        "</small></span>" +
-        icn("chev") +
-        "</button>",
-    )
+    .map((m) => {
+      const ok = atlasHas(m.id);
+      return (
+        '<button class="atgc' + (ok ? "" : " off") + '" onclick="atlasGo(\'' + m.id + "')\"" + (ok ? "" : ' aria-disabled="true"') + ">" +
+        '<span class="atgi">' + atlasIco(m.id) + '</span><span class="atgt"><b>' + esc(m.titre) + "</b><small>" + esc(m.sous) + "</small>" +
+        (ok ? "" : '<em>Pas encore en ligne</em>') + "</span>" + icn("chev") + "</button>"
+      );
+    })
     .join("");
+}
+function atlasAdminFiles() {
+  if (!ATL.files) return '<p class="m">Lecture des fichiers…</p>';
+  const fmt = (f) => {
+    if (!f) return '<span class="atfm">Manquant</span>';
+    const d = new Date(f.updated_at || f.created_at || 0),
+      sz = ((f.metadata && f.metadata.size) || 0) / 1048576;
+    return "<span>" + d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) + " · " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) + "</span><small>" + sz.toFixed(1).replace(".", ",") + " Mo</small>";
+  };
+  return (
+    '<div class="atft">' +
+    ATL.models
+      .map((m) => {
+        const lo = ATL.files.find((f) => f.name == m.id + ".glb"),
+          hi = ATL.files.find((f) => f.name == m.id + "-hd.glb");
+        return (
+          '<div class="atfr"><b>' + esc(m.titre) + "</b>" +
+          [["", "Téléphone", lo, m.id + ".glb"], ["-hd", "Ordinateur", hi, m.id + "-hd.glb"]]
+            .map(
+              (v) =>
+                '<label class="atfc' + (v[2] ? "" : " miss") + '"><span class="atfk">' + v[1] + " <code>" + v[3] + "</code></span>" + fmt(v[2]) +
+                '<input type="file" hidden onchange="atlasUpload(\'' + m.id + "',this.files[0],'" + v[0] + "')\"><i>Remplacer</i></label>",
+            )
+            .join("") +
+          "</div>"
+        );
+      })
+      .join("") +
+    '</div><label class="b p atfall">Envoyer plusieurs fichiers…<input type="file" multiple hidden onchange="atlasUploadMany(this.files)"></label>' +
+    '<p class="m">Le nom du fichier choisit le modèle : <code>thorax.glb</code> (téléphone), <code>thorax-hd.glb</code> (ordinateur), pareil pour <code>coeur</code> et <code>poumons</code>. Si une version manque, l’autre est utilisée.</p>'
+  );
+}
+function atlasPage() {
+  if (!atlasOk())
+    return '<div class="bn"><h2 class="ti">Atlas 3D</h2><p class="m">L’atlas 3D est ouvert sur invitation. Demande l’accès à l’administrateur.</p></div>';
+  if (R.atl) return '<div class="bn atwait"><p class="m">Ouverture de l’atlas…</p></div>';
+  if (!ATL.files) setTimeout(atlasFilesLoad, 0);
+  return (
+    '<h2 class="ti">Atlas 3D</h2><p class="m atsub">Explore les structures en 3D : touche une structure pour sa fiche, écarte, coupe, fais un quiz.</p>' +
+    '<div id="atgal" class="atgal">' + atlasGallery() + "</div>" +
+    (SY.role == "admin"
+      ? '<details class="bn atadmw"><summary><b>Fichiers des modèles</b><small>réservé à l’administrateur</small></summary><div id="atadm">' + atlasAdminFiles() + "</div></details>"
+      : "")
+  );
+}
+// affichage synchronisé avec l'adresse : /atlas/<modèle> ouvre le visualiseur, ailleurs on le ferme
+function atlasSync() {
+  const want = tab == "atlas" && R.atl && atlasOk() ? R.atl : null;
+  if (!want) {
+    if (ATL.v && !ATL.v.overlay) atlasClose();
+    return;
+  }
+  if (!ATL.v || ATL.v.id !== want) atlasOpen(want, R.focus);
+  else if (R.focus && ATL.v.focusName !== R.focus && ATL.v.focusBy) ATL.v.focusBy(R.focus);
+}
+// ouvrir un modèle : depuis la galerie, un lien dans un livret ou une correction de QCM
+function atlasGo(id, focusName) {
+  if (R.run) {
+    // session de QCM en cours : on ouvre par-dessus, sans quitter la session
+    if (!id) return atlasClose();
+    return atlasOpen(id, focusName, true);
+  }
+  if (id && tab != "atlas") ATL.ret = { tab, R: Object.assign({}, R) };
+  if (!id && ATL.ret) {
+    // retour à la page d'où l'on venait (livret…)
+    const r = ATL.ret;
+    ATL.ret = null;
+    tab = r.tab;
+    R = r.R;
+    return render();
+  }
+  clearInterval(IV);
+  tab = "atlas";
+  R = id ? { atl: id, focus: focusName || "" } : {};
+  render();
+  if (!id) scrollTo(0, 0);
 }
 
 // ---------- accès retiré : on efface la copie locale ----------
@@ -71,8 +157,10 @@ async function atlasFile(id, force) {
       else throw r.error;
     } else {
       const fs = r.data || [],
-        hd = atlasWantHD() && fs.find((x) => x.name === id + "-hd.glb"),
-        f = hd || fs.find((x) => x.name === id + ".glb");
+        hdF = fs.find((x) => x.name === id + "-hd.glb"),
+        loF = fs.find((x) => x.name === id + ".glb"),
+        // version voulue (détaillée sur ordinateur, légère sur téléphone), sinon l'autre
+        f = atlasWantHD() ? hdF || loF : loF || hdF;
       if (!f) {
         if (ca) await ca.delete("/atlas/" + id + ".glb");
         throw new Error(SY.role == "admin" ? "absent" : "refuse");
@@ -107,16 +195,41 @@ function atlasLib() {
   });
 }
 
-// ---------- ouverture ----------
-async function atlasOpen(id, focusName) {
-  if (ATL.v) atlasClose();
+// ---------- icônes des outils ----------
+const ATI = {
+  struct: '<path d="M4 6h16M4 12h10M4 18h13"/><circle cx="19" cy="12" r="1.6"/>',
+  disp: '<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/>',
+  ex: '<path d="M12 3v5M12 16v5M3 12h5M16 12h5"/><path d="m9 5 3-2 3 2M9 19l3 2 3-2M5 9l-2 3 2 3M19 9l2 3-2 3"/>',
+  cut: '<path d="M4 15h16" stroke-dasharray="3 2"/><path d="M7 15V7a5 5 0 0 1 10 0v8"/>',
+  lay: '<path d="m12 4 8 4-8 4-8-4z"/><path d="m4 12 8 4 8-4M4 16l8 4 8-4"/>',
+  tr: '<rect x="4" y="4" width="11" height="11" rx="2"/><rect x="9" y="9" width="11" height="11" rx="2" stroke-dasharray="2 2"/>',
+  mes: '<path d="m4 16 12-12 4 4L8 20z"/><path d="m8 12 2 2M11 9l2 2M14 6l2 2"/>',
+  med: '<path d="M12 4c-3 0-5 2-5 5v6c0 3 2 5 5 5s5-2 5-5V9c0-3-2-5-5-5z"/><path d="M7 12h10M12 4v16" stroke-dasharray="2 2"/>',
+  br: '<path d="M12 4v6M12 10c-2 0-6 2-6 7 0 2 1 3 3 3 2 0 3-2 3-4M12 10c2 0 6 2 6 7 0 2-1 3-3 3-2 0-3-2-3-4"/>',
+  quiz: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor"/>',
+  lab: '<path d="M4 12V5a1 1 0 0 1 1-1h7l8 8-8 8z"/><circle cx="8.5" cy="8.5" r="1.4"/>',
+  more: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
+  ar: '<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="m12 7 4 2.3v4.6L12 16l-4-2.1V9.3z"/>',
+  help: '<circle cx="12" cy="12" r="8"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01"/>',
+};
+const atIco = (k) => '<svg viewBox="0 0 24 24" aria-hidden="true">' + ATI[k] + "</svg>";
+// bouton retour du visualiseur : galerie des atlas, ou page d'origine (livret, QCM)
+function atlasExit() {
+  if (ATL.v && ATL.v.overlay) return atlasClose();
+  atlasGo();
+}
+
+// ---------- ouverture du visualiseur ----------
+async function atlasOpen(id, focusName, overlay) {
+  if (ATL.v) atlasClose(true);
   const m = ATL.models.find((x) => x.id === id) || ATL.models[0],
     d = document.createElement("div");
+  id = m.id;
   d.id = "atl";
   d.setAttribute("role", "dialog");
   d.setAttribute("aria-modal", "true");
   d.setAttribute("aria-label", "Atlas 3D : " + m.titre);
-  const tool = (id, t, on, title) => '<button id="' + id + '"' + (on ? ' class="on"' : "") + (title ? ' title="' + title + '"' : "") + ">" + t + "</button>",
+  const dock = (k, t, extra) => '<button data-k="' + k + '" title="' + t + '"' + (extra || "") + ">" + atIco(k) + "<span>" + t + "</span></button>",
     ar = (() => {
       try {
         return document.createElement("a").relList.supports("ar");
@@ -127,62 +240,60 @@ async function atlasOpen(id, focusName) {
   d.innerHTML =
     '<canvas id="atc"></canvas>' +
     '<div id="atlbl"></div><div id="atgl"></div><div id="atmeas"></div><div id="athov" hidden></div>' +
-    '<div class="atb atop"><button class="atx" onclick="atlasClose()" aria-label="Fermer">✕</button>' +
-    '<div class="ats"><input id="atq" type="search" placeholder="Rechercher dans le ' +
-    esc(m.titre.toLowerCase()) +
-    '…" autocomplete="off" aria-label="Rechercher une structure"><div id="atsug" role="listbox"></div></div>' +
+    '<header class="atb atop"><button class="atx" id="atback0" aria-label="Retour aux atlas" title="Retour aux atlas">' +
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>' +
+    '<div class="atmsw"><button id="atmsw" aria-haspopup="listbox" aria-expanded="false"><b>' + esc(m.titre) + '</b><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button>' +
+    '<div id="atmlist" role="listbox" hidden>' +
+    ATL.models
+      .map((x) => '<button role="option" data-m="' + x.id + '"' + (x.id == id ? ' class="on" aria-selected="true"' : "") + "><b>" + esc(x.titre) + "</b><small>" + esc(x.sous) + "</small></button>")
+      .join("") +
+    "</div></div>" +
+    '<div class="ats"><input id="atq" type="search" placeholder="Rechercher…" autocomplete="off" aria-label="Rechercher une structure"><div id="atsug" role="listbox"></div></div>' +
     '<div class="atv">' +
     ATL.views.map((v, i) => '<button data-v="' + v[0] + '"' + (i ? "" : ' class="on"') + ">" + v[1] + "</button>").join("") +
-    "</div></div>" +
-    '<div id="atcorner"><div id="atcube" title="Orientation : clique une face"><div class="atcb">' +
-    [["front", "Ant."], ["back", "Post."], ["left", "G"], ["right", "D"], ["top", "Crân."], ["bottom", "Caud."]]
-      .map((f) => '<div class="atcf atcf-' + f[0] + '" data-v="' + f[0] + '">' + f[1] + "</div>")
-      .join("") +
-    '</div></div><div class="atzm">' +
-    '<button id="atzi" title="Zoomer (+)">+</button><button id="atzo" title="Dézoomer (−)">−</button>' +
-    '<button id="atback" title="Vue précédente (Retour arrière)">↶</button><button id="atreset" title="Réinitialiser la vue (R)">⟲</button>' +
-    '<button id="atgrid" title="Quadrillage 3D (G)">▦</button><button id="athelp" title="Raccourcis clavier">?</button></div>' +
+    "</div></header>" +
+    '<div id="atdock" class="atb" role="toolbar" aria-label="Outils">' +
+    dock("struct", "Structures") +
+    dock("disp", "Affichage") +
+    dock("ex", "Écarter") +
+    dock("cut", "Coupe") +
+    dock("lay", "Couches", ' data-x="1"') +
+    dock("tr", "Transparence", ' data-x="1"') +
+    dock("mes", "Mesurer", ' data-x="1"') +
+    dock("med", "Médiastin", ' data-x="1" hidden') +
+    dock("br", "Respiration", ' data-x="1" hidden') +
+    dock("lab", "Étiquettes", ' data-x="1" class="on"') +
+    dock("quiz", "Quiz") +
+    dock("more", "Plus") +
+    "</div>" +
+    '<section id="atsheet" class="atb" hidden aria-live="polite"><div class="atsh-h"><b id="atsht"></b>' +
+    '<button id="atshc" title="Réduire" aria-label="Réduire"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button>' +
+    '<button id="atshx" title="Fermer" aria-label="Fermer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div><div id="attool"></div></section>' +
+    '<div id="atcorner"><svg id="atgiz" viewBox="-50 -50 100 100" role="group" aria-label="Orientation : touche une direction"></svg>' +
+    '<div class="atzm"><button id="atzi" title="Zoomer (+)">+</button><button id="atzo" title="Dézoomer (−)">−</button>' +
+    '<button id="atback" title="Vue précédente (Retour arrière)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-2"/></svg></button>' +
+    '<button id="atreset" title="Réinitialiser la vue (R)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.7L4 8.6"/><path d="M4 4v4.6h4.6"/></svg></button>' +
+    '<button id="atgrid" title="Quadrillage 3D (G)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM4 10h16M4 16h16M10 4v16M16 4v16"/></svg></button></div>' +
     '<div id="atscale"><i></i><span></span></div></div>' +
     '<div id="athelpbox" class="atb" hidden></div>' +
     '<div id="atquiz" class="atb" hidden></div>' +
-    '<aside id="attree" aria-label="Structures"></aside>' +
     '<aside id="atpan" aria-live="polite"></aside>' +
-    '<div class="atb abot"><div id="attool" hidden></div>' +
-    '<div class="atr"><label for="atex">Écarter</label><input id="atex" type="range" min="0" max="100" value="0"><span id="atp">0 %</span>' +
-    '<div class="atseg" role="group" aria-label="Disposition"><button data-m="eclate" class="on">Éclaté</button><button data-m="cote">Côte à côte</button></div>' +
-    '<button id="atexo" class="atic" title="Options de l’écartement">⚙</button></div>' +
-    '<div class="atrow atsys">' +
-    Object.keys(ATL.sysFr)
-      .map((s) => '<button data-s="' + s + '" hidden><i style="background:#' + ATL.colors[s].toString(16).padStart(6, "0") + '"></i>' + ATL.sysPl[s] + "</button>")
-      .join("") +
-    "</div>" +
-    '<div class="atrow attools">' +
-    tool("attreeb", "☰ Structures") +
-    tool("atlab", "Étiquettes", 1) +
-    tool("atdisp", "Affichage") +
-    tool("atlay", "Couches") +
-    tool("attr", "Transparence") +
-    tool("atcut", "Coupe") +
-    tool("atmes", "Mesurer") +
-    '<button id="atmed" hidden>Médiastin</button>' +
-    tool("atbr", "Respiration") +
-    tool("atqz", "Quiz") +
-    tool("atall", "Tout réafficher") +
-    (ar ? tool("atar", "Réalité augmentée") : "") +
-    (SY.role == "admin" ? tool("atup", "Mettre à jour…", 0, "Fichier .glb (un nom contenant « hd » = version détaillée pour ordinateur)") : "") +
-    "</div></div>" +
     '<div id="atmsg">Chargement du modèle…</div>' +
-    '<small id="atcr">BodyParts3D © DBCLS · CC BY 4.0</small>' +
-    '<input type="file" id="atfile" hidden>';
+    '<small id="atcr">BodyParts3D © DBCLS · CC BY 4.0</small>';
   document.body.appendChild(d);
   document.documentElement.classList.add("atlon");
-  ATL.v = { id, alive: true };
+  ATL.v = { id, alive: true, ar, overlay: !!overlay, focusName: focusName || "" };
   ATL.key = (e) => ATL.v && ATL.v.onKey && ATL.v.onKey(e);
   addEventListener("keydown", ATL.key);
-  if ($("atup")) {
-    $("atup").onclick = () => $("atfile").click();
-    $("atfile").onchange = (e) => atlasUpload(id, e.target.files[0]);
-  }
+  $("atback0").onclick = () => atlasExit();
+  $("atmsw").onclick = (e) => {
+    e.stopPropagation();
+    const l = $("atmlist");
+    l.hidden = !l.hidden;
+    $("atmsw").setAttribute("aria-expanded", String(!l.hidden));
+  };
+  d.addEventListener("click", (e) => !e.target.closest(".atmsw") && $("atmlist") && ($("atmlist").hidden = true));
+  d.querySelectorAll("#atmlist button").forEach((b) => (b.onclick = () => b.dataset.m != id && (overlay ? atlasOpen(b.dataset.m, "", true) : atlasGo(b.dataset.m))));
   try {
     const [lib, buf] = await Promise.all([atlasLib(), atlasFile(id)]);
     if (!ATL.v || ATL.v.id !== id || !ATL.v.alive) return;
@@ -191,11 +302,11 @@ async function atlasOpen(id, focusName) {
     const k = e && e.message,
       t =
         k == "absent"
-          ? "Le fichier du modèle n’est pas encore en ligne. Touche « Mettre à jour… » pour envoyer " + id + ".glb."
+          ? "Ce modèle n’est pas encore en ligne." + (SY.role == "admin" ? " Envoie ses fichiers depuis la page Atlas (section « Fichiers des modèles »)." : "")
           : k == "refuse"
             ? "Tu n’as pas accès à l’atlas 3D. Demande à l’administrateur."
             : k == "horsligne"
-              ? "Pas de connexion : le modèle n’a pas encore été téléchargé sur cet appareil."
+              ? "Pas de connexion : ce modèle n’a pas encore été téléchargé sur cet appareil."
               : k == "lib"
                 ? "Impossible de charger le moteur 3D. Vérifie ta connexion puis réessaie."
                 : "Erreur : " + (k || "inconnue");
@@ -243,9 +354,10 @@ function atlasView(L, buf, model, focusName) {
   const T = L.THREE,
     V = ATL.v,
     canvas = $("atc"),
+    dk = (k) => document.querySelector('#atdock [data-k="' + k + '"]'),
     fine = matchMedia("(pointer: fine)").matches,
     renderer = new T.WebGLRenderer({ canvas, antialias: true, stencil: true, preserveDrawingBuffer: true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, fine ? 2 : 1.5));
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, fine ? 1.75 : 1.5));
   renderer.outputColorSpace = T.SRGBColorSpace;
   renderer.localClippingEnabled = true;
   const scene = new T.Scene(),
@@ -253,7 +365,22 @@ function atlasView(L, buf, model, focusName) {
     camO = new T.OrthographicCamera(-1, 1, 1, -1, 0.01, 50),
     controls = new L.OrbitControls(camP, canvas),
     ORIGIN = new T.Vector3();
-  scene.background = new T.Color(0x0e1116);
+  // fond : dégradé radial doux (plus clair derrière le modèle)
+  {
+    const cv = document.createElement("canvas"),
+      g = cv.getContext("2d");
+    cv.width = cv.height = 512;
+    const gr = g.createRadialGradient(256, 230, 20, 256, 256, 380);
+    gr.addColorStop(0, "#26354a");
+    gr.addColorStop(0.55, "#141c28");
+    gr.addColorStop(1, "#07090e");
+    g.fillStyle = gr;
+    g.fillRect(0, 0, 512, 512);
+    const tx = new T.CanvasTexture(cv);
+    tx.colorSpace = T.SRGBColorSpace;
+    scene.background = tx;
+    V.bgTex = tx;
+  }
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
   scene.add(new T.HemisphereLight(0xffffff, 0x334455, 1.5));
@@ -291,7 +418,18 @@ function atlasView(L, buf, model, focusName) {
   };
   V.need = need;
   controls.addEventListener("change", need);
-  controls.addEventListener("start", () => histPush());
+  // pendant qu'on fait tourner le modèle : rendu simple (sans ombres de contact), plus fluide
+  controls.addEventListener("start", () => {
+    histPush();
+    V.moving = true;
+  });
+  controls.addEventListener("end", () => {
+    clearTimeout(V.movT);
+    V.movT = setTimeout(() => {
+      V.moving = false;
+      need();
+    }, 120);
+  });
 
   // ---------- effets : ombres de contact (GTAO) et contour de la sélection ----------
   let composer = null,
@@ -331,7 +469,7 @@ function atlasView(L, buf, model, focusName) {
   }
   function draw() {
     if (outline) outline.selectedObjects = [...V.sels].map((p) => p.mesh);
-    const useFx = composer && (V.ao || (outline && V.sels.size));
+    const useFx = composer && !V.moving && !V.anim && (V.ao || (outline && V.sels.size));
     if (useFx) composer.render();
     else renderer.render(scene, V.cam);
   }
@@ -429,6 +567,10 @@ function atlasView(L, buf, model, focusName) {
         while (n && !(x = n.userData && n.userData.fr ? n.userData : null)) n = n.parent;
         if (!x) return;
         if (!o.geometry.attributes.normal) o.geometry.computeVertexNormals();
+        // arbre de volumes englobants : toucher / survoler devient instantané
+        try {
+          if (o.geometry.computeBoundsTree) o.geometry.computeBoundsTree();
+        } catch (e) {}
         o.material = new T.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.65, metalness: 0 });
         o.renderOrder = 100;
         const wb = new T.Box3().setFromObject(o),
@@ -457,8 +599,11 @@ function atlasView(L, buf, model, focusName) {
           V.labels.push({ p, el, local: o.geometry.boundingBox.getCenter(new T.Vector3()) });
         }
       });
-      document.querySelectorAll("#atl .atsys button").forEach((b) => (b.hidden = !present.has(b.dataset.s) || b.dataset.s == "zone"));
-      if ($("atmed")) $("atmed").hidden = !present.has("zone");
+      V.present = present;
+      dk("med").hidden = !present.has("zone");
+      // la respiration n'a de sens que s'il y a des côtes à animer
+      dk("br").hidden = !V.parts.some((p) => / rib$/.test(p.meta.en || ""));
+      if (V.tool) toolPanel(V.tool, true);
       if (!present.has("muscle")) V.opSys = "organe";
       atlasIndexSave(model.id, V.parts, V.fiches);
       pinsBuild();
@@ -471,11 +616,13 @@ function atlasView(L, buf, model, focusName) {
       V.hist = [];
       need();
       if ($("atmsg")) $("atmsg").remove();
-      if (focusName) {
-        const t = atNorm(focusName),
-          p = V.parts.find((x) => atNorm(x.meta.fr) === t) || search(focusName)[0];
+      V.focusBy = (n) => {
+        V.focusName = n;
+        const t = atNorm(n),
+          p = V.parts.find((x) => atNorm(x.meta.fr) === t) || search(n)[0];
         if (p) setTimeout(() => focusPart(p), 300);
-      }
+      };
+      if (focusName) V.focusBy(focusName);
     },
     (e) => {
       if ($("atmsg")) $("atmsg").textContent = "Fichier 3D illisible : " + (e && e.message ? e.message : "erreur");
@@ -578,7 +725,6 @@ function atlasView(L, buf, model, focusName) {
     const s = V.hist.pop();
     if (s) moveCam(s.pos, s.target, true, s.zoom, true);
   };
-  document.querySelectorAll("#atcube .atcf").forEach((f) => (f.onclick = () => setView(f.dataset.v)));
 
   // ---------- position de chaque structure : éclaté (orienté, ciblé), côte à côte, respiration ----------
   const tq = new T.Quaternion(),
@@ -659,29 +805,25 @@ function atlasView(L, buf, model, focusName) {
     for (const p of V.parts) p.grid.add(new T.Vector3(V.mc.x - maxX / 2, V.mc.y - minY / 2, V.mc.z));
     V.gridR = Math.hypot(maxX, minY) / 2;
   }
-  $("atex").oninput = (e) => {
+  function exSet(f, nopose) {
     if (V.breath.on) breathStop();
-    V.f = e.target.value / 100;
-    $("atp").textContent = e.target.value + " %";
+    V.f = f;
+    const r = $("atex");
+    if (r) {
+      r.value = Math.round(f * 100);
+      $("atp").textContent = Math.round(f * 100) + " %";
+    }
+    dockState();
+    if (!nopose) pose();
+  }
+  function exMode(m) {
+    V.mode = m;
+    if (V.breath.on) breathStop();
+    if (!V.f) exSet(1, true);
+    if (V.tool == "ex") toolPanel("ex", true);
     pose();
-  };
-  $("atex").onchange = () => V.mode == "cote" && V.f > 0.5 && setView("front");
-  const modeBtns = () => document.querySelectorAll('#atl .atseg[aria-label="Disposition"] button');
-  modeBtns().forEach(
-    (b) =>
-      (b.onclick = () => {
-        V.mode = b.dataset.m;
-        modeBtns().forEach((x) => x.classList.toggle("on", x === b));
-        if (V.breath.on) breathStop();
-        if (!V.f) {
-          V.f = 1;
-          $("atex").value = 100;
-          $("atp").textContent = "100 %";
-        }
-        pose();
-        setView(V.mode == "cote" ? "front" : V.view);
-      }),
-  );
+    setView(V.mode == "cote" ? "front" : V.view);
+  }
 
   // ---------- visibilité : systèmes, structures masquées, isolement, couches ----------
   const visible = (p) => !V.hSys.has(p.meta.systeme) && !V.hOne.has(p) && (!V.iso || V.iso.has(p)) && p.layer >= V.layer;
@@ -689,8 +831,9 @@ function atlasView(L, buf, model, focusName) {
     for (const p of V.parts) p.mesh.visible = visible(p);
     capObjs.forEach((o) => o.userData.sys && (o.visible = !V.hSys.has(o.userData.sys)));
     if (V.sel && !V.sel.mesh.visible) select(null);
-    if ($("attree").classList.contains("show")) treePaint();
+    if (V.tool == "struct") treePaint();
     isoBar();
+    dockState();
     need();
   };
   V.vis = vis;
@@ -707,25 +850,23 @@ function atlasView(L, buf, model, focusName) {
         vis();
       }),
   );
-  $("atlab").onclick = (e) => {
+  function labToggle() {
     V.showLbl = !V.showLbl;
-    e.currentTarget.classList.toggle("on", V.showLbl);
     $("atlbl").hidden = !V.showLbl || !!V.quiz;
+    dockState();
     need();
-  };
+  }
   function showAll() {
     V.hSys.clear();
     V.hOne = new Set(V.parts.filter((p) => p.zone || p.meta.fiche == "pleura"));
-    $("atmed").classList.remove("on");
     V.iso = null;
     V.layer = 0;
     sysBtns().forEach((b) => b.classList.remove("off"));
     if (V.tool == "lay") toolPanel("lay", true);
     vis();
   }
-  $("atall").onclick = showAll;
   // compartiments du médiastin : affichés ou masqués ensemble
-  $("atmed").onclick = () => {
+  function medToggle() {
     const zs = V.parts.filter((p) => p.zone),
       on = zs.some((p) => visible(p)),
       lungs = V.parts.filter((p) => /^(rul|rml|rll|lul|lll|pleura)$/.test(p.meta.fiche));
@@ -743,9 +884,8 @@ function atlasView(L, buf, model, focusName) {
       V.medPrev = null;
     }
     if (V.tool == "lay") toolPanel("lay", true);
-    $("atmed").classList.toggle("on", !on);
     vis();
-  };
+  }
   // isolement : seulement la sélection, puis ses voisines
   function isolate(set) {
     V.iso = new Set(set);
@@ -802,13 +942,61 @@ function atlasView(L, buf, model, focusName) {
     };
   }
 
-  // ---------- liste des structures (menu) ----------
+  // ---------- barre d'outils (dock) : un bouton par outil, l'état « allumé » suit le modèle ----------
+  function dockState() {
+    const on = {
+      struct: V.tool == "struct" || V.hSys.size > 0 || !!V.iso,
+      disp: V.tool == "disp",
+      ex: V.tool == "ex" || V.f > 0,
+      cut: V.tool == "cut" || !!V.clip.axis,
+      lay: V.tool == "lay" || V.layer > 0,
+      tr: V.tool == "tr" || V.opac < 1,
+      mes: V.meas.on,
+      med: V.parts.some((p) => p.zone && p.mesh.visible),
+      br: V.breath.on,
+      lab: V.showLbl,
+      quiz: !!V.quiz,
+      more: V.tool == "more",
+    };
+    document.querySelectorAll("#atdock button").forEach((b) => {
+      const v = !!on[b.dataset.k];
+      b.classList.toggle("on", v);
+      b.setAttribute("aria-pressed", String(v));
+    });
+  }
+  V.dockState = dockState;
+  const DOCK = {
+    struct: () => toolPanel("struct"),
+    disp: () => toolPanel("disp"),
+    ex: () => toolPanel("ex"),
+    cut: () => toolPanel("cut"),
+    lay: () => toolPanel("lay"),
+    tr: () => toolPanel("tr"),
+    more: () => toolPanel("more"),
+    lab: () => labToggle(),
+    med: () => medToggle(),
+    br: () => (V.breath.on ? breathStop() : breathStart()),
+    mes: () => measToggle(),
+    quiz: () => quizMenu(),
+    help: () => helpToggle(),
+    ar: () => arOpen(),
+  };
+  document.querySelectorAll("#atdock button").forEach((b) => (b.onclick = () => DOCK[b.dataset.k] && DOCK[b.dataset.k]()));
+
+  // ---------- liste des structures ----------
+  V.treeOpen = V.treeOpen || {};
   function treePaint() {
-    const box = $("attree"),
+    const box = $("attool"),
+      sc = box.scrollTop,
       order = Object.keys(ATL.sysFr),
-      eye = (on) => (on ? "👁" : "◌");
+      eye = (on) => '<svg viewBox="0 0 24 24" aria-hidden="true">' + (on ? '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>' : '<path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3.2 3.9M6.6 6.6C3.8 8.4 2 12 2 12s4 7 10 7c1.7 0 3.2-.5 4.5-1.2"/>') + "</svg>",
+      present = order.filter((s) => s != "zone" && V.parts.some((p) => p.meta.systeme == s));
     box.innerHTML =
-      '<div class="atth"><b>Structures</b><button class="atpx" aria-label="Fermer la liste">✕</button></div>' +
+      '<div class="atsys" role="group" aria-label="Systèmes">' +
+      present
+        .map((s) => '<button data-s="' + s + '"' + (V.hSys.has(s) ? ' class="off"' : "") + '><i style="background:#' + ATL.colors[s].toString(16).padStart(6, "0") + '"></i>' + ATL.sysPl[s] + "</button>")
+        .join("") +
+      '</div><button class="atallb">Tout afficher</button>' +
       order
         .filter((s) => V.parts.some((p) => p.meta.systeme == s))
         .map((s) => {
@@ -817,7 +1005,7 @@ function atlasView(L, buf, model, focusName) {
           ps.forEach((p) => (groups[p.meta.fiche || p.meta.fr] = groups[p.meta.fiche || p.meta.fr] || []).push(p));
           const sOn = !V.hSys.has(s);
           return (
-            '<details class="attg"' + (box.dataset["o" + s] ? " open" : "") + ' data-s="' + s + '"><summary><i style="background:#' +
+            '<details class="attg"' + (V.treeOpen[s] ? " open" : "") + ' data-s="' + s + '"><summary><i style="background:#' +
             ATL.colors[s].toString(16).padStart(6, "0") + '"></i>' + ATL.sysPl[s] + " <small>" + ps.length + '</small><button class="ateye' +
             (sOn ? "" : " off") + '" data-sys="' + s + '" aria-label="Afficher ou masquer">' + eye(sOn) + "</button></summary>" +
             Object.keys(groups)
@@ -837,8 +1025,16 @@ function atlasView(L, buf, model, focusName) {
           );
         })
         .join("");
-    box.querySelector(".atpx").onclick = () => treeToggle(false);
-    box.querySelectorAll(".attg").forEach((d) => (d.ontoggle = () => (box.dataset["o" + d.dataset.s] = d.open ? "1" : "")));
+    box.scrollTop = sc;
+    box.querySelectorAll(".atsys button").forEach(
+      (b) =>
+        (b.onclick = () => {
+          sysToggle(b.dataset.s);
+          vis();
+        }),
+    );
+    box.querySelector(".atallb").onclick = showAll;
+    box.querySelectorAll(".attg").forEach((d) => (d.ontoggle = () => (V.treeOpen[d.dataset.s] = d.open)));
     box.querySelectorAll(".ateye").forEach(
       (b) =>
         (b.onclick = (e) => {
@@ -860,30 +1056,57 @@ function atlasView(L, buf, model, focusName) {
     );
     box.querySelectorAll(".atnm").forEach((b) => (b.onclick = () => focusPart(V.parts[+b.dataset.i])));
   }
-  function treeToggle(on) {
-    const box = $("attree");
-    if (on === undefined) on = !box.classList.contains("show");
-    if (on) treePaint();
-    box.classList.toggle("show", on);
-    $("attreeb").classList.toggle("on", on);
-    $("atl").classList.toggle("tree-open", on);
-  }
-  $("attreeb").onclick = () => treeToggle();
 
-  // ---------- panneaux d'outils ----------
+  // ---------- fenêtres d'outils (une seule ouverte, repliable avec la flèche) ----------
   const sw = (id, label, on, hint) =>
     '<label class="atsw"><input type="checkbox" id="' + id + '"' + (on ? " checked" : "") + "><span>" + label + (hint ? "<small>" + hint + "</small>" : "") + "</span></label>";
+  const TITLES = { struct: "Structures", disp: "Affichage", ex: "Écarter les structures", cut: "Coupe", lay: "Couches", tr: "Transparence", more: "Plus d’outils" };
+  const sheet = $("atsheet");
+  function sheetMin(m) {
+    sheet.classList.toggle("min", m);
+    $("atshc").setAttribute("aria-label", m ? "Déplier" : "Réduire");
+    $("atshc").title = m ? "Déplier" : "Réduire";
+  }
+  $("atshc").onclick = () => sheetMin(!sheet.classList.contains("min"));
+  $("atshx").onclick = () => toolPanel(V.tool);
+  sheet.querySelector(".atsh-h b").onclick = () => sheet.classList.contains("min") && sheetMin(false);
   function toolPanel(t, keep) {
-    if (!keep) V.tool = V.tool === t ? "" : t;
-    ["atdisp:disp", "atlay:lay", "attr:tr", "atcut:cut", "atexo:ex"].forEach((x) => {
-      const [id, k] = x.split(":");
-      $(id).classList.toggle("on", V.tool == k || (k == "tr" && V.opac < 1) || (k == "cut" && !!V.clip.axis) || (k == "lay" && V.layer > 0));
-    });
+    if (!keep) {
+      V.tool = V.tool === t ? "" : t;
+      sheetMin(false);
+    }
     const box = $("attool");
-    box.hidden = !V.tool;
+    sheet.hidden = !V.tool;
+    $("atl").classList.toggle("sheet-open", !!V.tool);
+    $("atsht").textContent = TITLES[V.tool] || "";
+    sheet.dataset.t = V.tool;
+    dockState();
+    if (V.tool == "struct") return treePaint();
+    if (V.tool == "more") {
+      const items = [...document.querySelectorAll("#atdock [data-x]")]
+        .filter((b) => !b.hidden)
+        .map((b) => [b.dataset.k, b.querySelector("span").textContent]);
+      items.push(["help", "Raccourcis et aide"]);
+      if (V.ar) items.push(["ar", "Voir en réalité augmentée"]);
+      box.innerHTML =
+        '<div class="atmore">' +
+        items.map(([k, t]) => '<button data-k="' + k + '" class="' + (dk(k) && dk(k).classList.contains("on") ? "on" : "") + '">' + atIco(ATI[k] ? k : "help") + "<span>" + t + "</span></button>").join("") +
+        "</div>";
+      box.querySelectorAll(".atmore button").forEach(
+        (b) =>
+          (b.onclick = () => {
+            const k = b.dataset.k;
+            if (["lay", "tr"].includes(k)) return toolPanel(k);
+            if (!["lab", "br", "med"].includes(k)) toolPanel("more");
+            DOCK[k]();
+            if (V.tool == "more") toolPanel("more", true);
+          }),
+      );
+      return;
+    }
     if (V.tool == "disp") {
       box.innerHTML =
-        '<div class="atr"><span class="atlbl2">Couleurs</span><div class="atseg" id="atcol"><button data-c="sys"' + (V.real ? "" : ' class="on"') +
+        '<div class="atr atwrap"><span class="atlbl2">Couleurs</span><div class="atseg" id="atcol"><button data-c="sys"' + (V.real ? "" : ' class="on"') +
         '>Par système</button><button data-c="real"' + (V.real ? ' class="on"' : "") + ">Réalistes</button></div></div>" +
         '<div class="atsws">' +
         sw("atsrel", "Relief des tissus", V.relief, "avec les couleurs réalistes") +
@@ -915,7 +1138,7 @@ function atlasView(L, buf, model, focusName) {
     } else if (V.tool == "lay")
       box.innerHTML =
         '<div class="atr"><label for="atly">Couches</label><input id="atly" type="range" min="0" max="' + (ATL_LAYERS.length - 1) + '" value="' + V.layer +
-        '"><span class="atlyn">' + ATL_LAYERS[V.layer] + "</span></div>";
+        '"></div><p class="atlyn">' + ATL_LAYERS[V.layer] + "</p>";
     else if (V.tool == "tr")
       box.innerHTML =
         '<div class="atr atwrap"><span class="atlbl2">Rendre transparents</span><div class="atseg" id="atops">' +
@@ -931,27 +1154,38 @@ function atlasView(L, buf, model, focusName) {
         [["", "Aucune"], ["y", "Horizontale"], ["z", "Frontale"], ["x", "Sagittale"]]
           .map((a) => '<button data-a="' + a[0] + '"' + (V.clip.axis === a[0] ? ' class="on"' : "") + ">" + a[1] + "</button>")
           .join("") +
-        "</div>" + sw("atcap", "Coupe pleine", V.clip.caps) +
-        '</div><div class="atr" id="atcpr"' + (V.clip.axis ? "" : " hidden") + '><label for="atcp">Position</label><input id="atcp" type="range" min="-100" max="100" value="' +
-        V.clip.pos + '"></div>';
+        "</div></div>" +
+        '<div class="atr" id="atcpr"' + (V.clip.axis ? "" : " hidden") + '><label for="atcp">Position</label><input id="atcp" type="range" min="-100" max="100" value="' +
+        V.clip.pos + '"></div><div class="atsws">' + sw("atcap", "Coupe pleine", V.clip.caps, "remplit la surface coupée") + "</div>";
     else if (V.tool == "ex")
       box.innerHTML =
-        '<div class="atr atwrap"><span class="atlbl2">Direction</span><div class="atseg" id="atexd">' +
-        [["all", "Toutes"], ["z", "Avant-arrière"], ["y", "Haut-bas"], ["x", "Gauche-droite"]]
-          .map((a) => '<button data-d="' + a[0] + '"' + (V.exDir == a[0] ? ' class="on"' : "") + ">" + a[1] + "</button>")
-          .join("") +
-        '</div></div><div class="atr atwrap"><span class="atlbl2">Écarter</span><div class="atseg" id="atexs">' +
-        [["all", "Tout"], ["sel", "La sélection"], ["sys", "Son système"]]
-          .map((a) => '<button data-s="' + a[0] + '"' + (V.exScope == a[0] ? ' class="on"' : "") + ">" + a[1] + "</button>")
-          .join("") +
+        '<div class="atr"><label for="atex">Écart</label><input id="atex" type="range" min="0" max="100" value="' + Math.round(V.f * 100) +
+        '"><span id="atp">' + Math.round(V.f * 100) + " %</span></div>" +
+        '<div class="atr atwrap"><span class="atlbl2">Disposition</span><div class="atseg" id="atexm">' +
+        [["eclate", "Éclaté"], ["cote", "Côte à côte"]].map((a) => '<button data-m="' + a[0] + '"' + (V.mode == a[0] ? ' class="on"' : "") + ">" + a[1] + "</button>").join("") +
         "</div></div>" +
-        (V.exScope != "all" && !V.sels.size ? '<p class="atnote">Sélectionne d’abord une structure.</p>' : "");
+        (V.mode == "eclate"
+          ? '<div class="atr atwrap"><span class="atlbl2">Direction</span><div class="atseg" id="atexd">' +
+            [["all", "Toutes"], ["z", "Avant-arrière"], ["y", "Haut-bas"], ["x", "Gauche-droite"]]
+              .map((a) => '<button data-d="' + a[0] + '"' + (V.exDir == a[0] ? ' class="on"' : "") + ">" + a[1] + "</button>")
+              .join("") +
+            '</div></div><div class="atr atwrap"><span class="atlbl2">Écarter</span><div class="atseg" id="atexs">' +
+            [["all", "Tout"], ["sel", "La sélection"], ["sys", "Son système"]]
+              .map((a) => '<button data-s="' + a[0] + '"' + (V.exScope == a[0] ? ' class="on"' : "") + ">" + a[1] + "</button>")
+              .join("") +
+            "</div></div>" +
+            (V.exScope != "all" && !V.sels.size ? '<p class="atnote">Sélectionne d’abord une structure.</p>' : "")
+          : "");
     else box.innerHTML = "";
+    if ($("atex")) {
+      $("atex").oninput = (e) => exSet(e.target.value / 100);
+      $("atex").onchange = () => V.mode == "cote" && V.f > 0.5 && setView("front");
+    }
+    box.querySelectorAll("#atexm button").forEach((b) => (b.onclick = () => exMode(b.dataset.m)));
     if ($("atly"))
       $("atly").oninput = (e) => {
         V.layer = +e.target.value;
         box.querySelector(".atlyn").textContent = ATL_LAYERS[V.layer];
-        $("atlay").classList.add("on");
         vis();
       };
     box.querySelectorAll("#atops button").forEach(
@@ -966,7 +1200,7 @@ function atlasView(L, buf, model, focusName) {
       $("atop").oninput = (e) => {
         V.opac = e.target.value / 100;
         e.target.nextElementSibling.textContent = e.target.value + " %";
-        $("attr").classList.add("on");
+        dockState();
         materials();
       };
     box.querySelectorAll(".atcax button").forEach(
@@ -992,16 +1226,8 @@ function atlasView(L, buf, model, focusName) {
       (b) =>
         (b.onclick = () => {
           V.exDir = b.dataset.d;
-          if (V.mode == "cote") {
-            V.mode = "eclate";
-            modeBtns().forEach((x) => x.classList.toggle("on", x.dataset.m == "eclate"));
-          }
+          if (!V.f) exSet(0.6, true);
           toolPanel("ex", true);
-          if (!V.f) {
-            V.f = 0.6;
-            $("atex").value = 60;
-            $("atp").textContent = "60 %";
-          }
           pose();
         }),
     );
@@ -1014,11 +1240,6 @@ function atlasView(L, buf, model, focusName) {
         }),
     );
   }
-  $("atdisp").onclick = () => toolPanel("disp");
-  $("atlay").onclick = () => toolPanel("lay");
-  $("attr").onclick = () => toolPanel("tr");
-  $("atcut").onclick = () => toolPanel("cut");
-  $("atexo").onclick = () => toolPanel("ex");
 
   // ---------- coupes (avec remplissage optionnel de la surface coupée) ----------
   const capObjs = [];
@@ -1085,7 +1306,7 @@ function atlasView(L, buf, model, focusName) {
       mt.side = on ? T.DoubleSide : T.FrontSide;
       if (had !== on) mt.needsUpdate = true;
     }
-    $("atcut").classList.toggle("on", V.tool == "cut" || on);
+    dockState();
     caps();
   }
 
@@ -1203,21 +1424,18 @@ function atlasView(L, buf, model, focusName) {
   }
   function breathStart() {
     if (!V.breath.ready) breathSetup();
-    V.f = 0;
-    $("atex").value = 0;
-    $("atp").textContent = "0 %";
+    exSet(0, true);
     V.breath.on = true;
     V.breath.t0 = performance.now();
-    $("atbr").classList.add("on");
+    dockState();
     toast("Respiration schématique : les côtes s’élèvent, le sternum avance, le diaphragme descend et les poumons se remplissent.");
   }
   function breathStop() {
     V.breath.on = false;
     V.breath.s = 0;
-    $("atbr").classList.remove("on");
+    dockState();
     pose();
   }
-  $("atbr").onclick = () => (V.breath.on ? breathStop() : breathStart());
 
   // ---------- recherche : structures affichées d'abord ----------
   let sugI = -1,
@@ -1341,7 +1559,7 @@ function atlasView(L, buf, model, focusName) {
     materials();
     panel();
     if (V.tool == "ex") toolPanel("ex", true);
-    if ($("attree").classList.contains("show")) treePaint();
+    if (V.tool == "struct") treePaint();
   }
   V.select = select;
   function panel() {
@@ -1388,7 +1606,10 @@ function atlasView(L, buf, model, focusName) {
       '<div class="atnotes"><label for="atnt">' + icn("pen") + " Mes notes</label>" +
       '<textarea id="atnt" rows="3" placeholder="Une astuce, une remarque du prof, un moyen mnémotechnique…">' + esc(noteGet(p)) + "</textarea></div>";
     pan.scrollTop = 0;
+    pan.style.setProperty("--sc", "#" + (ATL.colors[p.meta.systeme] || 0x5fd4c8).toString(16).padStart(6, "0"));
     pan.classList.add("show");
+    // téléphone : la fiche prend la place de la fenêtre d'outils
+    if (V.tool && matchMedia("(max-width: 760px), (orientation: landscape) and (max-height: 500px)").matches) toolPanel(V.tool);
     pan.querySelector(".atpx").onclick = () => select(null);
     pan.querySelectorAll(".atchip button[data-i]").forEach((b) => (b.onclick = () => ((V.sel = V.parts[+b.dataset.i]), materials(), panel())));
     pan.querySelectorAll(".atchx").forEach((b) => (b.onclick = () => select(V.parts[+b.dataset.x], true)));
@@ -1404,7 +1625,7 @@ function atlasView(L, buf, model, focusName) {
       toast(V.multi ? "Touche d’autres structures pour les ajouter (sur ordinateur : Maj + clic)." : "Sélection simple");
     };
     $("atorb").onclick = () => orbitOn(p);
-    pan.querySelectorAll(".atdet").forEach((b) => (b.onclick = () => atlasOpen(b.dataset.m)));
+    pan.querySelectorAll(".atdet").forEach((b) => (b.onclick = () => (V.overlay ? atlasOpen(b.dataset.m, "", true) : atlasGo(b.dataset.m))));
     if ($("atfc")) $("atfc").onclick = () => atlasCardsForm(f);
     $("atsnap").onclick = snapCards;
     let nt = 0;
@@ -1519,7 +1740,8 @@ function atlasView(L, buf, model, focusName) {
     }
     if (list.length < 3) return toast("Affiche au moins 3 structures pour lancer un quiz.");
     V.quiz = { list, i: 0, ok: 0, wait: false, mode };
-    $("atqz").classList.add("on");
+    if (V.tool) toolPanel(V.tool);
+    dockState();
     $("atlbl").hidden = true;
     quizPaint();
   }
@@ -1633,13 +1855,14 @@ function atlasView(L, buf, model, focusName) {
   }
   function quizStop() {
     V.quiz = null;
-    $("atqz").classList.remove("on");
+    dockState();
     $("atlbl").hidden = !V.showLbl;
     quizPaint();
     materials();
   }
-  $("atqz").onclick = () => {
+  function quizMenu() {
     if (V.quiz) return quizStop();
+    if (!$("atquiz").hidden) return ($("atquiz").hidden = true);
     const box = $("atquiz");
     box.hidden = false;
     box.innerHTML =
@@ -1648,7 +1871,7 @@ function atlasView(L, buf, model, focusName) {
     $("atqm1").onclick = () => quizStart("touche");
     $("atqm2").onclick = () => quizStart("nom");
     $("atqm0").onclick = () => (box.hidden = true);
-  };
+  }
 
   // ---------- mesure entre deux points ----------
   const measObjs = [];
@@ -1680,12 +1903,12 @@ function atlasView(L, buf, model, focusName) {
     } else $("atmeas").innerHTML = "";
     need();
   }
-  $("atmes").onclick = () => {
+  function measToggle() {
     V.meas.on = !V.meas.on;
-    $("atmes").classList.toggle("on", V.meas.on);
+    dockState();
     if (!V.meas.on) measClear();
     else toast("Touche deux points sur le modèle pour mesurer la distance.");
-  };
+  }
 
   // ---------- toucher : sélection, double-toucher, quiz, mesure ----------
   const ray = new T.Raycaster(),
@@ -1742,14 +1965,14 @@ function atlasView(L, buf, model, focusName) {
     ["R", "Réinitialiser la vue"], ["Retour arrière", "Vue précédente"], ["O", "Orthographique"], ["G", "Quadrillage"], ["E", "Étiquettes"],
     ["I", "Isoler la sélection"], ["H", "Masquer la sélection"], ["A", "Tout réafficher"], ["L", "Liste des structures"], ["/", "Rechercher"], ["Échap", "Désélectionner, puis fermer"],
   ];
-  $("athelp").onclick = () => {
+  function helpToggle() {
     const b = $("athelpbox");
     b.hidden = !b.hidden;
     b.innerHTML =
       '<button class="atpx" aria-label="Fermer">✕</button><b>Raccourcis clavier</b><dl>' + KEYS.map((k) => "<dt>" + k[0] + "</dt><dd>" + k[1] + "</dd>").join("") +
       '</dl><p class="atnote">Maj + clic : sélection multiple · double-clic : tourner autour</p>';
     b.querySelector(".atpx").onclick = () => (b.hidden = true);
-  };
+  }
   function rotate(dx, dy) {
     const off = V.cam.position.clone().sub(controls.target),
       r = off.length();
@@ -1767,9 +1990,12 @@ function atlasView(L, buf, model, focusName) {
     if (e.key == "Escape") {
       if (typing) return;
       if (!$("athelpbox").hidden) return ($("athelpbox").hidden = true);
-      if (V.meas.on) return $("atmes").click();
+      if (!$("atmlist").hidden) return ($("atmlist").hidden = true);
+      if (V.meas.on) return measToggle();
+      if (V.tool) return toolPanel(V.tool);
+      if (!$("atquiz").hidden && !V.quiz) return ($("atquiz").hidden = true);
       if (V.sel) return select(null);
-      return atlasClose();
+      return atlasExit();
     }
     if (typing || e.ctrlKey || e.metaKey || e.altKey) return;
     const k = e.key.length == 1 ? e.key.toLowerCase() : e.key,
@@ -1779,8 +2005,8 @@ function atlasView(L, buf, model, focusName) {
         "+": () => zoomBy(1.3), "=": () => zoomBy(1.3), "-": () => zoomBy(1 / 1.3),
         r: () => $("atreset").click(), Backspace: () => $("atback").click(),
         o: () => (setOrtho(!V.ortho), prefSave(), V.tool == "disp" && toolPanel("disp", true)),
-        g: () => $("atgrid").click(), e: () => $("atlab").click(), i: () => V.sels.size && isolate(V.sels), h: () => $("athide") && $("athide").click(),
-        a: showAll, l: () => treeToggle(), "/": () => $("atq").focus(),
+        g: () => $("atgrid").click(), e: labToggle, i: () => V.sels.size && isolate(V.sels), h: () => $("athide") && $("athide").click(),
+        a: showAll, l: () => toolPanel("struct"), "?": helpToggle, "/": () => $("atq").focus(),
       }[k];
     if (act) {
       e.preventDefault();
@@ -1789,8 +2015,8 @@ function atlasView(L, buf, model, focusName) {
   };
 
   // ---------- réalité augmentée (iPhone : AR Quick Look) ----------
-  if ($("atar"))
-    $("atar").onclick = async () => {
+  async function arOpen() {
+    {
       toast("Préparation de la réalité augmentée…", 1);
       try {
         const grp = new T.Group();
@@ -1816,7 +2042,8 @@ function atlasView(L, buf, model, focusName) {
       } catch (err) {
         toast("Réalité augmentée impossible : " + esc(err.message || err));
       }
-    };
+    }
+  }
 
   // ---------- étiquettes, échelle, cube d'orientation (mis à jour à chaque image) ----------
   const lray = new T.Raycaster(),
@@ -1861,9 +2088,49 @@ function atlasView(L, buf, model, focusName) {
       Lm = [0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2].find((s) => s * ppm >= 50) || 0.2;
     $("atscale").firstChild.style.width = Math.round(Lm * ppm) + "px";
     $("atscale").lastChild.textContent = Lm < 0.01 ? Math.round(Lm * 1000) + " mm" : Math.round(Lm * 100) + " cm";
-    // cube d'orientation : suit la rotation de la caméra
-    const e = V.cam.matrixWorldInverse.elements;
-    $("atcube").firstChild.style.transform = "matrix3d(" + [e[0], -e[1], e[2], 0, -e[4], e[5], -e[6], 0, e[8], -e[9], e[10], 0, 0, 0, 0, 1].join(",") + ")";
+    gizmo();
+  }
+  // ---------- boussole anatomique : 6 directions qui suivent la caméra, touchables ----------
+  const GZ = [
+    ["G", "Gauche", [1, 0, 0], "#ff6b7a", "left"], ["D", "Droite", [-1, 0, 0], "#ff6b7a", "right"],
+    ["Cr", "Crânial", [0, 1, 0], "#7be495", "top"], ["Ca", "Caudal", [0, -1, 0], "#7be495", "bottom"],
+    ["A", "Antérieur", [0, 0, 1], "#6cb8ff", "front"], ["P", "Postérieur", [0, 0, -1], "#6cb8ff", "back"],
+  ];
+  const giz = $("atgiz"),
+    SVGNS = "http://www.w3.org/2000/svg",
+    gq = new T.Quaternion(),
+    gv = new T.Vector3();
+  giz.innerHTML = '<circle class="atgzbg" r="47"/>';
+  const gzEls = GZ.map((g, i) => {
+    const line = document.createElementNS(SVGNS, "line"),
+      grp = document.createElementNS(SVGNS, "g");
+    line.setAttribute("stroke", g[3]);
+    line.setAttribute("class", "atgzl" + (i % 2 ? " neg" : ""));
+    grp.setAttribute("class", "atgzp" + (i % 2 ? " neg" : ""));
+    grp.setAttribute("role", "button");
+    grp.setAttribute("tabindex", "0");
+    grp.setAttribute("aria-label", "Vue " + g[1].toLowerCase());
+    grp.innerHTML = "<title>" + g[1] + '</title><circle r="11" fill="' + g[3] + '"/><text dy="0.35em">' + g[0] + "</text>";
+    grp.onclick = () => setView(g[4]);
+    grp.onkeydown = (e) => (e.key == "Enter" || e.key == " ") && (e.preventDefault(), setView(g[4]));
+    giz.append(line, grp);
+    return { line, grp };
+  });
+  function gizmo() {
+    gq.copy(V.cam.quaternion).invert();
+    const order = GZ.map((g, i) => {
+      gv.set(...g[2]).applyQuaternion(gq);
+      return { i, x: gv.x * 32, y: -gv.y * 32, z: gv.z };
+    }).sort((a, b) => a.z - b.z);
+    for (const o of order) {
+      const E = gzEls[o.i];
+      E.line.setAttribute("x2", o.x.toFixed(1));
+      E.line.setAttribute("y2", o.y.toFixed(1));
+      E.grp.setAttribute("transform", "translate(" + o.x.toFixed(1) + " " + o.y.toFixed(1) + ")");
+      E.grp.style.opacity = (0.55 + 0.45 * (o.z + 1) / 2).toFixed(2);
+      giz.appendChild(E.line);
+      giz.appendChild(E.grp);
+    }
   }
   function occlusion() {
     if (ATL.v !== V || !V.showLbl || !V.labels.length || V.breath.on) return;
@@ -1879,28 +2146,26 @@ function atlasView(L, buf, model, focusName) {
     }
   }
 
-  // téléphone à l'horizontale : les outils occupent la droite, on recentre le modèle dans la partie libre
-  const landscape = matchMedia("(orientation: landscape) and (max-height: 500px)");
+  // taille du dessin = taille réelle du canevas (suit aussi la fenêtre d'outils et la rotation du téléphone)
   function resize() {
-    const w = canvas.clientWidth,
-      h = canvas.clientHeight,
-      inset = landscape.matches ? Math.min(300, w * 0.4) : 0;
+    const w = canvas.clientWidth || 1,
+      h = canvas.clientHeight || 1;
     renderer.setSize(w, h, false);
-    camP.aspect = (w + inset) / h;
-    camO.left = -(w + inset) / h;
-    camO.right = (w + inset) / h;
+    camP.aspect = w / h;
+    camO.left = -w / h;
+    camO.right = w / h;
     camO.top = 1;
     camO.bottom = -1;
-    for (const c of [camP, camO]) {
-      if (inset) c.setViewOffset(w + inset, h, inset, 0, w, h);
-      else c.clearViewOffset();
-      c.updateProjectionMatrix();
-    }
+    for (const c of [camP, camO]) c.updateProjectionMatrix();
     if (composer) fxBuild();
     need();
   }
   V.resize = resize;
   addEventListener("resize", resize);
+  if (window.ResizeObserver) {
+    V.ro = new ResizeObserver(() => resize());
+    V.ro.observe(canvas);
+  }
   resize();
   renderer.setAnimationLoop((now) => {
     if (V.anim) {
@@ -1927,9 +2192,11 @@ function atlasClose() {
     V.alive = false;
     clearTimeout(V.idleT);
     if (V.resize) removeEventListener("resize", V.resize);
+    if (V.ro) V.ro.disconnect();
     if (V.renderer) {
       V.renderer.setAnimationLoop(null);
       (V.parts || []).forEach((p) => {
+        if (p.mesh.geometry.disposeBoundsTree) p.mesh.geometry.disposeBoundsTree();
         p.mesh.geometry.dispose();
         p.mesh.material.dispose();
       });
@@ -1966,22 +2233,36 @@ function atlasStats() {
 }
 
 // ---------- l'administrateur remplace le fichier partagé ----------
-async function atlasUpload(id, f) {
-  if (!f) return;
-  if (!/\.glb$/i.test(f.name)) return toast("Choisis un fichier .glb");
-  if (f.size > 20 * 1048576) return toast("Fichier trop lourd (20 Mo au plus)");
-  // le nom du fichier décide du modèle (thorax, coeur, poumons…) ; « hd » = version détaillée pour ordinateur
+async function atlasUpload(id, f, variant, quiet) {
+  if (!f) return false;
+  if (!/\.glb$/i.test(f.name)) return toast("Choisis un fichier .glb"), false;
+  if (f.size > 20 * 1048576) return toast("Fichier trop lourd (20 Mo au plus)"), false;
+  // sans variante imposée, le nom du fichier décide du modèle (thorax, coeur, poumons…) ; « hd » = version pour ordinateur
   const base = f.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""),
-    target = (ATL.models.find((m) => base.startsWith(m.id)) || {}).id || id,
-    name = target + (/hd/i.test(f.name) ? "-hd" : "") + ".glb";
-  toast("Envoi du modèle" + (name.includes("-hd") ? " détaillé (ordinateurs)" : "") + "…", 1);
+    target = variant != null ? id : (ATL.models.find((m) => base.startsWith(m.id)) || {}).id,
+    hd = variant != null ? variant == "-hd" : /hd/i.test(base);
+  if (!target) return toast("« " + esc(f.name) + " » : nom inconnu (commence par thorax, coeur ou poumons)"), false;
+  const name = target + (hd ? "-hd" : "") + ".glb",
+    titre = (ATL.models.find((m) => m.id == target) || {}).titre || target;
+  if (!quiet) toast("Envoi de « " + esc(titre) + " » (" + (hd ? "ordinateur" : "téléphone") + ")…", 1);
   const { error } = await SY.sb.storage
     .from("atlas")
     // le type est forcé : Windows et iOS ne reconnaissent pas les .glb (sinon refus « mime type not supported »)
     .upload(name, new Blob([f], { type: "model/gltf-binary" }), { upsert: true, contentType: "model/gltf-binary", cacheControl: "60" });
-  if (error) return toast(esc(syTr(error.message)));
-  toast("Modèle « " + esc((ATL.models.find((m) => m.id == target) || {}).titre || target) + " »" + (name.includes("-hd") ? " (version ordinateur)" : "") + " mis à jour ✔");
-  if (target == id) atlasOpen(id);
+  if (error) return toast(esc(syTr(error.message))), false;
+  if (!quiet) toast("« " + esc(titre) + " » (" + (hd ? "ordinateur" : "téléphone") + ") mis à jour ✔");
+  atlasFilesLoad();
+  return true;
+}
+async function atlasUploadMany(files) {
+  const fs = [...(files || [])];
+  if (!fs.length) return;
+  let ok = 0;
+  for (let i = 0; i < fs.length; i++) {
+    toast("Envoi " + (i + 1) + " / " + fs.length + " : " + esc(fs[i].name) + "…", 1);
+    if (await atlasUpload(null, fs[i], null, true)) ok++;
+  }
+  toast(ok + " fichier" + (ok > 1 ? "s" : "") + " envoyé" + (ok > 1 ? "s" : "") + (ok < fs.length ? " · " + (fs.length - ok) + " refusé" + (fs.length - ok > 1 ? "s" : "") : "") + " ✔");
 }
 
 // ---------- flashcards à partir d'une fiche ----------
@@ -2119,7 +2400,7 @@ function atlasLinkify(root) {
       b.className = "at3d";
       b.textContent = m[1];
       b.title = "Voir en 3D : " + hit.fr;
-      b.onclick = () => atlasOpen(hit.m, hit.fr);
+      b.onclick = () => atlasGo(hit.m, hit.fr);
       frag.appendChild(b);
       found.set(hit.fr, hit);
       last = m.index + m[1].length;
@@ -2143,7 +2424,7 @@ function atlasCourseLinks() {
     const b = document.createElement("button");
     b.className = "b";
     b.textContent = h.fr;
-    b.onclick = () => atlasOpen(h.m, h.fr);
+    b.onclick = () => atlasGo(h.m, h.fr);
     bar.appendChild(b);
   });
   const h1 = art.querySelector("h1");
