@@ -237,6 +237,10 @@ const ATI = {
   tr: '<rect x="4" y="4" width="11" height="11" rx="2"/><rect x="9" y="9" width="11" height="11" rx="2" stroke-dasharray="2 2"/>',
   mes: '<path d="m4 16 12-12 4 4L8 20z"/><path d="m8 12 2 2M11 9l2 2M14 6l2 2"/>',
   med: '<path d="M12 4c-3 0-5 2-5 5v6c0 3 2 5 5 5s5-2 5-5V9c0-3-2-5-5-5z"/><path d="M7 12h10M12 4v16" stroke-dasharray="2 2"/>',
+  anim: '<path d="M3 12h3l2-5 4 10 3-7 2 2h4"/>',
+  tour: '<path d="M5 20V5M5 5h11l-2 3 2 3H5"/><circle cx="17" cy="18" r="2"/>',
+  hb: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/><path d="M7 12h2l1.5-2 2 4 1.5-2h3"/>',
+  trj: '<path d="M4 18c3 0 3-5 6-5s3 5 6 5 3-8 4-12"/><circle cx="4" cy="18" r="1.6"/>',
   br: '<path d="M12 4v6M12 10c-2 0-6 2-6 7 0 2 1 3 3 3 2 0 3-2 3-4M12 10c2 0 6 2 6 7 0 2-1 3-3 3-2 0-3-2-3-4"/>',
   quiz: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor"/>',
   lab: '<path d="M4 12V5a1 1 0 0 1 1-1h7l8 8-8 8z"/><circle cx="8.5" cy="8.5" r="1.4"/>',
@@ -296,7 +300,8 @@ async function atlasOpen(id, focusName, overlay) {
     dock("tr", "Transparence", ' data-x="1"') +
     dock("mes", "Mesurer", ' data-y="1"') +
     dock("med", "Médiastin", ' data-x="1" hidden') +
-    dock("br", "Respiration", ' data-x="1" hidden') +
+    dock("anim", "Animations", ' data-x="1" hidden') +
+    dock("tour", "Parcours", ' data-x="1"') +
     dock("vues", "Vues", ' data-x="1"') +
     dock("lab", "Étiquettes", ' data-y="1" class="on"') +
     dock("pres", "Présentation", ' data-y="1"') +
@@ -441,7 +446,7 @@ function atlasView(L, buf, model, focusName) {
     hSys: new Set(), hOne: new Set(), iso: null, layer: 0, showLbl: true,
     dirty: true, idleT: 0, view: "front", opac: 1,
     clip: { axis: "", pos: 0, plane: new T.Plane(new T.Vector3(0, -1, 0), 0), caps: false },
-    breath: { on: false, ready: false, t0: 0, s: 0 }, quiz: null, tool: "",
+    breath: { on: false, ready: false, t0: 0, s: 0 }, hb: { on: false, speed: 1, snd: true }, path: null, tour: null, quiz: null, tool: "",
     opSys: "muscle", real: false, relief: true, ao: fine, outline: true, focus: false, xray: false, ortho: false, grid: false,
     hist: [], meas: { on: false, pts: [] },
   });
@@ -685,7 +690,8 @@ function atlasView(L, buf, model, focusName) {
       V.present = present;
       dk("med").hidden = !present.has("zone");
       // la respiration n'a de sens que s'il y a des côtes à animer
-      dk("br").hidden = !breathKind();
+      dk("anim").hidden = !(breathKind() || hbOk() || pathsOf().length);
+      toursLoad();
       if (V.tool) toolPanel(V.tool, true);
       if (!present.has("muscle")) V.opSys = "organe";
       atlasIndexSave(model.id, V.parts, V.fiches);
@@ -825,7 +831,11 @@ function atlasView(L, buf, model, focusName) {
       m.position.copy(p.base);
       m.quaternion.copy(p.q0);
       m.scale.copy(p.s0);
-      if (s && p.br) {
+      if (V.hb.on && p.hb) {
+        const k = p.hb.g == "a" ? V.hb.ka : 1 - (1 - V.hb.kv) * p.hb.w;
+        m.position.sub(p.hb.C).multiplyScalar(k).add(p.hb.C);
+        m.scale.multiplyScalar(k);
+      } else if (s && p.br) {
         const b = p.br;
         if (b.kind == "rot") {
           tq.setFromAxisAngle(b.axis, b.ang * s);
@@ -1045,7 +1055,8 @@ function atlasView(L, buf, model, focusName) {
       tr: V.tool == "tr" || V.opac < 1,
       mes: V.meas.on,
       med: V.parts.some((p) => p.zone && p.mesh.visible),
-      br: V.breath.on,
+      anim: V.tool == "anim" || V.breath.on || V.hb.on || !!V.path,
+      tour: V.tool == "tour" || !!V.tour,
       lab: V.showLbl,
       quiz: !!V.quiz,
       more: V.tool == "more",
@@ -1072,6 +1083,8 @@ function atlasView(L, buf, model, focusName) {
     lab: () => labToggle(),
     med: () => medToggle(),
     br: () => (V.breath.on ? breathStop() : breathStart()),
+    anim: () => toolPanel("anim"),
+    tour: () => toolPanel("tour"),
     mes: () => measToggle(),
     quiz: () => quizMenu(),
     help: () => helpToggle(),
@@ -1156,7 +1169,7 @@ function atlasView(L, buf, model, focusName) {
   // ---------- fenêtres d'outils (une seule ouverte, repliable avec la flèche) ----------
   const sw = (id, label, on, hint) =>
     '<label class="atsw"><input type="checkbox" id="' + id + '"' + (on ? " checked" : "") + "><span>" + label + (hint ? "<small>" + hint + "</small>" : "") + "</span></label>";
-  const TITLES = { vues: "Vues enregistrées", struct: "Structures", disp: "Affichage", ex: "Écarter les structures", cut: "Coupe", lay: "Couches", tr: "Transparence", more: "Plus d’outils" };
+  const TITLES = { anim: "Animations", tour: "Parcours guidés", vues: "Vues enregistrées", struct: "Structures", disp: "Affichage", ex: "Écarter les structures", cut: "Coupe", lay: "Couches", tr: "Transparence", more: "Plus d’outils" };
   const sheet = $("atsheet");
   function sheetMin(m) {
     sheet.classList.toggle("min", m);
@@ -1179,6 +1192,8 @@ function atlasView(L, buf, model, focusName) {
     dockState();
     if (V.tool == "struct") return treePaint();
     if (V.tool == "vues") return viewsPaint(box);
+    if (V.tool == "anim") return animPaint(box);
+    if (V.tool == "tour") return toursPaint(box);
     if (V.tool == "more") {
       const items = [...document.querySelectorAll("#atdock [data-x], #atdock [data-y]")]
         .filter((b) => !b.hidden)
@@ -1193,7 +1208,7 @@ function atlasView(L, buf, model, focusName) {
         (b) =>
           (b.onclick = () => {
             const k = b.dataset.k;
-            if (["lay", "tr", "vues"].includes(k)) return toolPanel(k);
+            if (["lay", "tr", "vues", "anim", "tour"].includes(k)) return toolPanel(k);
             if (!["lab", "br", "med"].includes(k)) toolPanel("more");
             DOCK[k]();
             if (V.tool == "more") toolPanel("more", true);
@@ -1713,6 +1728,7 @@ function atlasView(L, buf, model, focusName) {
     B.ready = true;
   }
   function breathStart() {
+    if (V.hb.on) hbStop();
     if (!V.breath.ready) breathSetup();
     exSet(0, true);
     V.breath.on = true;
@@ -2307,6 +2323,7 @@ function atlasView(L, buf, model, focusName) {
   }
   function quizStop() {
     if (V.quiz) save();
+    if (V.quiz && V.quiz.tm) clearInterval(V.quiz.tm);
     V.quiz = null;
     dockState();
     $("atlbl").hidden = !V.showLbl;
@@ -2320,12 +2337,661 @@ function atlasView(L, buf, model, focusName) {
     box.hidden = false;
     box.innerHTML =
       '<div class="atqz"><b>Quiz 3D</b><small>10 questions sur les structures affichées</small></div><div class="atpb">' +
-      '<button class="b p" id="atqm1">Touche la structure</button><button class="b p" id="atqm2">Nomme la structure</button><button class="b p" id="atqm3">Questions sur les fiches</button><button class="b" id="atqm0">Annuler</button></div>' +
+      '<button class="b p" id="atqm1">Touche la structure</button><button class="b p" id="atqm2">Nomme la structure</button><button class="b p" id="atqm3">Questions sur les fiches</button><button class="b p" id="atqm4">Examen 3D noté sur 20</button><button class="b" id="atqm0">Annuler</button></div>' +
       '<small class="atqhint">Les structures que tu rates reviennent plus souvent.</small>';
     $("atqm1").onclick = () => quizStart("touche");
     $("atqm3").onclick = () => quizStart("fiche");
+    $("atqm4").onclick = () => examStart();
     $("atqm2").onclick = () => quizStart("nom");
     $("atqm0").onclick = () => (box.hidden = true);
+  }
+
+  // ---------- bandeau du bas pour les animations et les parcours ----------
+  function bar(html) {
+    let b = $("atanim");
+    if (!html) return b && b.remove();
+    if (!b) {
+      b = document.createElement("div");
+      b.id = "atanim";
+      b.className = "atb";
+      b.setAttribute("aria-live", "polite");
+      $("atl").appendChild(b);
+    }
+    b.innerHTML = html;
+    return b;
+  }
+
+  // ---------- battement cardiaque (schématique) avec les bruits B1 et B2 ----------
+  const hbOk = () => V.parts.some((p) => /^(right|left) ventricle$/.test(p.meta.fiche || ""));
+  let actx = null;
+  function thump(f, dur, g) {
+    if (!V.hb.snd) return;
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      const o = actx.createOscillator(),
+        v = actx.createGain(),
+        t = actx.currentTime;
+      o.type = "sine";
+      o.frequency.setValueAtTime(f, t);
+      o.frequency.exponentialRampToValueAtTime(f * 0.6, t + dur);
+      v.gain.setValueAtTime(0.0001, t);
+      v.gain.exponentialRampToValueAtTime(g, t + 0.012);
+      v.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(v).connect(actx.destination);
+      o.start(t);
+      o.stop(t + dur + 0.02);
+    } catch (e) {}
+  }
+  function hbSetup() {
+    const grp = (re) => V.parts.filter((p) => re.test(p.meta.fiche || "")),
+      ctr = (ps) => ps.reduce((v, p) => v.add(p.c), new T.Vector3()).multiplyScalar(1 / Math.max(1, ps.length)),
+      A = grp(/atrium$/),
+      Vn = grp(/ventricle$/),
+      Ca = ctr(A),
+      Cv = ctr(Vn);
+    for (const p of V.parts) p.hb = null;
+    A.forEach((p) => (p.hb = { g: "a", C: Ca }));
+    Vn.forEach((p) => (p.hb = { g: "v", C: Cv, w: 1 }));
+    grp(/^papillary/).forEach((p) => (p.hb = { g: "v", C: Cv, w: 1 }));
+    // vaisseaux coronaires : ils suivent la surface des ventricules
+    V.parts
+      .filter((p) => /coronary|interventricular|circumflex|marginal|septal|cardiac vein|coronary sinus|inferior vein lv/.test(p.meta.fiche || ""))
+      .forEach((p) => (p.hb = { g: "v", C: Cv, w: 0.8 }));
+    V.hb.av = V.parts.filter((p) => /^(tricuspid|mitral) valve$/.test(p.meta.fiche || ""));
+    V.hb.sl = V.parts.filter((p) => /^(aortic|pulmonary) valve$/.test(p.meta.fiche || ""));
+    V.hb.ready = true;
+  }
+  const HB_PH = [
+    ["Systole auriculaire", "Les atriums se contractent et finissent de remplir les ventricules."],
+    ["Systole ventriculaire · B1", "Fermeture des valves mitrale et tricuspide (B1), puis ouverture des valves aortique et pulmonaire : éjection."],
+    ["Diastole · B2", "Fermeture des valves aortique et pulmonaire (B2), ouverture des valves atrio-ventriculaires : les ventricules se remplissent."],
+  ];
+  function hbBar(full) {
+    const ph = HB_PH[Math.max(0, V.hb.ph || 0)];
+    // mise à jour du texte seulement : les boutons restent en place (sinon ils sont difficiles à toucher)
+    if (!full && $("athbx")) {
+      $("atanim").querySelector("b").textContent = ph[0];
+      $("atanim").querySelector(".atanh small").textContent = ph[1];
+      return;
+    }
+    bar(
+      '<div class="atanh"><span class="atanic">' + atIco("hb") + '</span><div><b>' + ph[0] + "</b><small>" + ph[1] + "</small></div></div>" +
+        '<div class="atanb"><button id="athbs">' + (V.hb.speed < 1 ? "Vitesse normale" : "Ralenti") + '</button><button id="athbm">' + (V.hb.snd ? "Son : oui" : "Son : non") +
+        '</button><button id="athbx">Arrêter</button></div>',
+    );
+    $("athbs").onclick = () => {
+      V.hb.speed = V.hb.speed < 1 ? 1 : 0.35;
+      hbBar(true);
+    };
+    $("athbm").onclick = () => {
+      V.hb.snd = !V.hb.snd;
+      hbBar(true);
+    };
+    $("athbx").onclick = hbStop;
+  }
+  function hbStart() {
+    if (V.breath.on) breathStop();
+    if (V.path) pathStop();
+    if (!V.hb.ready) hbSetup();
+    exSet(0, true);
+    bar("");
+    Object.assign(V.hb, { on: true, t0: performance.now(), ph: -1, cyc: 0, last: 0 });
+    dockState();
+    if (V.tool == "anim") toolPanel("anim", true);
+  }
+  function hbStop() {
+    V.hb.on = false;
+    bar("");
+    pose();
+    materials();
+    dockState();
+    if (V.tool == "anim") toolPanel("anim", true);
+  }
+  function hbTick(now) {
+    const H = V.hb,
+      T0 = 1.05; // un cycle ≈ 57 battements par minute
+    H.cyc += ((now - (H.last || now)) / 1000) * H.speed;
+    H.last = now;
+    const t = (H.cyc / T0) % 1,
+      e = (x) => 0.5 - 0.5 * Math.cos(Math.PI * Math.min(1, Math.max(0, x)));
+    H.ka = t < 0.13 ? 1 - 0.07 * Math.sin((Math.PI * t) / 0.13) : 1;
+    H.kv = t < 0.13 ? 1 : t < 0.3 ? 1 - 0.1 * e((t - 0.13) / 0.17) : t < 0.45 ? 0.9 : t < 0.7 ? 0.9 + 0.1 * e((t - 0.45) / 0.25) : 1;
+    const ph = t < 0.13 ? 0 : t < 0.45 ? 1 : 2;
+    if (ph !== H.ph) {
+      if (ph == 1) thump(62, 0.16, 0.5);
+      if (ph == 2) thump(88, 0.11, 0.35);
+      H.ph = ph;
+      hbBar();
+      // valves fermées en surbrillance : AV pendant la systole ventriculaire, sigmoïdes pendant la diastole
+      const closed = ph == 1 ? H.av : ph == 2 ? H.sl : [],
+        open = ph == 1 ? H.sl : ph == 2 ? H.av : [...H.av, ...H.sl];
+      closed.forEach((p) => p.mesh.material.emissive.setHex(0x5a3a08));
+      open.forEach((p) => p.mesh.material.emissive.setHex(0));
+    }
+    pose();
+  }
+
+  // ---------- trajets animés : circulation, air, nerfs ----------
+  const PATHS = [
+    {
+      id: "circ", n: "Circulation sanguine", d: "Petite puis grande circulation, à travers le cœur.",
+      steps: [
+        ["Veine cave supérieure", "line"], ["Atrium droit"], ["Valve tricuspide"], ["Ventricule droit"], ["Valve pulmonaire"], ["Tronc pulmonaire"],
+        ["Artère pulmonaire droite", "line"], ["Veine pulmonaire supérieure droite", "line", "ox"], ["Atrium gauche", "", "ox"], ["Valve mitrale"], ["Ventricule gauche"],
+        ["Valve aortique"], ["Aorte ascendante", "line"], ["Arc de l'aorte (crosse)", "line"], ["Aorte thoracique descendante", "line"],
+      ],
+      hint: { "Artère pulmonaire droite": "→ capillaires pulmonaires : le sang se charge en oxygène (hématose)" },
+    },
+    {
+      id: "air-d", n: "Trajet de l’air : lobe inférieur droit", d: "De la trachée jusqu’au segment basal postérieur (B10).",
+      steps: [["Trachée", "line"], ["Bronche principale droite", "line"], ["Bronche intermédiaire (droite)", "line"], ["Bronche lobaire inférieure droite", "line"],
+        ["Bronche segmentaire basale postérieure droite (B10)", "line"], ["Lobe inférieur du poumon droit"], ["Lobe inf. droit"]],
+    },
+    {
+      id: "air-g", n: "Trajet de l’air : lobe supérieur gauche", d: "De la trachée jusqu’au segment apico-postérieur (B1+2).",
+      steps: [["Trachée", "line"], ["Bronche principale gauche", "line"], ["Bronche lobaire supérieure gauche", "line"],
+        ["Bronche segmentaire apico-postérieure gauche (B1+2)", "line"], ["Lobe supérieur du poumon gauche"], ["Lobe sup. gauche"]],
+    },
+    {
+      id: "vag-g", n: "Nerf vague gauche", d: "Croise la face antérieure de l’arc de l’aorte (naissance du nerf laryngé récurrent gauche), passe derrière le pédicule pulmonaire puis rejoint l’œsophage.",
+      steps: [["Nerf vague gauche (X)", "line"]],
+    },
+    {
+      id: "vag-d", n: "Nerf vague droit", d: "Croise l’artère subclavière droite (récurrent droit), longe la trachée, passe derrière le pédicule pulmonaire droit puis rejoint l’œsophage.",
+      steps: [["Nerf vague droit (X)", "line"]],
+    },
+  ];
+  // parties correspondant à une étape : nom exact, sinon début du nom (ex. « Valve tricuspide : … »)
+  const stepParts = (n) => {
+    const t = atNorm(n),
+      ex = V.parts.filter((p) => atNorm(p.meta.fr) === t);
+    return ex.length ? ex : V.parts.filter((p) => atNorm(p.meta.fr).startsWith(t));
+  };
+  function pathsOf() {
+    if (V.pathList) return V.pathList;
+    return (V.pathList = PATHS.map((P) => {
+      const seen = new Set(),
+        steps = P.steps
+          .map(([n, kind, ox]) => ({ n, kind, ox, ps: stepParts(n) }))
+          .filter((st) => st.ps.length && !seen.has(st.ps[0]) && seen.add(st.ps[0]));
+      return { ...P, steps };
+    }).filter((P) => P.steps.length >= (P.steps.length == 1 && P.steps[0].kind == "line" ? 1 : 3)));
+  }
+  // ligne centrale d'une structure allongée : moyenne des sommets par tranche le long de son grand axe
+  function centerline(p, from) {
+    const pos = p.mesh.geometry.attributes.position,
+      m = p.mesh,
+      v = new T.Vector3(),
+      pts = [];
+    m.updateWorldMatrix(true, false);
+    const step = Math.max(1, Math.floor(pos.count / 4000));
+    for (let i = 0; i < pos.count; i += step) pts.push(v.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld).clone());
+    const box = new T.Box3().setFromPoints(pts),
+      sz = box.getSize(new T.Vector3()),
+      ax = sz.x >= sz.y && sz.x >= sz.z ? "x" : sz.y >= sz.z ? "y" : "z",
+      N = Math.max(4, Math.min(14, Math.round(sz[ax] / 0.012))),
+      bins = Array.from({ length: N }, () => new T.Box3());
+    // centre de la boîte de chaque tranche (plus stable que la moyenne des sommets pour un tube)
+    for (const q of pts) bins[Math.min(N - 1, Math.floor(((q[ax] - box.min[ax]) / (sz[ax] || 1)) * N))].expandByPoint(q);
+    let line = bins.filter((b) => !b.isEmpty()).map((b) => b.getCenter(new T.Vector3()));
+    // lissage léger
+    line = line.map((q, i) => (i == 0 || i == line.length - 1 ? q : q.clone().multiplyScalar(0.5).addScaledVector(line[i - 1], 0.25).addScaledVector(line[i + 1], 0.25)));
+    if (from && line.length > 1 && line[0].distanceTo(from) > line[line.length - 1].distanceTo(from)) line.reverse();
+    // une structure verticale isolée se parcourt de haut en bas
+    if (!from && line.length > 1 && line[0].y < line[line.length - 1].y) line.reverse();
+    return line;
+  }
+  const wc = (ps) => ps.reduce((v, p) => v.add(new T.Box3().setFromObject(p.mesh).getCenter(new T.Vector3())), new T.Vector3()).multiplyScalar(1 / ps.length);
+  function pathStart(P) {
+    if (V.breath.on) breathStop();
+    if (V.hb.on) hbStop();
+    if (V.path) pathStop(true);
+    bar("");
+    select(null);
+    const pts = [],
+      marks = [];
+    let last = null;
+    for (const st of P.steps) {
+      marks.push(pts.length);
+      if (st.kind == "line") for (const q of centerline(st.ps[0], last)) pts.push(q);
+      else pts.push(wc(st.ps));
+      last = pts[pts.length - 1];
+    }
+    if (pts.length < 2) return toast("Trajet indisponible dans cet atlas.");
+    const curve = new T.CatmullRomCurve3(pts, false, "centripetal"),
+      lens = curve.getLengths(pts.length * 8),
+      total = lens[lens.length - 1],
+      // position (0..1) du début de chaque étape le long du trajet
+      at = marks.map((i) => {
+        let d = 0;
+        for (let k = 1; k <= i; k++) d += pts[k].distanceTo(pts[k - 1]);
+        return d;
+      }),
+      dtot = at.length ? pts.reduce((d, q, k) => (k ? d + q.distanceTo(pts[k - 1]) : 0), 0) : 1,
+      dot = new T.Mesh(new T.SphereGeometry(0.003, 16, 12), new T.MeshBasicMaterial({ color: 0x5aa2ff, depthTest: false, transparent: true })),
+      halo = new T.Mesh(new T.SphereGeometry(0.0065, 16, 12), new T.MeshBasicMaterial({ color: 0x5aa2ff, depthTest: false, transparent: true, opacity: 0.25 })),
+      tube = new T.Mesh(new T.TubeGeometry(curve, Math.min(400, pts.length * 6), 0.0012, 6, false), new T.MeshBasicMaterial({ color: 0xffffff, depthTest: false, transparent: true, opacity: 0.25 }));
+    [dot, halo, tube].forEach((o) => ((o.renderOrder = 998), (o.raycast = () => {}), scene.add(o)));
+    V.path = { P, curve, at: at.map((d) => d / (dtot || 1)), dur: Math.min(22, Math.max(7, total * 55)) * 1000, t0: performance.now(), dot, halo, tube, st: -1, xr: V.xray, paused: false, u: 0 };
+    V.xray = true;
+    materials();
+    const b = new T.Box3().setFromPoints(pts),
+      c = b.getCenter(new T.Vector3()),
+      r = Math.max(0.05, b.getSize(new T.Vector3()).length() / 2);
+    moveCam(c.clone().add(new T.Vector3(0, 0.15, 1).normalize().multiplyScalar(fitDist(r * 1.15))), c, true, V.ortho ? orthoZoomFor(r * 1.15) : 1);
+    dockState();
+    if (V.tool) toolPanel(V.tool);
+  }
+  function pathBar(full) {
+    const Pa = V.path,
+      st = Pa.P.steps[Math.max(0, Pa.st)],
+      hint = (Pa.P.hint || {})[st.n];
+    if (!full && $("attrx")) {
+      const box = $("atanim").querySelector(".atanh > div");
+      box.innerHTML =
+        "<small>" + esc(Pa.P.n) + " · étape " + (Pa.st + 1) + " / " + Pa.P.steps.length + "</small><b>" + esc(st.ps[0] && st.n.length > 40 ? st.ps[0].meta.fr : st.n) + "</b>" +
+        (hint ? "<small>" + esc(hint) + "</small>" : Pa.P.steps.length == 1 ? "<small>" + esc(Pa.P.d) + "</small>" : "");
+      $("attrp").textContent = Pa.paused ? "Reprendre" : "Pause";
+      return;
+    }
+    bar(
+      '<div class="atanh"><span class="atanic">' + atIco("trj") + "</span><div><small>" + esc(Pa.P.n) + " · étape " + (Pa.st + 1) + " / " + Pa.P.steps.length +
+        "</small><b>" + esc(st.ps[0] && st.n.length > 40 ? st.ps[0].meta.fr : st.n) + "</b>" + (hint ? "<small>" + esc(hint) + "</small>" : Pa.P.steps.length == 1 ? "<small>" + esc(Pa.P.d) + "</small>" : "") +
+        '</div></div><div class="atanb"><button id="attrp">' + (Pa.paused ? "Reprendre" : "Pause") + '</button><button id="attrr">Rejouer</button><button id="attrx">Arrêter</button></div>',
+    );
+    $("attrp").onclick = () => {
+      Pa.paused = !Pa.paused;
+      if (!Pa.paused) Pa.t0 = performance.now() - Pa.u * Pa.dur;
+      pathBar(true);
+    };
+    $("attrr").onclick = () => pathStart(Pa.P);
+    $("attrx").onclick = () => pathStop();
+  }
+  function pathTick(now) {
+    const Pa = V.path;
+    if (!Pa.paused) Pa.u = Math.min(1, (now - Pa.t0) / Pa.dur);
+    const u = Pa.u,
+      q = Pa.curve.getPointAt(u);
+    Pa.dot.position.copy(q);
+    Pa.halo.position.copy(q);
+    Pa.halo.scale.setScalar(1 + 0.25 * Math.sin(now / 160));
+    let st = 0;
+    Pa.at.forEach((a, i) => u >= a - 1e-6 && (st = i));
+    if (st !== Pa.st) {
+      const prev = Pa.P.steps[Pa.st];
+      if (prev) prev.ps.forEach((p) => p.mesh.material.emissive.setHex(0));
+      Pa.st = st;
+      const cur = Pa.P.steps[st];
+      cur.ps.forEach((p) => p.mesh.material.emissive.copy(selEm));
+      // sang : bleu (pauvre en oxygène) puis rouge après les poumons
+      const red = Pa.P.id == "circ" && Pa.P.steps.slice(0, st + 1).some((x) => x.ox),
+        col = Pa.P.id == "circ" ? (red ? 0xff4a3d : 0x5aa2ff) : Pa.P.id.startsWith("air") ? 0xe8f4ff : 0xffd33d;
+      Pa.dot.material.color.setHex(col);
+      Pa.halo.material.color.setHex(col);
+      pathBar();
+    }
+    if (u >= 1 && !Pa.paused) {
+      Pa.paused = true;
+      pathBar();
+    }
+    V.dirty = true;
+  }
+  function pathStop(quiet) {
+    const Pa = V.path;
+    if (!Pa) return;
+    [Pa.dot, Pa.halo, Pa.tube].forEach((o) => (o.removeFromParent(), o.geometry.dispose(), o.material.dispose()));
+    V.path = null;
+    V.xray = Pa.xr;
+    materials();
+    if (!quiet) bar("");
+    dockState();
+  }
+  function animPaint(box) {
+    const rows = [];
+    if (breathKind()) rows.push(["br", "Respiration", "Inspiration et expiration, en boucle.", V.breath.on]);
+    if (hbOk()) rows.push(["hb", "Battement cardiaque", "Systole et diastole, avec les bruits B1 et B2.", V.hb.on]);
+    box.innerHTML =
+      (rows.length
+        ? '<div class="atprel">' +
+          rows.map((r) => '<button data-a="' + r[0] + '"' + (r[3] ? ' class="on"' : "") + "><b>" + (r[3] ? "■ " : "▶ ") + r[1] + "</b><small>" + r[2] + "</small></button>").join("") +
+          "</div>"
+        : "") +
+      (pathsOf().length
+        ? '<p class="atlbl2" style="margin:14px 0 6px">Trajets animés</p><div class="atprel">' +
+          pathsOf().map((P, i) => '<button data-p="' + i + '"' + (V.path && V.path.P.id == P.id ? ' class="on"' : "") + "><b>▶ " + esc(P.n) + "</b><small>" + esc(P.d) + "</small></button>").join("") +
+          "</div>"
+        : "");
+    box.querySelectorAll("[data-a]").forEach(
+      (b) =>
+        (b.onclick = () => {
+          if (b.dataset.a == "br") V.breath.on ? breathStop() : (V.hb.on && hbStop(), V.path && pathStop(), breathStart());
+          else V.hb.on ? hbStop() : hbStart();
+          // téléphone : on ferme la fenêtre pour laisser voir l'animation et son bandeau
+          if (matchMedia("(max-width: 760px), (orientation: landscape) and (max-height: 500px)").matches) toolPanel("anim");
+          else animPaint(box);
+        }),
+    );
+    box.querySelectorAll("[data-p]").forEach((b) => (b.onclick = () => pathStart(pathsOf()[+b.dataset.p])));
+  }
+
+  // ---------- parcours guidés : intégrés (rédigés) + créés par l'administrateur (parcours.json, lisible par les membres) ----------
+  const TOURS = {
+    thorax: [
+      {
+        id: "med", n: "Le médiastin en 6 étapes",
+        steps: [
+          { t: "Vue d’ensemble", x: "Le médiastin est l’espace entre les deux poumons, du sternum en avant au rachis en arrière, de l’orifice supérieur du thorax au diaphragme.", view: "front", all: 1 },
+          { t: "Ses compartiments", x: "On le divise par un plan passant par l’angle sternal (T4-T5) : médiastin supérieur au-dessus ; en dessous, médiastin antérieur, moyen et postérieur.", view: "front", med: 1 },
+          { t: "Médiastin supérieur", x: "Contient le thymus, l’arc de l’aorte et ses branches, la veine cave supérieure et les troncs brachiocéphaliques, la trachée, l’œsophage, les nerfs vagues et phréniques, le conduit thoracique.", view: "q34", med: 1, sel: ["zone sup"] },
+          { t: "Médiastin antérieur", x: "Entre le sternum et le péricarde : reliquats du thymus, graisse, ligaments sterno-péricardiques.", view: "side", med: 1, sel: ["zone ant"] },
+          { t: "Médiastin moyen", x: "Le cœur dans son péricarde, l’aorte ascendante, le tronc pulmonaire, la terminaison de la veine cave supérieure, les nerfs phréniques.", view: "q34", med: 1, sel: ["zone moy"] },
+          { t: "Médiastin postérieur", x: "En arrière du péricarde : aorte thoracique descendante, œsophage, veines azygos et hémi-azygos, conduit thoracique, nerfs vagues, troncs sympathiques.", view: "back", med: 1, sel: ["zone post"] },
+        ],
+      },
+      {
+        id: "coeur-thx", n: "Le cœur et les gros vaisseaux",
+        steps: [
+          { t: "Le cœur dans le thorax", x: "Le cœur occupe le médiastin moyen, posé sur le diaphragme, deux tiers à gauche de la ligne médiane.", view: "front", iso: ["right atrium", "left atrium", "right ventricle", "left ventricle", "ascending aorta", "arch of aorta", "pulmonary trunk", "pulmonary artery", "superior vena cava", "inferior vena cava", "sternum", "body of sternum", "manubrium", "diaphragm"] },
+          { t: "Le ventricule droit", x: "Le plus antérieur : il forme l’essentiel de la face antérieure du cœur et éjecte dans le tronc pulmonaire.", view: "front", iso: ["right atrium", "left atrium", "right ventricle", "left ventricle", "ascending aorta", "pulmonary trunk", "superior vena cava"], sel: ["right ventricle"] },
+          { t: "Le ventricule gauche", x: "Il forme l’apex et le bord gauche ; sa paroi est la plus épaisse. Il éjecte dans l’aorte ascendante.", view: "q34", iso: ["right atrium", "left atrium", "right ventricle", "left ventricle", "ascending aorta", "pulmonary trunk", "superior vena cava"], sel: ["left ventricle"] },
+          { t: "L’arc de l’aorte", x: "Il passe au-dessus de la bifurcation du tronc pulmonaire et de la bronche principale gauche, et donne le tronc brachiocéphalique, la carotide commune gauche et la subclavière gauche.", view: "q34", iso: ["ascending aorta", "arch of aorta", "descending thoracic aorta", "brachiocephalic trunk", "common carotid artery", "subclavian artery", "pulmonary trunk", "trachea", "main bronchus"], sel: ["arch of aorta"] },
+        ],
+      },
+    ],
+    coeur: [
+      {
+        id: "cav", n: "Cavités et valves",
+        steps: [
+          { t: "Les quatre cavités", x: "Deux atriums reçoivent le sang, deux ventricules l’éjectent. Le cœur droit envoie le sang vers les poumons, le cœur gauche vers tout l’organisme.", view: "front", all: 1 },
+          { t: "Atrium droit", x: "Il reçoit les veines caves supérieure et inférieure et le sinus coronaire.", view: "q34", sel: ["right atrium"] },
+          { t: "Valve tricuspide", x: "Entre atrium et ventricule droits ; ses cuspides sont tenues par les cordages et les muscles papillaires.", view: "front", sysOnly: ["valve", "muscle"], sel: ["tricuspid valve"] },
+          { t: "Ventricule droit", x: "Il éjecte dans le tronc pulmonaire, à travers la valve pulmonaire.", view: "front", sel: ["right ventricle"] },
+          { t: "Atrium gauche", x: "Le plus postérieur : il reçoit les quatre veines pulmonaires. Il répond à l’œsophage en arrière.", view: "back", sel: ["left atrium"] },
+          { t: "Valve mitrale", x: "Deux cuspides, entre atrium et ventricule gauches ; elle se ferme au début de la systole (B1).", view: "front", sysOnly: ["valve", "muscle"], sel: ["mitral valve"] },
+          { t: "Valve aortique", x: "Trois valvules semi-lunaires ; les artères coronaires naissent des sinus droit et gauche. Elle se ferme au début de la diastole (B2).", view: "front", sysOnly: ["valve"], sel: ["aortic valve"] },
+        ],
+      },
+      {
+        id: "cor", n: "Les artères coronaires",
+        steps: [
+          { t: "Vue d’ensemble", x: "Deux artères coronaires naissent de l’aorte ascendante, juste au-dessus de la valve aortique.", view: "front", all: 1 },
+          { t: "Coronaire droite", x: "Elle chemine dans le sillon atrio-ventriculaire droit et donne la branche marginale droite.", view: "front", sel: ["right coronary artery"] },
+          { t: "Coronaire gauche", x: "Un tronc court qui se divise en interventriculaire antérieure (IVA) et circonflexe.", view: "q34", sel: ["left coronary artery"] },
+          { t: "IVA", x: "Elle descend dans le sillon interventriculaire antérieur et donne les branches septales.", view: "front", sel: ["anterior interventricular artery"] },
+          { t: "Circonflexe", x: "Elle contourne le bord gauche dans le sillon atrio-ventriculaire gauche.", view: "back", sel: ["circumflex artery"] },
+        ],
+      },
+    ],
+    poumons: [
+      {
+        id: "lob", n: "Lobes et arbre bronchique",
+        steps: [
+          { t: "Deux poumons", x: "Le poumon droit a trois lobes (supérieur, moyen, inférieur), le gauche deux (supérieur avec la lingula, inférieur).", view: "front", all: 1 },
+          { t: "Lobe moyen", x: "Limité par la scissure horizontale en haut et la scissure oblique en bas ; il n’existe qu’à droite.", view: "side", sel: ["rml"] },
+          { t: "La trachée", x: "Elle se divise en deux bronches principales au niveau de T4-T5 (carène).", view: "front", sysOnly: ["organe"], iso: ["trachea", "main bronchus", "intermediate bronchus", "lobar bronchi", "segmental bronchi"], sel: ["trachea"] },
+          { t: "Bronche principale droite", x: "Plus courte, plus large et plus verticale que la gauche : un corps étranger inhalé y va plus souvent.", view: "front", iso: ["trachea", "main bronchus", "intermediate bronchus", "lobar bronchi", "segmental bronchi"], sel: ["main bronchus"] },
+          { t: "Bronches segmentaires", x: "Chaque bronche lobaire se divise en bronches segmentaires (10 à droite, 8 à 10 à gauche selon les descriptions) : chacune ventile un segment.", view: "front", iso: ["trachea", "main bronchus", "intermediate bronchus", "lobar bronchi", "segmental bronchi"], sel: ["segmental bronchi"] },
+        ],
+      },
+    ],
+  };
+  ATL.custom = ATL.custom || null; // parcours créés par l'administrateur (tous les atlas)
+  async function toursLoad(force) {
+    if (ATL.custom && !force) return;
+    try {
+      const { data, error } = await SY.sb.storage.from("atlas").download("parcours.json");
+      ATL.custom = !error && data ? JSON.parse(await data.text()) : [];
+    } catch (e) {
+      ATL.custom = [];
+    }
+    if (ATL.v === V && V.tool == "tour") toolPanel("tour", true);
+  }
+  async function toursPublish() {
+    const blob = new Blob([JSON.stringify(ATL.custom)], { type: "model/gltf-binary" });
+    const { error } = await SY.sb.storage.from("atlas").upload("parcours.json", blob, { upsert: true, contentType: "model/gltf-binary", cacheControl: "60" });
+    toast(error ? esc(syTr(error.message)) : "Parcours publiés : tous les membres qui ont l’atlas les voient ✔");
+  }
+  const toursOf = () => [...(TOURS[model.id] || []), ...(ATL.custom || []).filter((t) => t.model == model.id)];
+  function toursPaint(box) {
+    const L = toursOf(),
+      ed = V.tourEd;
+    box.innerHTML =
+      (L.length
+        ? '<div class="atprel">' +
+          L.map(
+            (t, i) =>
+              '<div class="attrow"><button data-t="' + i + '"><b>▶ ' + esc(t.n) + "</b><small>" + t.steps.length + " étapes" + (t.custom ? " · créé par l’administrateur" : "") + "</small></button>" +
+              (t.custom && SY.role == "admin" ? '<button class="atvx" data-d="' + esc(t.id) + '" aria-label="Supprimer">✕</button>' : "") + "</div>",
+          ).join("") +
+          "</div>"
+        : '<p class="atnote">Aucun parcours pour cet atlas.</p>') +
+      (SY.role == "admin"
+        ? ed
+          ? '<div class="atted"><p class="atlbl2">Nouveau parcours : ' + esc(ed.n) + " (" + ed.steps.length + " étape" + (ed.steps.length > 1 ? "s" : "") + ")</p>" +
+            '<input id="attet" maxlength="80" placeholder="Titre de l’étape"><textarea id="attex" rows="3" maxlength="600" placeholder="Explication affichée à cette étape"></textarea>' +
+            '<div class="atpb"><button class="b p" id="attea">Ajouter l’étape (vue actuelle)</button><button class="b" id="attes"' + (ed.steps.length ? "" : " disabled") + '>Publier</button><button class="b" id="attec">Annuler</button></div>' +
+            '<p class="atnote">Place le modèle comme tu veux (angle, structures, coupe, sélection), puis ajoute l’étape.</p></div>'
+          : '<div class="atpb"><button class="b" id="atten">＋ Créer un parcours</button></div>'
+        : "");
+    box.querySelectorAll("[data-t]").forEach((b) => (b.onclick = () => tourStart(L[+b.dataset.t])));
+    box.querySelectorAll("[data-d]").forEach(
+      (b) =>
+        (b.onclick = () =>
+          ask("Supprimer ce parcours pour tous les membres ?", async () => {
+            ATL.custom = (ATL.custom || []).filter((t) => t.id != b.dataset.d);
+            await toursPublish();
+            toursPaint(box);
+          })),
+    );
+    if ($("atten"))
+      $("atten").onclick = () => {
+        const n = prompt("Titre du parcours");
+        if (!n) return;
+        V.tourEd = { n: n.slice(0, 80), steps: [] };
+        toursPaint(box);
+      };
+    if ($("attea"))
+      $("attea").onclick = () => {
+        const t = $("attet").value.trim();
+        if (!t) return toast("Donne un titre à l’étape.");
+        ed.steps.push({ t, x: $("attex").value.trim(), snap: viewSnap(t) });
+        toast("Étape " + ed.steps.length + " ajoutée");
+        toursPaint(box);
+      };
+    if ($("attec")) $("attec").onclick = () => ((V.tourEd = null), toursPaint(box));
+    if ($("attes"))
+      $("attes").onclick = async () => {
+        await toursLoad(true);
+        ATL.custom = ATL.custom || [];
+        ATL.custom.push({ id: "c" + Date.now().toString(36), model: model.id, n: ed.n, custom: 1, steps: ed.steps });
+        V.tourEd = null;
+        await toursPublish();
+        toursPaint(box);
+      };
+  }
+  function tourStart(t) {
+    if (V.path) pathStop();
+    if (V.hb.on) hbStop();
+    if (V.breath.on) breathStop();
+    V.tour = { t, i: 0, prev: { layer: V.layer, hOne: new Set(V.hOne), hSys: new Set(V.hSys), iso: V.iso } };
+    if (V.tool) toolPanel(V.tool);
+    tourStep(0);
+  }
+  function tourStep(i) {
+    const Tr = V.tour,
+      st = Tr.t.steps[i];
+    Tr.i = i;
+    if (st.snap) viewApply(st.snap);
+    else {
+      const byF = (keys) => V.parts.filter((p) => keys.includes(p.meta.fiche) || keys.includes(p.meta.fr));
+      V.hSys.clear();
+      V.layer = 0;
+      V.iso = st.iso ? new Set(byF(st.iso)) : null;
+      V.hOne = new Set(V.parts.filter((p) => (p.zone && !st.med) || p.meta.fiche == "pleura"));
+      if (st.med) {
+        V.parts.filter((p) => /^(rul|rml|rll|lul|lll|pleura|right lung|left lung)$/.test(p.meta.fiche || "")).forEach((p) => V.hOne.add(p));
+        V.layer = ATL_LAYERS.length - 1;
+      }
+      if (st.sysOnly) V.parts.forEach((p) => !st.sysOnly.includes(p.meta.systeme) && V.hOne.add(p));
+      sysBtns().forEach((b) => b.classList.remove("off"));
+      vis();
+      const sel = st.sel ? byF(st.sel) : [];
+      sel.forEach((p) => V.hOne.delete(p));
+      if (sel.length) vis();
+      V.sels = new Set(sel);
+      V.sel = sel[0] || null;
+      materials();
+      panel();
+      // téléphone : on laisse la place au texte du parcours (la fiche reste accessible en touchant la structure)
+      if (matchMedia("(max-width: 760px), (orientation: landscape) and (max-height: 500px)").matches) {
+        $("atpan").classList.remove("show");
+        $("atl").classList.remove("pan-open");
+      }
+      if (sel.length) {
+        setView(st.view || V.view, false);
+        orbitOn(sel[0]);
+      } else setView(st.view || "front");
+    }
+    const n = Tr.t.steps.length;
+    bar(
+      '<div class="attour"><small>' + esc(Tr.t.n) + " · " + (i + 1) + " / " + n + "</small><b>" + esc(st.t) + "</b>" + (st.x ? "<p>" + esc(st.x) + "</p>" : "") +
+        '<div class="attdots">' + Tr.t.steps.map((_, k) => "<i" + (k == i ? ' class="on"' : "") + "></i>").join("") + "</div></div>" +
+        '<div class="atanb"><button id="attpv"' + (i ? "" : " disabled") + '>‹ Précédent</button><button id="attnx" class="p">' + (i < n - 1 ? "Suivant ›" : "Terminer") +
+        '</button><button id="attqx">Quitter</button></div>',
+    ).classList.add("tour");
+    $("attpv").onclick = () => tourStep(i - 1);
+    $("attnx").onclick = () => (i < n - 1 ? tourStep(i + 1) : tourStop());
+    $("attqx").onclick = () => tourStop();
+  }
+  function tourStop() {
+    const Tr = V.tour;
+    if (!Tr) return;
+    V.tour = null;
+    bar("");
+    V.layer = Tr.prev.layer;
+    V.hOne = Tr.prev.hOne;
+    V.hSys = Tr.prev.hSys;
+    V.iso = Tr.prev.iso;
+    select(null);
+    vis();
+    dockState();
+  }
+
+  // ---------- examen 3D : 20 questions mélangées, chronométrées, sans correction avant la fin, note sur 20 ----------
+  const EXN = 20,
+    EXT = 20; // secondes par question
+  function examStart() {
+    if (V.breath.on) breathStop();
+    if (V.hb.on) hbStop();
+    if (V.path) pathStop();
+    select(null);
+    const pool = V.parts.filter((p) => p.mesh.visible && !p.zone).sort(() => Math.random() - 0.5),
+      seen = new Set(),
+      qs = [];
+    for (const p of pool) {
+      if (qs.length >= EXN) break;
+      if (seen.has(p.meta.fr)) continue;
+      seen.add(p.meta.fr);
+      const r = Math.random(),
+        fq = r < 0.34 ? ficheQ(p) : null;
+      qs.push(fq ? { p, type: "fiche", q: fq } : { p, type: r < 0.67 ? "touche" : "nom" });
+    }
+    if (qs.length < 5) return toast("Affiche au moins 5 structures pour lancer un examen.");
+    V.quiz = { mode: "examen", qs, list: qs.map((q) => q.p), i: 0, ok: 0, res: [], t0: Date.now() };
+    setView(V.view);
+    $("atlbl").hidden = true;
+    if (V.tool) toolPanel(V.tool);
+    dockState();
+    examPaint();
+  }
+  function examPaint() {
+    const Q = V.quiz,
+      box = $("atquiz");
+    clearInterval(Q.tm);
+    if (Q.i >= Q.qs.length) return examEnd();
+    const q = Q.qs[Q.i],
+      head = '<div class="atqz"><small>Examen 3D · question ' + (Q.i + 1) + " / " + Q.qs.length + ' · <span id="atqt">' + EXT + " s</span></small>";
+    V.parts.forEach((x) => x.mesh.material.emissive.setHex(0));
+    box.hidden = false;
+    if (q.type == "touche") {
+      box.innerHTML = head + "<b>Touche : " + esc(q.p.meta.fr) + "</b></div>";
+      if (Q.i && Q.qs[Q.i - 1].type != "touche") setView(V.view);
+    }
+    else {
+      q.p.mesh.material.emissive.setHex(0x2f7fb3);
+      orbitOn(q.p);
+      if (q.type == "nom")
+        box.innerHTML =
+          head + "<b>Quelle est la structure en bleu ?</b></div>" +
+          '<div class="ats atqin"><input id="atqa" type="text" autocomplete="off" placeholder="Écris son nom…" aria-label="Ta réponse"><div id="atqsug"></div></div>';
+      else
+        box.innerHTML =
+          head + "<b>" + esc(q.q.titre) + " (en bleu) : " + esc(q.q.label.toLowerCase()) + " ?</b></div><div class=\"atqcs\">" +
+          q.q.choices.map((c, i) => '<button class="atqc" data-i="' + i + '">' + esc(c) + "</button>").join("") + "</div>";
+    }
+    box.innerHTML += '<div class="atpb">' + (q.type == "nom" ? '<button class="b p" id="atqok">Valider</button>' : "") + '<button class="b" id="atqskip">Passer</button><button class="b" id="atqend">Abandonner</button></div>';
+    $("atqskip").onclick = () => examAnswer(false, "passée");
+    $("atqend").onclick = quizStop;
+    if (q.type == "nom") {
+      const inp = $("atqa"),
+        sg = $("atqsug");
+      let cur = [];
+      inp.oninput = () => {
+        cur = inp.value.trim().length > 1 ? search(inp.value).slice(0, 6) : [];
+        sg.innerHTML = cur.map((x, i) => '<button data-i="' + i + '">' + esc(x.meta.fr) + "</button>").join("");
+        sg.querySelectorAll("button").forEach((b) => (b.onmousedown = (e) => (e.preventDefault(), (inp.value = cur[+b.dataset.i].meta.fr), (sg.innerHTML = ""))));
+      };
+      const go = () => examAnswer(atNorm(inp.value).trim() === atNorm(q.p.meta.fr), inp.value.trim() || "—");
+      inp.onkeydown = (e) => e.key == "Enter" && (e.preventDefault(), go());
+      $("atqok").onclick = go;
+      setTimeout(() => inp.focus(), 50);
+    }
+    if (q.type == "fiche") box.querySelectorAll(".atqc").forEach((b) => (b.onclick = () => examAnswer(q.q.choices[+b.dataset.i] === q.q.ans, q.q.choices[+b.dataset.i])));
+    let left = EXT;
+    Q.tm = setInterval(() => {
+      if (V.quiz !== Q || ATL.v !== V) return clearInterval(Q.tm);
+      left--;
+      if ($("atqt")) $("atqt").textContent = left + " s";
+      if (left <= 0) examAnswer(false, "temps écoulé");
+    }, 1000);
+  }
+  function examTouch(p) {
+    const Q = V.quiz,
+      q = Q.qs[Q.i];
+    if (q && q.type == "touche") examAnswer(p.meta.fr === q.p.meta.fr, p.meta.fr);
+  }
+  function examAnswer(good, said) {
+    const Q = V.quiz;
+    if (!Q || Q.i >= Q.qs.length) return;
+    clearInterval(Q.tm);
+    const q = Q.qs[Q.i];
+    if (good) Q.ok++;
+    qStat(q.p, good);
+    Q.res.push({ q, good, said });
+    Q.i++;
+    examPaint();
+  }
+  function examEnd() {
+    const Q = V.quiz,
+      note = Math.round((Q.ok / Q.qs.length) * 200) / 10,
+      box = $("atquiz");
+    V.parts.forEach((x) => x.mesh.material.emissive.setHex(0));
+    S.atq = S.atq || { hist: [] };
+    S.atq.hist.push({ d: day(), t: Date.now(), m: model.id, n: Q.qs.length, ok: Q.ok, mode: "examen", note, dur: Math.round((Date.now() - Q.t0) / 1000) });
+    save();
+    const wrong = Q.res.filter((r) => !r.good);
+    box.innerHTML =
+      '<div class="atqz ' + (note >= 10 ? "ok" : "ko") + '"><small>Examen 3D terminé</small><b>' + String(note).replace(".", ",") + " / 20</b><small>" + Q.ok + " bonne" + (Q.ok > 1 ? "s" : "") + " réponse" + (Q.ok > 1 ? "s" : "") + " sur " + Q.qs.length + "</small></div>" +
+      (wrong.length
+        ? '<div class="atexr"><p class="atlbl2">À revoir (touche pour la voir)</p>' +
+          wrong.map((r) => '<button data-i="' + V.parts.indexOf(r.q.p) + '"><b>' + esc(r.q.p.meta.fr) + "</b><small>" + (r.q.type == "fiche" ? esc(r.q.q.label) + " : " + esc(r.q.q.ans) : "Ta réponse : " + esc(r.said || "—")) + "</small></button>").join("") +
+          "</div>"
+        : "") +
+      '<div class="atpb"><button class="b p" id="atqre">Nouvel examen</button><button class="b" id="atqend">Fermer</button></div>';
+    box.querySelectorAll(".atexr button").forEach((b) => (b.onclick = () => focusPart(V.parts[+b.dataset.i])));
+    $("atqre").onclick = examStart;
+    $("atqend").onclick = quizStop;
+    Q.done = true;
   }
 
   // ---------- mesure entre deux points ----------
@@ -2387,6 +3053,7 @@ function atlasView(L, buf, model, focusName) {
     const hit = pickAt(e.clientX, e.clientY),
       p = hit ? hit.object.userData.part : null;
     if (V.meas.on) return hit && measAdd(hit.point);
+    if (V.quiz && V.quiz.mode == "examen") return p && examTouch(p);
     if (V.quiz) return V.quiz.mode == "touche" && p && quizAnswer(p);
     const now = performance.now();
     if (p && lastTap.p === p && now - lastTap.t < 350) {
@@ -2472,6 +3139,8 @@ function atlasView(L, buf, model, focusName) {
     if (e.key == "Escape") {
       if (typing) return;
       if (V.pres) return presToggle(false);
+      if (V.tour) return tourStop();
+      if (V.path) return pathStop();
       if (!$("athelpbox").hidden) return ($("athelpbox").hidden = true);
       if (!$("atmlist").hidden) return ($("atmlist").hidden = true);
       if (V.meas.on) return measToggle();
@@ -2726,6 +3395,8 @@ function atlasView(L, buf, model, focusName) {
       V.anim(now);
       V.dirty = true;
     }
+    if (V.hb.on) hbTick(now);
+    if (V.path) pathTick(now);
     if (V.breath.on) {
       V.breath.s = (1 - Math.cos(((now - V.breath.t0) / 4500) * Math.PI * 2)) / 2;
       pose();
@@ -2781,6 +3452,15 @@ function atlasStats() {
       [Math.round((ok / n) * 100) + " %", "de bonnes réponses"],
       [best + " %", "meilleur score"],
       [last.ok + " / " + last.n, "dernier quiz"],
+      ...(() => {
+        const ex = h.filter((x) => x.mode == "examen");
+        if (!ex.length) return [];
+        const notes = ex.map((x) => x.note ?? Math.round((x.ok / x.n) * 200) / 10);
+        return [
+          [String(notes[notes.length - 1]).replace(".", ",") + " / 20", "dernier examen 3D"],
+          [String(Math.max(...notes)).replace(".", ",") + " / 20", "meilleur examen 3D"],
+        ];
+      })(),
     ]
       .map((t) => '<div class="k"><b>' + t[0] + "</b><small>" + t[1] + "</small></div>")
       .join("") +

@@ -4694,3 +4694,45 @@ html.atlon, html.atlon body { overflow: hidden; }
 #atl.pres #atc, #atl.pres #atlbl, #atl.pres #atgl, #atl.pres #atmeas { left: 0 !important; top: 0 !important; width: 100% !important; height: 100% !important; }
 /* « Plus » visible partout (outils rares rangés dedans) */
 #atdock [data-y] { display: none !important; }
+/* boîtes de dialogue de l'app au-dessus de l'atlas */
+html.atlon #md { z-index: 80; }
+/* bandeau d'animation / de parcours */
+#atanim { left: 50%; transform: translateX(-50%); bottom: 14px; z-index: 6; width: min(94vw, 560px); padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.atanh { display: flex; gap: 12px; align-items: flex-start; }
+.atanh > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.atanh b { font-size: 15px; }
+.atanh small { color: var(--mu); font-size: 12.5px; line-height: 1.4; }
+.atanic { width: 38px; height: 38px; border-radius: 11px; flex: none; display: grid; place-items: center; background: color-mix(in srgb, var(--ac) 16%, transparent); color: var(--ac); }
+.atanic svg { width: 22px; height: 22px; }
+.atanb { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.atanb button { border: 1px solid var(--gb); background: rgba(148, 163, 184, 0.08); color: var(--tx); border-radius: 9px; padding: 7px 12px; font: 600 12.5px Inter, sans-serif; cursor: pointer; }
+.atanb button.p { background: var(--ac); border-color: var(--ac); color: #0b0f16; }
+.atanb button[disabled] { opacity: 0.4; cursor: default; }
+.attour small { color: var(--ac); font-size: 11.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.attour b { display: block; font-size: 17px; margin-top: 2px; }
+.attour p { margin: 6px 0 0; font-size: 13.5px; line-height: 1.5; color: #cfd8e3; max-height: 30vh; overflow-y: auto; }
+.attdots { display: flex; gap: 5px; margin-top: 10px; }
+.attdots i { width: 7px; height: 7px; border-radius: 50%; background: rgba(148, 163, 184, 0.3); }
+.attdots i.on { background: var(--ac); width: 18px; border-radius: 4px; }
+.atprel button.on { border-color: var(--ac); color: var(--ac); }
+.attrow { display: flex; border-radius: 10px; overflow: hidden; }
+.attrow > button:first-child { flex: 1; min-width: 0; }
+.attrow .atvx { border: 1px solid var(--gb); border-left: 0; border-radius: 0 10px 10px 0; }
+.atted { margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(148, 163, 184, 0.12); display: grid; gap: 6px; }
+.atted input, .atted textarea { width: 100%; border-radius: 9px; border: 1px solid var(--gb); background: rgba(11, 15, 22, 0.7); color: var(--tx); font: 500 16px Inter, sans-serif; padding: 8px 10px; }
+#attool .atpb .b { font-size: 12.5px; }
+#attool .atpb .b:not(.p) { background: rgba(148, 163, 184, 0.08); color: #d6dee8; border-color: var(--gb); }
+#attool .atpb .b.p { background: var(--ac); border-color: var(--ac); color: #0b0f16; }
+.atexr { display: grid; gap: 6px; margin-top: 10px; text-align: left; max-height: 40vh; overflow-y: auto; }
+.atexr button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 10px; border-radius: 9px; border: 1px solid rgba(255, 123, 114, 0.35); background: rgba(255, 123, 114, 0.08); color: var(--tx); text-align: left; cursor: pointer; font: 600 13px Inter, sans-serif; }
+.atexr small { color: var(--mu); font-weight: 500; font-size: 12px; }
+@media (min-width: 761px) and (min-height: 501px) {
+  #atl.pan-open #atanim { left: calc(50% - 190px); }
+}
+@media (max-width: 760px) and (min-height: 501px) {
+  #atanim { bottom: calc(max(8px, env(safe-area-inset-bottom)) + 70px); }
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  #atanim { bottom: 8px; left: calc(50% + 31px); width: min(70vw, 520px); padding: 8px 10px; gap: 6px; }
+  .attour p { max-height: 22vh; }
+}
