@@ -223,6 +223,7 @@ function tick() {
 function quit() {
   ask("Quitter la session ? Ta progression sera perdue.", () => {
     clearInterval(IV);
+    if (typeof MIX != "undefined") MIX = null;
     R = { f: R.f, n: R.n };
     render();
   });
@@ -648,6 +649,7 @@ function fin() {
     h += "<p>" + icn("flame") + " Journée bouclée : " + flame() + " jour(s) d’affilée</p>";
     dd().cel = 2;
   }
+  if (typeof mixNext == "function") h += mixNext();
   save();
   R = { f: R.f, n: R.n, done: h + "</div>" };
 }

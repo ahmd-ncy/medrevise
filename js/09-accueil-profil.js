@@ -80,6 +80,7 @@ function home() {
   return (
     hero +
     acc +
+    (typeof mixCard == "function" ? mixCard() : "") +
     (d.o.length
       ? '<h3>Objectifs du jour · ' +
         nd +

@@ -2,6 +2,7 @@
 // Garde une copie de l'application pour qu'elle s'ouvre hors connexion.
 // Fichiers de l'app : réseau d'abord (toujours la dernière version en ligne), copie locale si hors connexion.
 const VERSION = "medrevise-__VERSION__";
+const VENDOR = "medrevise-vendor-1";
 const FILES = [
   __FILES__
 ];
@@ -17,7 +18,8 @@ self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches
       .keys()
-      .then((ks) => Promise.all(ks.filter((k) => k !== VERSION).map((k) => caches.delete(k))))
+      // le cache des bibliothèques (pdf.js, moteur 3D) survit aux mises à jour : il reste disponible hors connexion
+      .then((ks) => Promise.all(ks.filter((k) => k !== VERSION && k !== VENDOR && k !== "mr-atlas").map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });
@@ -28,7 +30,17 @@ self.addEventListener("fetch", (e) => {
   const req = e.request,
     u = new URL(req.url);
   if (req.method !== "GET") return;
-  if (u.origin === location.origin) {
+  if (u.origin === location.origin && u.pathname.startsWith("/vendor/") && !/supabase/.test(u.pathname)) {
+    // bibliothèques lourdes : copie locale d'abord, mise à jour en arrière-plan
+    e.respondWith(
+      caches.open(VENDOR).then((ca) =>
+        ca.match(req, { ignoreSearch: true }).then((r) => {
+          const net = netCache(ca, req).catch(() => r);
+          return r || net;
+        }),
+      ),
+    );
+  } else if (u.origin === location.origin) {
     e.respondWith(
       (async () => {
         const ca = await caches.open(VERSION);

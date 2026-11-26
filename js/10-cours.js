@@ -2,6 +2,7 @@ function list() {
   const lc = S.courses.find((x) => x.id === S.lc);
   return (
     '<h2 class="ti">Cours</h2>' +
+    (typeof offBar == "function" ? offBar() : "") +
     (lc
       ? '<button class="rs" style="--sc:' +
         mof(lc).couleur +
@@ -40,6 +41,7 @@ function lst() {
                   esc([c.prof, c.info].filter(Boolean).join(" · ")) +
                   "</small></div>" +
                   jBadge(c.id) +
+                  (typeof offBtn == "function" ? offBtn(c.id) : "") +
                   '<button class="b" style="padding:4px 9px" onclick="openSyn(\'' +
                   c.id +
                   "')\">Fiche</button></div>" +

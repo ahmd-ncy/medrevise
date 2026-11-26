@@ -123,10 +123,12 @@ function atlasPage() {
     return '<div class="bn"><h2 class="ti">Atlas 3D</h2><p class="m">L’atlas 3D est ouvert sur invitation. Demande l’accès à l’administrateur.</p></div>';
   if (R.atl) return '<div class="bn atwait"><p class="m">Ouverture de l’atlas…</p></div>';
   if (!ATL.files) setTimeout(atlasFilesLoad, 0);
+  setTimeout(() => typeof atlasOffPaint == "function" && atlasOffPaint(), 0);
   atlasAccent();
   return (
     '<h2 class="ti">Atlas 3D</h2><p class="m atsub">Explore les structures en 3D : touche une structure pour sa fiche, écarte, coupe, fais un quiz.</p>' +
     '<div id="atgal" class="atgal">' + atlasGallery() + "</div>" +
+    '<div id="atoff" class="offbar"></div>' +
     (SY.role == "admin"
       ? '<details class="bn atadmw"><summary><b>Fichiers des modèles</b><small>réservé à l’administrateur</small></summary><div id="atadm">' + atlasAdminFiles() + "</div></details>"
       : "")
@@ -712,6 +714,11 @@ function atlasView(L, buf, model, focusName) {
         if (p) setTimeout(() => focusPart(p), 300);
       };
       if (focusName) V.focusBy(focusName);
+      // révision du jour : quiz lancé tout seul sur les structures à retravailler
+      if (ATL.auto) {
+        ATL.auto = null;
+        setTimeout(() => ATL.v === V && quizStart("nom"), 700);
+      }
     },
     (e) => {
       if ($("atmsg")) $("atmsg").textContent = "Fichier 3D illisible : " + (e && e.message ? e.message : "erreur");
@@ -2149,7 +2156,17 @@ function atlasView(L, buf, model, focusName) {
       box.innerHTML =
         '<div class="atqz"><b>Quiz terminé : ' + Q.ok + " / " + Q.list.length + "</b><small>" +
         (pc >= 80 ? "Excellent, tu maîtrises cette région." : pc >= 50 ? "Pas mal : refais-le pour ancrer les noms." : "Révise les fiches, puis retente.") +
-        '</small></div><div class="atpb"><button class="b p" id="atqre">Recommencer</button><button class="b" id="atqend">Fermer</button></div>';
+        "</small></div>" +
+        (typeof MIX != "undefined" && MIX && MIX.live && (MIX.steps[MIX.i] || {}).k == "atlas"
+          ? '<div class="atpb"><button class="b p" id="atqmix">Terminer la révision du jour</button></div>'
+          : '<div class="atpb"><button class="b p" id="atqre">Recommencer</button><button class="b" id="atqend">Fermer</button></div>');
+      if ($("atqmix")) {
+        $("atqmix").onclick = () => {
+          quizStop();
+          mixDone();
+        };
+        return;
+      }
       $("atqre").onclick = () => quizStart(Q.mode);
       $("atqend").onclick = quizStop;
       return;

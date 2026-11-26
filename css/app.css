@@ -4736,3 +4736,22 @@ html.atlon #md { z-index: 80; }
   #atanim { bottom: 8px; left: calc(50% + 31px); width: min(70vw, 520px); padding: 8px 10px; gap: 6px; }
   .attour p { max-height: 22vh; }
 }
+/* révision du jour */
+.mixc { align-items: center; }
+.mixc .ic:first-child { width: 28px; height: 28px; color: var(--sc); flex: none; }
+.mixc .ic:last-child { width: 18px; height: 18px; color: var(--mut); transform: rotate(-90deg); flex: none; }
+.mixc small { color: var(--mut); font-weight: 500; }
+.mixn { margin: 16px auto 4px; padding: 12px; border: 1px dashed var(--bd); border-radius: 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.mixn small { color: var(--mut); }
+/* hors connexion */
+.offbar { display: flex; align-items: center; gap: 12px; padding: 10px 14px; margin: 0 0 14px; border: 1px solid var(--bd); border-radius: 12px; background: var(--card); }
+.offbar:empty { display: none; }
+.offbar > span { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.offbar small { color: var(--mut); font-size: 12.5px; }
+.offbar .b { flex: none; padding: 6px 12px; }
+.offok { color: #3fb950; font-weight: 800; font-size: 18px; }
+.atgal + .offbar { margin-top: -4px; }
+.offb { flex: none; width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--bd); background: none; color: var(--mut); cursor: pointer; display: grid; place-items: center; padding: 0; margin-right: 6px; }
+.offb svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.offb.ok { color: #3fb950; border-color: color-mix(in srgb, #3fb950 50%, transparent); }
+.offb:hover { color: var(--fg); }
