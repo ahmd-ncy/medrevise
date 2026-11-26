@@ -9,6 +9,7 @@ const ATL = {
     { id: "thorax", titre: "Thorax", sous: "Os, muscles, organes, vaisseaux, nerfs et médiastin" },
     { id: "coeur", titre: "Cœur", sous: "Cavités, valves, piliers, coronaires et veines du cœur" },
     { id: "poumons", titre: "Poumons et arbre bronchique", sous: "Lobes, bronches jusqu’aux segments, plèvre et vaisseaux" },
+    { id: "abdomen", titre: "Abdomen", sous: "Viscères, segments du foie, vaisseaux, paroi, plexus lombal" },
   ],
   detail: {
     coeur: ["right atrium", "left atrium", "right ventricle", "left ventricle", "ascending aorta", "pulmonary trunk", "superior vena cava", "inferior vena cava"],
@@ -28,6 +29,7 @@ const atlasOk = () => !!(SY.sb && SY.user && SY.role && (SY.role == "admin" || (
 const ATL_ICO = {
   thorax: '<path d="M12 3v18M12 6c-3 0-6 1-7 3M12 6c3 0 6 1 7 3M12 9.5c-3 0-6 1-7 3M12 9.5c3 0 6 1 7 3M12 13c-2.6 0-5 .9-6 2.6M12 13c2.6 0 5 .9 6 2.6M12 16.5c-2 0-3.6.6-4.4 1.6M12 16.5c2 0 3.6.6 4.4 1.6"/>',
   coeur: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/><path d="M12 7.4V4M9 5l1.5 2"/>',
+  abdomen: '<path d="M7 4c-2 3-3 6-3 9a8 8 0 0 0 16 0c0-3-1-6-3-9"/><path d="M9 10c1.5 1 4.5 1 6 0M8.5 14c2 1.5 5 1.5 7 0"/><circle cx="12" cy="17.5" r=".8"/>',
   poumons: '<path d="M12 3v8M12 11c-1.5 0-2.5 1-3.5 2M12 11c1.5 0 2.5 1 3.5 2"/><path d="M9 7c-3 1-5 5-5 10 0 2 1.5 3 3 3s2-1 2-3zM15 7c3 1 5 5 5 10 0 2-1.5 3-3 3s-2-1-2-3z"/>',
 };
 // couleur d'accent de l'atlas = couleur du thème de l'utilisateur, éclaircie si besoin pour rester lisible sur le fond sombre
@@ -385,6 +387,10 @@ const ATL_REAL = {
     "pulmonary trunk": 0x4a62b0, "pulmonary artery": 0x4a62b0, diaphragm: 0xa1362a, "pulmonary veins": 0xb8322a,
     "papillary rv": 0x8f3a2e, "papillary lv": 0x8f3a2e, "ascending aorta": 0xb8322a, "superior vena cava": 0x3a57a0, "inferior vena cava": 0x3a57a0,
     "coronary sinus": 0x34508f, "tricuspid valve": 0xe6dcc2, "mitral valve": 0xe6dcc2, "aortic valve": 0xece2c8, "pulmonary valve": 0xece2c8,
+    liver: 0x7d3328, "liver segments": 0x86392d, gallbladder: 0x5d7d3b, "bile duct": 0x76903e, stomach: 0xd59b8b, duodenum: 0xd8a08e, jejunum: 0xdba595,
+    "ascending colon": 0xcf9b7d, "transverse colon": 0xcf9b7d, "descending colon": 0xcf9b7d, "sigmoid colon": 0xcf9b7d, appendix: 0xd6a189,
+    pancreas: 0xe2c28c, "pancreatic ducts": 0xe8d8b0, spleen: 0x6f2b3c, kidney: 0x8b3b2f, "renal pelvis": 0xe6d4a6, ureter: 0xe6d4a6,
+    "suprarenal gland": 0xd8a442, "greater omentum": 0xefd48e, "lesser omentum": 0xefd8a0, mesocolon: 0xefd8a0, "portal vein": 0x4a62b0,
     rul: 0xe0a9a4, rml: 0xd99e9a, rll: 0xe0a9a4, lul: 0xe0a9a4, lll: 0xd99e9a, pleura: 0xe9d6d2, "segmental bronchi": 0xdccbbb, "lobar bronchi": 0xdccbbb, "intermediate bronchus": 0xdccbbb,
   },
   rough: { os: 0.8, cartilage: 0.45, muscle: 0.55, organe: 0.5, valve: 0.5, artere: 0.35, veine: 0.35, nerf: 0.5, zone: 0.9 },
@@ -647,6 +653,9 @@ function atlasView(L, buf, model, focusName) {
       V.ext = box.getSize(new T.Vector3()).multiplyScalar(0.5);
       V.radius = V.ext.length();
       V.fiches = (g.asset && g.asset.extras && g.asset.extras.fiches) || {};
+      // couches propres au modèle (ex. paroi abdominale), sinon celles du thorax
+      V.LC = (g.asset && g.asset.extras && g.asset.extras.couches) || null;
+      V.LN = V.LC ? V.LC.names : ATL_LAYERS;
       if (g.asset && g.asset.extras && g.asset.extras.source)
         $("atcr").textContent = /Z-Anatomy/.test(g.asset.extras.source) ? "BodyParts3D © DBCLS · CC BY 4.0 · Z-Anatomy · CC BY-SA 4.0" : "BodyParts3D © DBCLS · CC BY 4.0";
       const present = new Set();
@@ -668,7 +677,7 @@ function atlasView(L, buf, model, focusName) {
           p = {
             mesh: o, base: o.position.clone(), q0: o.quaternion.clone(), s0: o.scale.clone(),
             c: root.worldToLocal(wb.getCenter(new T.Vector3())), size, meta: x,
-            layer: ATL_LAYER_OF[x.fiche] ?? (x.systeme == "os" || x.systeme == "cartilage" ? 3 : x.systeme == "muscle" ? 1 : 5),
+            layer: V.LC ? V.LC.of[x.fiche] ?? (x.systeme == "muscle" ? 0 : V.LC.names.length - 1) : ATL_LAYER_OF[x.fiche] ?? (x.systeme == "os" || x.systeme == "cartilage" ? 3 : x.systeme == "muscle" ? 1 : 5),
             zone: x.systeme == "zone",
           };
         // axe des fibres (relief des muscles) : la plus grande dimension
@@ -984,7 +993,7 @@ function atlasView(L, buf, model, focusName) {
       // on retire la paroi et les poumons pour voir le médiastin, et on les rend en quittant
       V.medPrev = { layer: V.layer, lungs: lungs.filter((p) => !V.hOne.has(p)) };
       lungs.forEach((p) => V.hOne.add(p));
-      V.layer = ATL_LAYERS.length - 1; // « Médiastin seul »
+      V.layer = V.LN.length - 1; // « Médiastin seul »
       sysToggle("zone", false);
       toast("Médiastin (schématique) : supérieur en violet, antérieur en vert, moyen en rose, postérieur en jaune. Touche une zone pour sa fiche.");
     } else if (V.medPrev) {
@@ -1035,7 +1044,7 @@ function atlasView(L, buf, model, focusName) {
   }
   function isoBar() {
     let b = $("atiso");
-    if (!V.iso) return b && b.remove();
+    if (!V.iso || V.tour) return b && b.remove();
     if (!b) {
       b = document.createElement("div");
       b.id = "atiso";
@@ -1256,8 +1265,8 @@ function atlasView(L, buf, model, focusName) {
       on("atsgr", (v) => gridToggle(v));
     } else if (V.tool == "lay")
       box.innerHTML =
-        '<div class="atr"><label for="atly">Couches</label><input id="atly" type="range" min="0" max="' + (ATL_LAYERS.length - 1) + '" value="' + V.layer +
-        '"></div><p class="atlyn">' + ATL_LAYERS[V.layer] + "</p>";
+        '<div class="atr"><label for="atly">Couches</label><input id="atly" type="range" min="0" max="' + (V.LN.length - 1) + '" value="' + V.layer +
+        '"></div><p class="atlyn">' + V.LN[V.layer] + "</p>";
     else if (V.tool == "tr")
       box.innerHTML =
         '<div class="atr atwrap"><span class="atlbl2">Rendre transparents</span><div class="atseg" id="atops">' +
@@ -1309,7 +1318,7 @@ function atlasView(L, buf, model, focusName) {
     if ($("atly"))
       $("atly").oninput = (e) => {
         V.layer = +e.target.value;
-        box.querySelector(".atlyn").textContent = ATL_LAYERS[V.layer];
+        box.querySelector(".atlyn").textContent = V.LN[V.layer];
         vis();
       };
     box.querySelectorAll("#atops button").forEach(
@@ -1388,6 +1397,16 @@ function atlasView(L, buf, model, focusName) {
     add("T10 : hiatus œsophagien", "", "y", [byEn("tenth thoracic vertebra")]);
     add("T12 : hiatus aortique", "", "y", [byEn("twelfth thoracic vertebra")]);
     add("Sagittale médiane", "par le sternum", "x", [byEn("body of sternum")]);
+    // abdomen : niveaux lombaux
+    const byFr = (n) => V.parts.find((p) => p.meta.fr == n);
+    if (!L.length && byFr("Vertèbre L1")) {
+      add("L1 : plan transpylorique", "pylore, col du pancréas, hiles rénaux, origine de l’AMS", "y", [byFr("Vertèbre L1")]);
+      add("L3 : artère mésentérique inférieure", "", "y", [byFr("Vertèbre L3")]);
+      add("L4 : bifurcation aortique", "plan des crêtes iliaques", "y", [byFr("Vertèbre L4")]);
+      add("Sagittale médiane", "", "x", [byFr("Vertèbre L3")]);
+      add("Frontale par les reins", "", "z", V.parts.filter((p) => p.meta.fiche == "kidney"));
+      return (V.presets = L);
+    }
     const thx = L.length > 0;
     if (!thx) {
       // poumons
@@ -2739,6 +2758,29 @@ function atlasView(L, buf, model, focusName) {
         ],
       },
     ],
+    abdomen: [
+      {
+        id: "etages", n: "Les étages de l’abdomen",
+        steps: [
+          { t: "La paroi", x: "En avant, les deux muscles droits de part et d’autre de la ligne blanche ; sur les côtés, trois muscles larges superposés : oblique externe, oblique interne, transverse.", view: "front", all: 1 },
+          { t: "La cavité ouverte", x: "Sous la paroi, le grand omentum recouvre les anses grêles comme un tablier, tendu depuis la grande courbure de l’estomac.", view: "front", layer: 3 },
+          { t: "Étage sus-mésocolique", x: "Au-dessus du côlon transverse et de son méso : foie et voies biliaires, estomac, rate, premier duodénum.", view: "front", layer: 4, sel: ["liver", "stomach", "spleen"] },
+          { t: "Étage sous-mésocolique", x: "Sous le mésocôlon transverse : jéjunum et iléon encadrés par le côlon (ascendant, transverse, descendant), puis le sigmoïde.", view: "front", layer: 4, sel: ["jejunum", "ascending colon", "descending colon"] },
+          { t: "Le rétropéritoine", x: "Derrière le péritoine pariétal : reins et surrénales, pancréas, duodénum (D2-D4), aorte abdominale et veine cave inférieure, uretères.", view: "front", layer: 5, sel: ["kidney", "pancreas"] },
+          { t: "La veine porte", x: "Formée derrière le col du pancréas par la veine splénique et la veine mésentérique supérieure, elle monte vers le hile du foie.", view: "front", layer: 4, sel: ["portal vein", "splenic vein", "mesenteric veins"] },
+          { t: "Le tronc cœliaque", x: "Né de l’aorte à T12 : artère gastrique gauche, artère hépatique commune et artère splénique.", view: "front", layer: 5, sel: ["coeliac trunk", "left gastric artery", "common hepatic artery", "splenic artery"] },
+        ],
+      },
+      {
+        id: "seg", n: "Les segments du foie",
+        steps: [
+          { t: "Huit segments", x: "La segmentation de Couinaud découpe le foie en 8 segments, chacun avec son pédicule portal.", view: "front", iso: ["liver segments", "gallbladder", "portal vein", "hepatic veins", "ivc abdominal"], sel: ["liver segments"] },
+          { t: "Foie gauche", x: "Segments II, III et IV, à gauche de la ligne qui va de la vésicule à la veine cave inférieure.", view: "front", iso: ["liver segments", "gallbladder", "ivc abdominal"], sel: ["Foie : segment II", "Foie : segment III", "Foie : segment IV"] },
+          { t: "Foie droit", x: "Segments V, VI, VII et VIII.", view: "q34", iso: ["liver segments", "gallbladder", "ivc abdominal"], sel: ["Foie : segment V", "Foie : segment VI", "Foie : segment VII", "Foie : segment VIII"] },
+          { t: "Le lobe caudé", x: "Le segment I, en arrière contre la veine cave inférieure, se draine directement dans la VCI.", view: "back", iso: ["liver segments", "ivc abdominal"], sel: ["Foie : segment I (lobe caudé)"] },
+        ],
+      },
+    ],
     poumons: [
       {
         id: "lob", n: "Lobes et arbre bronchique",
@@ -2847,9 +2889,10 @@ function atlasView(L, buf, model, focusName) {
       V.hOne = new Set(V.parts.filter((p) => (p.zone && !st.med) || p.meta.fiche == "pleura"));
       if (st.med) {
         V.parts.filter((p) => /^(rul|rml|rll|lul|lll|pleura|right lung|left lung)$/.test(p.meta.fiche || "")).forEach((p) => V.hOne.add(p));
-        V.layer = ATL_LAYERS.length - 1;
+        V.layer = V.LN.length - 1;
       }
       if (st.sysOnly) V.parts.forEach((p) => !st.sysOnly.includes(p.meta.systeme) && V.hOne.add(p));
+      if (st.layer) V.layer = st.layer;
       sysBtns().forEach((b) => b.classList.remove("off"));
       vis();
       const sel = st.sel ? byF(st.sel) : [];
@@ -2866,7 +2909,16 @@ function atlasView(L, buf, model, focusName) {
       }
       if (sel.length) {
         setView(st.view || V.view, false);
-        orbitOn(sel[0]);
+        if (sel.length == 1) orbitOn(sel[0]);
+        else {
+          // plusieurs structures : on cadre l'ensemble
+          const bx = new T.Box3();
+          sel.forEach((p) => bx.expandByObject(p.mesh));
+          const c = bx.getCenter(new T.Vector3()),
+            r = Math.max(bx.getSize(new T.Vector3()).length() / 2, 0.04),
+            dir = V.cam.position.clone().sub(controls.target).normalize();
+          moveCam(c.clone().addScaledVector(dir, fitDist(r * 1.2)), c, true, V.ortho ? orthoZoomFor(r * 1.2) : 1);
+        }
       } else setView(st.view || "front");
     }
     const n = Tr.t.steps.length;
