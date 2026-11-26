@@ -4312,12 +4312,12 @@ body.pf {
 /* ===== Atlas 3D (js/29-atlas.js) — page /atlas et visualiseur ===== */
 /* --- page Atlas : galerie --- */
 .atsub { margin: -4px 0 14px; }
-.atgal { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-bottom: 18px; }
-.atgc { display: flex; align-items: center; gap: 14px; text-align: left; padding: 16px; border-radius: 16px; cursor: pointer; color: #e6edf3; border: 1px solid rgba(95, 212, 200, 0.18);
+.atgal { --ac: var(--atac, #5fd4c8); display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.atgc { display: flex; align-items: center; gap: 14px; text-align: left; padding: 16px; border-radius: 16px; cursor: pointer; color: #e6edf3; border: 1px solid color-mix(in srgb, var(--ac) 18%, transparent);
   background: radial-gradient(120% 140% at 0% 0%, #22344a 0%, #121a26 55%, #0b0f16 100%); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18); transition: transform 0.15s, border-color 0.15s; font: inherit; }
-.atgc:hover { transform: translateY(-2px); border-color: rgba(95, 212, 200, 0.55); }
+.atgc:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--ac) 55%, transparent); }
 .atgc.off { opacity: 0.55; cursor: default; transform: none; }
-.atgi { width: 54px; height: 54px; border-radius: 14px; display: grid; place-items: center; flex: none; background: rgba(95, 212, 200, 0.12); color: #5fd4c8; }
+.atgi { width: 54px; height: 54px; border-radius: 14px; display: grid; place-items: center; flex: none; background: color-mix(in srgb, var(--ac) 12%, transparent); color: var(--ac); }
 .atgi svg { width: 32px; height: 32px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .atgt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .atgt b { font-size: 17px; }
@@ -4343,7 +4343,7 @@ body.pf {
 
 /* --- visualiseur --- */
 html.atlon, html.atlon body { overflow: hidden; }
-#atl { --g: rgba(15, 20, 28, 0.88); --gb: rgba(148, 163, 184, 0.16); --tx: #e6edf3; --mu: #94a3b8; --ac: #5fd4c8; --top: max(10px, env(safe-area-inset-top));
+#atl { --g: rgba(15, 20, 28, 0.88); --gb: rgba(148, 163, 184, 0.16); --tx: #e6edf3; --mu: #94a3b8; --ac: var(--atac, #5fd4c8); --top: max(10px, env(safe-area-inset-top));
   position: fixed; inset: 0; z-index: 60; background: #0b0f16; color: var(--tx); font-family: Inter, sans-serif; -webkit-tap-highlight-color: transparent; }
 #atl svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 #atc, #atlbl, #atgl, #atmeas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
@@ -4366,7 +4366,7 @@ html.atlon, html.atlon body { overflow: hidden; }
 #atmlist { position: absolute; left: 0; top: 48px; width: 300px; background: #121924; border: 1px solid var(--gb); border-radius: 12px; padding: 6px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5); z-index: 9; }
 #atmlist button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; text-align: left; background: none; border: 0; color: var(--tx); padding: 10px 12px; border-radius: 9px; cursor: pointer; font: 600 14px Inter, sans-serif; }
 #atmlist button small { color: var(--mu); font-weight: 500; font-size: 12px; }
-#atmlist button:hover, #atmlist button.on { background: rgba(95, 212, 200, 0.12); }
+#atmlist button:hover, #atmlist button.on { background: color-mix(in srgb, var(--ac) 12%, transparent); }
 #atmlist button.on b { color: var(--ac); }
 .ats { position: relative; flex: 1 1 200px; min-width: 0; }
 #atq { width: 100%; height: 40px; border-radius: 10px; border: 1px solid transparent; background: rgba(148, 163, 184, 0.1); color: var(--tx); font: 500 16px Inter, sans-serif; padding: 0 12px; }
@@ -4385,7 +4385,7 @@ html.atlon, html.atlon body { overflow: hidden; }
 .atv::-webkit-scrollbar { display: none; }
 .atv button, .atseg button { background: none; border: 0; color: var(--mu); font: 600 13px Inter, sans-serif; padding: 8px 11px; border-radius: 9px; cursor: pointer; min-height: 36px; white-space: nowrap; flex: none; }
 .atv button:hover, .atseg button:hover { color: var(--tx); }
-.atv button.on, .atseg button.on { background: rgba(95, 212, 200, 0.16); color: var(--ac); }
+.atv button.on, .atseg button.on { background: color-mix(in srgb, var(--ac) 16%, transparent); color: var(--ac); }
 
 /* barre d'outils (dock) */
 #atdock { z-index: 5; display: flex; gap: 2px; padding: 6px; }
@@ -4393,7 +4393,7 @@ html.atlon, html.atlon body { overflow: hidden; }
 #atdock button svg { width: 22px; height: 22px; }
 #atdock button span { white-space: nowrap; line-height: 1.1; }
 #atdock button:hover { background: rgba(148, 163, 184, 0.12); color: var(--tx); }
-#atdock button.on { color: var(--ac); background: rgba(95, 212, 200, 0.13); }
+#atdock button.on { color: var(--ac); background: color-mix(in srgb, var(--ac) 13%, transparent); }
 #atdock button.on::after { content: ""; position: absolute; width: 5px; height: 5px; border-radius: 50%; background: var(--ac); top: 5px; right: 6px; }
 #atdock button[hidden] { display: none; }
 
@@ -4473,20 +4473,20 @@ html.atlon, html.atlon body { overflow: hidden; }
 .atzm button { width: 40px; height: 38px; border: 0; background: none; color: #c9d1d9; font: 600 18px Inter, sans-serif; cursor: pointer; display: grid; place-items: center; }
 .atzm button svg { width: 18px; height: 18px; }
 .atzm button + button { border-top: 1px solid var(--gb); }
-.atzm button:hover, .atzm button.on { background: rgba(95, 212, 200, 0.13); color: var(--ac); }
+.atzm button:hover, .atzm button.on { background: color-mix(in srgb, var(--ac) 13%, transparent); color: var(--ac); }
 #atscale { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
 #atscale i { display: block; height: 6px; border: 2px solid #c9d1d9; border-top: 0; min-width: 20px; }
 #atscale span { font: 600 11px Inter, sans-serif; color: #c9d1d9; text-shadow: 0 1px 2px #000; }
 
 /* fiche de la structure */
 #atpan { position: absolute; z-index: 7; color: var(--tx); overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.25s; padding: 18px 18px 20px; background: #121924;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--sc, #5fd4c8) 16%, #141c28) 0, #121924 150px, #0e141c 100%); border: 1px solid var(--gb); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45); }
-#atpan::before { content: ""; position: absolute; left: 18px; top: 0; width: 46px; height: 3px; border-radius: 0 0 3px 3px; background: var(--sc, #5fd4c8); }
+  background: linear-gradient(180deg, color-mix(in srgb, var(--sc, var(--ac)) 16%, #141c28) 0, #121924 150px, #0e141c 100%); border: 1px solid var(--gb); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45); }
+#atpan::before { content: ""; position: absolute; left: 18px; top: 0; width: 46px; height: 3px; border-radius: 0 0 3px 3px; background: var(--sc, var(--ac)); }
 #atpan.show { opacity: 1; pointer-events: auto; transform: none; }
 #atpan h3 { margin: 4px 40px 4px 0; font: 750 21px/1.2 Inter, sans-serif; letter-spacing: -0.01em; }
 .atpx { position: absolute; top: 12px; right: 12px; width: 34px; height: 34px; border: 0; border-radius: 10px; background: rgba(148, 163, 184, 0.14); color: var(--tx); cursor: pointer; font-size: 14px; }
 .atpx:hover { background: rgba(148, 163, 184, 0.26); }
-.atpc { display: inline-block; color: var(--sc, #5fd4c8); font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+.atpc { display: inline-block; color: var(--sc, var(--ac)); font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
 .atpf { display: block; color: var(--mu); font-size: 12px; }
 .atpd { margin: 12px 0 14px; font-size: 14px; line-height: 1.55; color: #cfd8e3; }
 #atpan dl { margin: 0; display: grid; grid-template-columns: minmax(88px, 32%) 1fr; background: rgba(148, 163, 184, 0.05); border: 1px solid rgba(148, 163, 184, 0.1); border-radius: 12px; overflow: hidden; }
@@ -4531,8 +4531,12 @@ html.atlon, html.atlon body { overflow: hidden; }
 #athov { position: absolute; left: 0; top: 0; z-index: 3; pointer-events: none; background: #121924; border: 1px solid var(--gb); color: var(--tx); font: 600 12px Inter, sans-serif; padding: 5px 9px; border-radius: 7px; white-space: nowrap; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4); }
 .atgd { position: absolute; left: 0; top: 0; margin: -9px 0 0 -30px; width: 60px; text-align: center; font: 700 11px Inter, sans-serif; color: #8fa3b8; text-shadow: 0 1px 3px #000; }
 .atml { position: absolute; left: 0; top: 0; margin: -14px 0 0 -30px; background: #ffd33d; color: #111; font: 700 12px Inter, sans-serif; padding: 3px 8px; border-radius: 6px; white-space: nowrap; }
-.atlb { position: absolute; left: 0; top: 0; will-change: transform; margin: -13px 0 0 -6px; display: flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: var(--tx); font: 600 11px Inter, sans-serif; white-space: nowrap; cursor: pointer; pointer-events: auto; transition: opacity 0.2s; text-shadow: 0 1px 3px #000; }
-.atlb i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #0b0f16; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5); flex: none; }
+.atlb { position: absolute; left: 0; top: 0; width: 0; height: 0; will-change: transform; padding: 0; border: 0; background: none; color: var(--tx); font: 600 11px Inter, sans-serif; white-space: nowrap; cursor: pointer; pointer-events: auto; transition: opacity 0.2s; text-shadow: 0 1px 3px #000, 0 0 2px #000; }
+.atlb span { position: absolute; left: 0; top: 0; transform: translate(9px, -8px); line-height: 16px; }
+.atlb em { position: absolute; left: 0; top: 0; display: none; height: 1px; background: rgba(230, 237, 243, 0.6); transform-origin: 0 0; pointer-events: none; }
+.atlb.crowd span, .atlb.crowd em { display: none; }
+.atlb.crowd { opacity: 0.5; }
+.atlb i { position: absolute; left: -6px; top: -6px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #0b0f16; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5); }
 .atlb.occ { opacity: 0.3; }
 #atmsg { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--mu); font-size: 14px; pointer-events: none; }
 #atcr { position: absolute; right: 8px; bottom: 2px; font-size: 9px; color: #4b5563; pointer-events: none; z-index: 1; }
@@ -4542,8 +4546,10 @@ html.atlon, html.atlon body { overflow: hidden; }
   #atdock { left: 12px; top: calc(var(--top) + 66px); flex-direction: column; max-height: calc(100% - var(--top) - 80px); overflow-y: auto; scrollbar-width: none; }
   #atdock::-webkit-scrollbar { display: none; }
   #atdock button { width: 70px; height: 56px; }
-  #atdock [data-k="more"] { display: none; }
   #atsheet { left: 104px; top: calc(var(--top) + 66px); width: 340px; max-height: calc(100% - var(--top) - 80px); }
+  /* fenêtre en haut : la flèche montre le sens du repli (vers le haut), puis du dépliage (vers le bas) */
+  #atshc svg { transform: rotate(180deg); }
+  #atsheet.min #atshc svg { transform: none; }
   #atcorner { top: calc(var(--top) + 66px); }
   #atl.pan-open #atcorner { right: 388px; }
   /* fiche ouverte : le modèle se recentre dans la partie libre */
@@ -4593,6 +4599,9 @@ html.atlon, html.atlon body { overflow: hidden; }
   #atdock button span { display: none; }
   #atdock [data-x] { display: none; }
   #atsheet { left: calc(var(--lft) + 6px); top: 56px; bottom: max(6px, env(safe-area-inset-bottom)); width: min(320px, 46vw); }
+  #atshc svg { transform: rotate(180deg); }
+  #atsheet.min #atshc svg { transform: none; }
+  #atsheet.min { bottom: auto; }
   #atcorner { right: max(8px, env(safe-area-inset-right)); top: 60px; gap: 6px; }
   #atgiz { width: 64px; height: 64px; }
   .atzm button { width: 34px; height: 30px; }
@@ -4624,12 +4633,64 @@ html.atlon, html.atlon body { overflow: hidden; }
 .at3dbar b .ic { width: 16px; height: 16px; color: #2f8f86; }
 .at3dbar .b { padding: 5px 10px; font-size: 13px; }
 /* fiche : proposition d'ouvrir l'atlas détaillé */
-#atpan .atdet { display: flex; align-items: center; gap: 12px; width: 100%; margin: 12px 0 2px; padding: 10px 12px; text-align: left; cursor: pointer; color: #e6edf3;
-  border: 1px solid rgba(95, 212, 200, 0.45); border-radius: 14px; background: linear-gradient(135deg, rgba(95, 212, 200, 0.18), rgba(95, 212, 200, 0.05)); font: inherit; }
-#atpan .atdet:hover { border-color: #5fd4c8; background: linear-gradient(135deg, rgba(95, 212, 200, 0.26), rgba(95, 212, 200, 0.08)); }
+#atpan .atdet { --x: 0; display: flex; align-items: center; gap: 12px; width: 100%; margin: 12px 0 2px; padding: 10px 12px; text-align: left; cursor: pointer; color: #e6edf3;
+  border: 1px solid color-mix(in srgb, var(--ac) 45%, transparent); border-radius: 14px; background: linear-gradient(135deg, color-mix(in srgb, var(--ac) 18%, transparent), color-mix(in srgb, var(--ac) 5%, transparent)); font: inherit; }
+#atpan .atdet:hover { border-color: var(--ac); background: linear-gradient(135deg, color-mix(in srgb, var(--ac) 26%, transparent), color-mix(in srgb, var(--ac) 8%, transparent)); }
 #atpan .atdet .atgi { width: 40px; height: 40px; border-radius: 11px; }
 #atpan .atdet .atgi svg { width: 26px; height: 26px; }
 #atpan .atdet > span:nth-child(2) { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-#atpan .atdet small { color: #5fd4c8; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+#atpan .atdet small { color: var(--ac); font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
 #atpan .atdet b { font-size: 14px; }
-#atpan .atdet .ic { width: 18px; height: 18px; color: #5fd4c8; transform: rotate(-90deg); flex: none; }
+#atpan .atdet .ic { width: 18px; height: 18px; color: var(--ac); transform: rotate(-90deg); flex: none; }
+
+/* liens vers d'autres structures dans la fiche */
+.atlk { display: inline; padding: 0; margin: 0; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; text-decoration: underline dotted var(--ac); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.atlk:hover { color: var(--ac); }
+/* comparaison */
+.atcmp { margin-top: 10px; border: 1px solid rgba(148, 163, 184, 0.14); border-radius: 12px; overflow: hidden; }
+.atcmh, .atcmr { display: grid; grid-template-columns: 26% 1fr 1fr; }
+.atcmh { background: rgba(148, 163, 184, 0.08); }
+.atcmh b { padding: 10px; font-size: 13px; color: var(--ac); }
+.atcmr { border-top: 1px solid rgba(148, 163, 184, 0.1); }
+.atcmr span { padding: 10px; font-size: 12px; font-weight: 600; color: var(--mu); }
+.atcmr p { margin: 0; padding: 10px; font-size: 12.5px; line-height: 1.45; border-left: 1px solid rgba(148, 163, 184, 0.1); }
+#atpan .b .atico, #atpan .b svg { width: 16px; height: 16px; }
+@media (max-width: 420px) {
+  .atcmh, .atcmr { grid-template-columns: 1fr 1fr; }
+  .atcmh span { display: none; }
+  .atcmr span { grid-column: 1 / -1; padding-bottom: 0; }
+  .atcmr p:first-of-type { border-left: 0; }
+}
+/* coupes de référence */
+.atpre { margin-top: 12px; border-top: 1px solid rgba(148, 163, 184, 0.1); padding-top: 8px; }
+.atpre summary { cursor: pointer; font-size: 13px; font-weight: 700; padding: 4px 0; }
+.atprel { display: grid; gap: 6px; margin-top: 8px; }
+.atprel button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--gb); background: rgba(148, 163, 184, 0.06); color: var(--tx); cursor: pointer; font: 600 13px Inter, sans-serif; }
+.atprel button small { color: var(--mu); font-weight: 500; font-size: 11.5px; }
+.atprel button:hover { border-color: var(--ac); }
+/* vues enregistrées */
+.atvsave { display: flex; gap: 6px; }
+.atvsave input { flex: 1; min-width: 0; height: 38px; border-radius: 9px; border: 1px solid var(--gb); background: rgba(11, 15, 22, 0.7); color: var(--tx); font: 500 16px Inter, sans-serif; padding: 0 10px; }
+.atvsave .b { background: var(--ac); border-color: var(--ac); color: #0b0f16; }
+.atvl { display: grid; gap: 6px; margin-top: 10px; }
+.atvr { display: flex; align-items: stretch; border: 1px solid var(--gb); border-radius: 10px; overflow: hidden; }
+.atvo { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 9px 11px; border: 0; background: rgba(148, 163, 184, 0.06); color: var(--tx); cursor: pointer; text-align: left; font: 600 13px Inter, sans-serif; }
+.atvo small { color: var(--mu); font-weight: 500; font-size: 11.5px; }
+.atvo:hover { background: color-mix(in srgb, var(--ac) 12%, transparent); }
+.atvx { width: 40px; border: 0; border-left: 1px solid var(--gb); background: none; color: var(--mu); cursor: pointer; }
+/* quiz sur les fiches */
+.atqcs { display: grid; gap: 6px; margin-top: 10px; text-align: left; }
+.atqc { padding: 9px 11px; border-radius: 10px; border: 1px solid var(--gb); background: rgba(148, 163, 184, 0.06); color: var(--tx); font: 500 13px/1.4 Inter, sans-serif; cursor: pointer; text-align: left; }
+.atqc:hover:not([disabled]) { border-color: var(--ac); }
+.atqc.ok { border-color: #56d364; background: rgba(86, 211, 100, 0.15); }
+.atqc.ko { border-color: #ff7b72; background: rgba(255, 123, 114, 0.15); }
+.atqhint { display: block; margin-top: 8px; color: var(--mu); font-size: 11.5px; }
+#atquiz { max-height: calc(100% - 120px); overflow-y: auto; }
+/* mode présentation */
+#atpresx { display: none; position: absolute; top: var(--top); right: 12px; z-index: 9; border: 1px solid var(--gb); background: var(--g); color: var(--tx); border-radius: 10px; padding: 8px 12px; font: 600 13px Inter, sans-serif; cursor: pointer; opacity: 0.35; transition: opacity 0.2s; }
+#atpresx:hover, #atpresx:focus { opacity: 1; }
+#atl.pres #atpresx { display: block; }
+#atl.pres .atop, #atl.pres #atdock, #atl.pres #atsheet, #atl.pres #atcorner, #atl.pres #atpan, #atl.pres #atiso, #atl.pres #atquiz, #atl.pres #atcr { display: none !important; }
+#atl.pres #atc, #atl.pres #atlbl, #atl.pres #atgl, #atl.pres #atmeas { left: 0 !important; top: 0 !important; width: 100% !important; height: 100% !important; }
+/* « Plus » visible partout (outils rares rangés dedans) */
+#atdock [data-y] { display: none !important; }
