@@ -119,7 +119,7 @@ async function atlasOpen(id) {
     "</div></div>" +
     '<div id="atmsg">Chargement du modèle…</div>' +
     '<small id="atcr">BodyParts3D © DBCLS · CC BY 4.0</small>' +
-    '<input type="file" id="atfile" accept=".glb,model/gltf-binary" hidden>';
+    '<input type="file" id="atfile" hidden>';
   document.body.appendChild(d);
   document.documentElement.classList.add("atlon");
   ATL.v = { id, alive: true };
@@ -162,7 +162,8 @@ async function atlasUpload(id, f) {
   toast("Envoi du modèle…", 1);
   const { error } = await SY.sb.storage
     .from("atlas")
-    .upload(id + ".glb", f, { upsert: true, contentType: "model/gltf-binary", cacheControl: "60" });
+    // le type est forcé : Windows et iOS ne reconnaissent pas les .glb (sinon refus « mime type not supported »)
+    .upload(id + ".glb", new Blob([f], { type: "model/gltf-binary" }), { upsert: true, contentType: "model/gltf-binary", cacheControl: "60" });
   if (error) return toast(esc(syTr(error.message)));
   toast("Modèle mis à jour ✔");
   atlasOpen(id);
