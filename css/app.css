@@ -4282,11 +4282,38 @@ html.atlon, html.atlon body { overflow: hidden; }
 .atsys button.off { opacity: 0.35; }
 #atall { margin-left: auto; color: #4fb3a9; }
 #atup { color: #e6edf3; }
-#atcard { top: calc(max(10px, env(safe-area-inset-top)) + 60px); padding: 10px 14px; text-align: center; max-width: 90vw; border-color: #4fb3a9; opacity: 0; pointer-events: none; transition: opacity 0.18s; }
-#atcard.show { opacity: 1; pointer-events: auto; }
-#atcard b { display: block; font-size: 15px; }
-#atcard small { display: block; color: #8b949e; font-size: 11px; margin: 2px 0 6px; }
-#atcard .b { font-size: 12px; padding: 5px 10px; background: none; color: #8b949e; border-color: #2a313c; }
 #atmsg { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: #8b949e; font-size: 14px; pointer-events: none; }
 #atcr { position: absolute; right: 8px; bottom: 1px; font-size: 9px; color: #555; pointer-events: none; }
 @media (max-width: 420px) { .atop > b { display: none; } .atv { flex: 1; justify-content: space-between; } }
+#atlab.on { color: #e6edf3; background: #2a313c; }
+#atlbl { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.atlb { position: absolute; left: 0; top: 0; margin: -13px 0 0 -6px; display: flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: #e6edf3; font: 600 11px Inter, sans-serif; white-space: nowrap; cursor: pointer; pointer-events: auto; transition: opacity 0.2s; }
+.atlb i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #0e1116; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5); flex: none; }
+.atlb { text-shadow: 0 1px 3px #000; }
+.atlb.occ { opacity: 0.3; }
+#atpan { position: absolute; z-index: 2; background: rgba(18, 22, 29, 0.96); border: 1px solid #2a313c; color: #e6edf3; overflow-y: auto; -webkit-overflow-scrolling: touch; opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.25s; padding: 16px 18px 18px; }
+#atpan.show { opacity: 1; pointer-events: auto; transform: none; }
+#atpan h3 { margin: 2px 34px 2px 0; font: 700 20px/1.2 Inter, sans-serif; }
+.atpx { position: absolute; top: 10px; right: 10px; width: 36px; height: 36px; border: 0; border-radius: 9px; background: #2a313c; color: #e6edf3; cursor: pointer; }
+.atpc { color: #4fb3a9; font-size: 12px; font-weight: 600; }
+.atpf { display: block; color: #8b949e; font-size: 12px; }
+.atpd { margin: 10px 0 12px; font-size: 14px; line-height: 1.5; color: #c9d1d9; }
+#atpan dl { margin: 0; display: grid; grid-template-columns: minmax(84px, 32%) 1fr; }
+#atpan dt, #atpan dd { margin: 0; padding: 9px 0; border-top: 1px solid #2a313c; font-size: 13px; line-height: 1.45; }
+#atpan dt { color: #8b949e; font-weight: 600; padding-right: 10px; }
+.atpn { margin: 14px 0 4px; padding: 10px 12px; border-radius: 10px; background: rgba(196, 150, 40, 0.18); border: 1px solid rgba(214, 170, 60, 0.45); font-size: 13px; line-height: 1.45; }
+.atpn b { display: block; color: #e3b341; font-size: 12px; margin-bottom: 3px; }
+.atpe { display: block; margin-top: 10px; color: #6e7681; font-size: 11px; font-style: italic; }
+.atpb { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.atpb .b { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+#atpan .b:not(.p) { background: none; color: #c9d1d9; border-color: #2a313c; }
+#atpan .b .ic { width: 16px; height: 16px; }
+.atfcf { margin-top: 12px; padding: 12px; border-radius: 10px; border: 1px solid #2a313c; }
+.atfcf label { display: block; font-size: 12px; color: #8b949e; margin-bottom: 6px; }
+.atfcf select { width: 100%; font-size: 16px; }
+@media (min-width: 761px) {
+  #atpan { left: 12px; top: calc(max(10px, env(safe-area-inset-top)) + 62px); bottom: 12px; width: 360px; border-radius: 14px; transform: translateX(-12px); }
+}
+@media (max-width: 760px) {
+  #atpan { left: 0; right: 0; bottom: 0; max-height: 62vh; border-radius: 16px 16px 0 0; padding-bottom: max(18px, env(safe-area-inset-bottom)); transform: translateY(24px); }
+}

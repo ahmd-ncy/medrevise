@@ -108,12 +108,14 @@ async function atlasOpen(id) {
       .map((v, i) => '<button data-v="' + v[0] + '"' + (i ? "" : ' class="on"') + ">" + v[1] + "</button>")
       .join("") +
     "</div></div>" +
-    '<div id="atcard" class="atb"><b id="atn"></b><small id="ats"></small><button class="b" id="athide">Masquer cette structure</button></div>' +
+    '<div id="atlbl"></div>' +
+    '<aside id="atpan" aria-live="polite"></aside>' +
     '<div class="atb abot"><div class="atr"><label for="atex">Écarter les structures</label><input id="atex" type="range" min="0" max="100" value="0"><span id="atp">0 %</span></div>' +
     '<div class="atsys">' +
     Object.keys(ATL.sysFr)
       .map((s) => '<button data-s="' + s + '"><i style="background:#' + ATL.colors[s].toString(16) + '"></i>' + (s == "os" ? "Os" : s == "cartilage" ? "Cartilages" : "Muscles") + "</button>")
       .join("") +
+    '<button id="atlab" class="on" title="Afficher ou masquer les noms des repères">Étiquettes</button>' +
     '<button id="atall">Tout réafficher</button>' +
     (SY.role == "admin" ? '<button id="atup" title="Remplacer le fichier .glb partagé">Mettre à jour…</button>' : "") +
     "</div></div>" +
@@ -188,7 +190,7 @@ function atlasView(L, buf) {
   key.position.set(1, 2, 3);
   camera.add(key);
   scene.add(camera);
-  Object.assign(V, { renderer, controls, parts: [], radius: 0.3, anim: null, sel: null, hSys: new Set(), hOne: new Set() });
+  Object.assign(V, { renderer, controls, parts: [], labels: [], fiches: {}, radius: 0.3, anim: null, sel: null, hSys: new Set(), hOne: new Set(), showLbl: true, frame: 0 });
 
   const loader = new L.GLTFLoader().setMeshoptDecoder(L.MeshoptDecoder);
   loader.parse(
@@ -202,6 +204,7 @@ function atlasView(L, buf) {
       root.position.sub(box.getCenter(new T.Vector3()));
       root.updateMatrixWorld(true);
       V.radius = box.getSize(new T.Vector3()).length() / 2;
+      V.fiches = (g.asset && g.asset.extras && g.asset.extras.fiches) || {};
       root.traverse((o) => {
         if (!o.isMesh) return;
         let n = o,
@@ -214,6 +217,15 @@ function atlasView(L, buf) {
           p = { mesh: o, base: o.position.clone(), dir: o.parent.worldToLocal(c.clone()).sub(o.parent.worldToLocal(new T.Vector3())), meta: x };
         o.userData.part = p;
         V.parts.push(p);
+        if (x.repere) {
+          o.geometry.computeBoundingBox();
+          const el = document.createElement("button");
+          el.className = "atlb";
+          el.innerHTML = '<i style="background:#' + (ATL.colors[x.systeme] || 0xcccccc).toString(16) + '"></i>' + esc(x.repere);
+          el.onclick = () => select(p);
+          $("atlbl").appendChild(el);
+          V.labels.push({ p, el, local: o.geometry.boundingBox.getCenter(new T.Vector3()), occ: false });
+        }
       });
       setView("front", false);
       if ($("atmsg")) $("atmsg").remove();
@@ -274,6 +286,11 @@ function atlasView(L, buf) {
         vis();
       }),
   );
+  $("atlab").onclick = (e) => {
+    V.showLbl = !V.showLbl;
+    e.currentTarget.classList.toggle("on", V.showLbl);
+    $("atlbl").hidden = !V.showLbl;
+  };
   $("atall").onclick = () => {
     V.hSys.clear();
     V.hOne.clear();
@@ -287,20 +304,44 @@ function atlasView(L, buf) {
   function select(p) {
     if (V.sel) V.sel.mesh.material.emissive.setHex(0);
     V.sel = p;
-    const card = $("atcard");
-    if (!p) return card.classList.remove("show");
+    const pan = $("atpan");
+    if (!p) {
+      pan.classList.remove("show");
+      return;
+    }
     p.mesh.material.emissive.setHex(0x1d5f58);
-    $("atn").textContent = p.meta.fr;
-    $("ats").textContent = (ATL.sysFr[p.meta.systeme] || "") + (p.meta.en ? " · " + p.meta.en : "");
-    card.classList.add("show");
-  }
-  $("athide").onclick = () => {
-    if (V.sel) {
-      V.hOne.add(V.sel);
+    const f = V.fiches[p.meta.fiche];
+    pan.innerHTML =
+      '<button class="atpx" aria-label="Fermer la fiche">✕</button>' +
+      "<small class=\"atpc\">" +
+      esc(f ? f.cat : ATL.sysFr[p.meta.systeme] || "") +
+      "</small><h3>" +
+      esc(p.meta.fr) +
+      "</h3>" +
+      (f && f.titre.toLowerCase() != p.meta.fr.toLowerCase() ? '<small class="atpf">Fiche : ' + esc(f.titre) + "</small>" : "") +
+      (f
+        ? '<p class="atpd">' +
+          esc(f.desc) +
+          "</p><dl>" +
+          f.rows.map((r) => "<dt>" + esc(r[0]) + "</dt><dd>" + esc(r[1]) + "</dd>").join("") +
+          "</dl>" +
+          (f.note ? '<div class="atpn"><b>À retenir</b>' + esc(f.note) + "</div>" : "")
+        : '<p class="atpd">Pas encore de fiche pour cette structure.</p>') +
+      '<small class="atpe">' +
+      esc(p.meta.en || "") +
+      '</small><div class="atpb">' +
+      (f ? '<button class="b p" id="atfc">' + icn("cards") + " Créer des flashcards</button>" : "") +
+      '<button class="b" id="athide">Masquer cette structure</button></div><div id="atfcs"></div>';
+    pan.scrollTop = 0;
+    pan.classList.add("show");
+    pan.querySelector(".atpx").onclick = () => select(null);
+    $("athide").onclick = () => {
+      V.hOne.add(p);
       vis();
       select(null);
-    }
-  };
+    };
+    if ($("atfc")) $("atfc").onclick = () => atlasCardsForm(f);
+  }
   let down = null;
   canvas.addEventListener("pointerdown", (e) => (down = [e.clientX, e.clientY]));
   canvas.addEventListener("pointerup", (e) => {
@@ -325,10 +366,42 @@ function atlasView(L, buf) {
   V.resize = resize;
   addEventListener("resize", resize);
   resize();
+  // étiquettes des repères : suivent le modèle, estompées quand la structure est cachée par une autre
+  const lray = new T.Raycaster(),
+    wp = new T.Vector3(),
+    sp = new T.Vector3();
+  function labels() {
+    if (!V.showLbl || !V.labels.length) return;
+    const w = canvas.clientWidth,
+      h = canvas.clientHeight,
+      check = V.frame++ % 8 === 0,
+      vis = check ? V.parts.filter((x) => x.mesh.visible).map((x) => x.mesh) : null;
+    for (const L of V.labels) {
+      if (!L.p.mesh.visible) {
+        L.el.style.display = "none";
+        continue;
+      }
+      L.p.mesh.localToWorld(wp.copy(L.local));
+      sp.copy(wp).project(camera);
+      if (sp.z > 1) {
+        L.el.style.display = "none";
+        continue;
+      }
+      if (check) {
+        lray.set(camera.position, wp.clone().sub(camera.position).normalize());
+        const hit = lray.intersectObjects(vis, false)[0];
+        L.occ = !!(hit && hit.object !== L.p.mesh && hit.distance < camera.position.distanceTo(wp) - 0.01);
+      }
+      L.el.style.display = "";
+      L.el.classList.toggle("occ", L.occ);
+      L.el.style.transform = "translate(" + ((sp.x + 1) / 2) * w + "px," + ((1 - sp.y) / 2) * h + "px)";
+    }
+  }
   renderer.setAnimationLoop((now) => {
     if (V.anim) V.anim(now);
     controls.update();
     renderer.render(scene, camera);
+    labels();
   });
 }
 
@@ -353,4 +426,62 @@ function atlasClose() {
   document.documentElement.classList.remove("atlon");
   const d = $("atl");
   if (d) d.remove();
+}
+
+// ---------- flashcards à partir d'une fiche ----------
+// Une carte par rubrique utile (insertions, innervation, action…) + « À retenir », sans doublon dans le chapitre choisi.
+const ATL_CARD_ROWS = ["Origine", "Terminaison", "Innervation", "Vascularisation", "Action", "Articulations", "Repères", "Orifices", "Rapports", "Atypiques"];
+function atlasCardsOf(f) {
+  const out = f.rows
+    .filter((r) => ATL_CARD_ROWS.includes(r[0]))
+    .map((r) => ({ recto: f.titre + " : " + r[0].toLowerCase() + " ?", verso: r[1] }));
+  if (f.note) out.push({ recto: f.titre + " : à retenir ?", verso: f.note });
+  return out;
+}
+function atlasCardsForm(f) {
+  const box = $("atfcs");
+  if (!box) return;
+  let last = "";
+  try {
+    last = localStorage.getItem("mr_atlas_ch") || "";
+  } catch (e) {}
+  const opts = S.mat
+    .map((m) => {
+      const cc = S.chap.filter((c) => c.mid === m.id);
+      return cc.length
+        ? '<optgroup label="' + esc(m.nom) + '">' + cc.map((c) => '<option value="' + esc(c.id) + '"' + (c.id === last ? " selected" : "") + ">" + esc(c.titre) + "</option>").join("") + "</optgroup>"
+        : "";
+    })
+    .join("");
+  const n = atlasCardsOf(f).length;
+  box.innerHTML =
+    '<div class="atfcf"><label for="atch">Ajouter ' +
+    n +
+    " flashcard" +
+    (n > 1 ? "s" : "") +
+    ' dans le chapitre :</label><select id="atch">' +
+    '<option value="__new">➕ Nouveau chapitre « Thorax » (UE Atlas 3D)</option>' +
+    opts +
+    '</select><div class="atpb"><button class="b p" id="atfcok">Ajouter</button><button class="b" id="atfcno">Annuler</button></div></div>';
+  if (last && S.chap.some((c) => c.id === last)) $("atch").value = last;
+  $("atfcno").onclick = () => (box.innerHTML = "");
+  $("atfcok").onclick = () => {
+    let ch = $("atch").value;
+    if (ch === "__new") {
+      let m = S.mat.find((x) => x.nom === "Atlas 3D");
+      if (!m) S.mat.push((m = { id: uid(), ic: "bone", nom: "Atlas 3D", prof: "", couleur: "#2f5d62" }));
+      let c = S.chap.find((x) => x.mid === m.id && x.titre === "Thorax");
+      if (!c) S.chap.push((c = { id: uid(), mid: m.id, titre: "Thorax", prof: "", info: "Fiches de l’atlas 3D" }));
+      ch = c.id;
+    }
+    const have = new Set(S.cards.filter((c) => c.ch === ch).map((c) => c.recto)),
+      add = atlasCardsOf(f).filter((c) => !have.has(c.recto));
+    add.forEach((c) => S.cards.push({ id: uid(), ch, recto: c.recto, verso: c.verso, img: "" }));
+    try {
+      localStorage.setItem("mr_atlas_ch", ch);
+    } catch (e) {}
+    save();
+    box.innerHTML = "";
+    toast(add.length ? add.length + " flashcard" + (add.length > 1 ? "s" : "") + " ajoutée" + (add.length > 1 ? "s" : "") + " ✔" : "Ces flashcards sont déjà dans ce chapitre");
+  };
 }
