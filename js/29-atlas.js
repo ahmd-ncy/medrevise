@@ -4,11 +4,21 @@
 // la base ne le donne qu'à l'administrateur et aux membres à qui il a ouvert l'accès (voir supabase.sql).
 // Une copie est gardée sur l'appareil (cache « mr-atlas ») pour l'ouvrir hors connexion ; elle est effacée si l'accès est retiré.
 const ATL = {
-  models: [{ id: "thorax", titre: "Thorax", sous: "Os, muscles, organes et gros vaisseaux" }],
+  // modèles : « detail » relie les fiches d'un modèle à un modèle plus détaillé (bouton « Voir en détail »)
+  models: [
+    { id: "thorax", titre: "Thorax", sous: "Os, muscles, organes, vaisseaux, nerfs et médiastin" },
+    { id: "coeur", titre: "Cœur", sous: "Cavités, valves, piliers, coronaires et veines du cœur" },
+    { id: "poumons", titre: "Poumons et arbre bronchique", sous: "Lobes, bronches jusqu’aux segments, plèvre et vaisseaux" },
+  ],
+  detail: {
+    coeur: ["right atrium", "left atrium", "right ventricle", "left ventricle"],
+    poumons: ["rul", "rml", "rll", "lul", "lll", "right lung", "left lung", "main bronchus", "trachea", "pleura"],
+  },
   cache: "mr-atlas",
-  colors: { os: 0xe8dcc4, cartilage: 0xaacddc, muscle: 0xc4483c, organe: 0xe2a0a8, artere: 0xe8342a, veine: 0x3c6edc },
-  sysFr: { os: "Os", cartilage: "Cartilage", muscle: "Muscle", organe: "Organe", artere: "Artère", veine: "Veine" },
-  sysPl: { os: "Os", cartilage: "Cartilages", muscle: "Muscles", organe: "Organes", artere: "Artères", veine: "Veines" },
+  colors: { os: 0xe8dcc4, cartilage: 0xaacddc, muscle: 0xc4483c, organe: 0xe2a0a8, valve: 0xf3e6c4, artere: 0xe8342a, veine: 0x3c6edc, nerf: 0xf2c94c, zone: 0x9b8cff },
+  sysFr: { os: "Os", cartilage: "Cartilage", muscle: "Muscle", organe: "Organe", valve: "Valve", artere: "Artère", veine: "Veine", nerf: "Nerf", zone: "Zone" },
+  sysPl: { os: "Os", cartilage: "Cartilages", muscle: "Muscles", organe: "Organes", valve: "Valves", artere: "Artères", veine: "Veines", nerf: "Nerfs", zone: "Médiastin" },
+  zoneCol: { "zone sup": 0x9b8cff, "zone ant": 0x5fd4c8, "zone moy": 0xff8fab, "zone post": 0xffd166 },
   views: [["front", "Face"], ["back", "Dos"], ["side", "Profil"], ["q34", "3/4"], ["persp", "Perspective"]],
   v: null, // visualiseur ouvert
 };
@@ -154,6 +164,7 @@ async function atlasOpen(id, focusName) {
     tool("attr", "Transparence") +
     tool("atcut", "Coupe") +
     tool("atmes", "Mesurer") +
+    '<button id="atmed" hidden>Médiastin</button>' +
     tool("atbr", "Respiration") +
     tool("atqz", "Quiz") +
     tool("atall", "Tout réafficher") +
@@ -207,13 +218,14 @@ const atNorm = (s) =>
 
 // Couleurs « réalistes » (teintes d'atlas illustré) selon la fiche, sinon selon le système
 const ATL_REAL = {
-  sys: { os: 0xe6d8bc, cartilage: 0xdde6e8, muscle: 0x9c2b22, organe: 0xc98b85, artere: 0xb8322a, veine: 0x3a57a0 },
+  sys: { os: 0xe6d8bc, cartilage: 0xdde6e8, muscle: 0x9c2b22, organe: 0xc98b85, valve: 0xeadfc6, artere: 0xb8322a, veine: 0x3a57a0, nerf: 0xe8d27a, zone: 0x9b8cff },
   fiche: {
     "intervertebral disk": 0xd7dccf, "right atrium": 0x9b4a3c, "left atrium": 0x9b4a3c, "right ventricle": 0x86362b, "left ventricle": 0x86362b,
     "right lung": 0xd9a0a0, "left lung": 0xd9a0a0, trachea: 0xdccbbb, "main bronchus": 0xdccbbb, esophagus: 0xc0766a, thymus: 0xd9b48c,
-    "pulmonary trunk": 0x4a62b0, "pulmonary artery": 0x4a62b0, diaphragm: 0xa1362a,
+    "pulmonary trunk": 0x4a62b0, "pulmonary artery": 0x4a62b0, diaphragm: 0xa1362a, "pulmonary veins": 0xb8322a,
+    rul: 0xe0a9a4, rml: 0xd99e9a, rll: 0xe0a9a4, lul: 0xe0a9a4, lll: 0xd99e9a, pleura: 0xe9d6d2, "segmental bronchi": 0xdccbbb, "lobar bronchi": 0xdccbbb, "intermediate bronchus": 0xdccbbb,
   },
-  rough: { os: 0.8, cartilage: 0.45, muscle: 0.55, organe: 0.5, artere: 0.35, veine: 0.35 },
+  rough: { os: 0.8, cartilage: 0.45, muscle: 0.55, organe: 0.5, valve: 0.5, artere: 0.35, veine: 0.35, nerf: 0.5, zone: 0.9 },
 };
 // Couches de profondeur : 0 = le plus superficiel
 const ATL_LAYERS = ["Tout", "Sans muscles superficiels", "Sans muscles de la paroi", "Sans intercostaux ni ceinture scapulaire", "Sans squelette", "Médiastin seul"];
@@ -223,6 +235,7 @@ const ATL_LAYER_OF = {
   "internal intercostal muscle": 2, "innermost intercostal muscle": 2, clavicle: 2, scapula: 2,
   "transversus thoracis": 3, "internal thoracic artery": 3, "internal thoracic vein": 3,
   diaphragm: 4, thymus: 4, "right lung": 4, "left lung": 4,
+  "long thoracic nerve": 1, "intercostal nerves": 2, rul: 4, rml: 4, rll: 4, lul: 4, lll: 4, pleura: 4,
 };
 
 // ---------- visualiseur ----------
@@ -258,7 +271,7 @@ function atlasView(L, buf, model, focusName) {
     dirty: true, idleT: 0, view: "front", opac: 1,
     clip: { axis: "", pos: 0, plane: new T.Plane(new T.Vector3(0, -1, 0), 0), caps: false },
     breath: { on: false, ready: false, t0: 0, s: 0 }, quiz: null, tool: "",
-    real: false, relief: true, ao: fine, outline: true, focus: false, xray: false, ortho: false, grid: false,
+    opSys: "muscle", real: false, relief: true, ao: fine, outline: true, focus: false, xray: false, ortho: false, grid: false,
     hist: [], meas: { on: false, pts: [] },
   });
   try {
@@ -351,6 +364,7 @@ function atlasView(L, buf, model, focusName) {
     return h;
   }
   function colorOf(p) {
+    if (p.meta.systeme == "zone") return ATL.zoneCol[p.meta.fiche] || ATL.colors.zone;
     if (!V.real) return ATL.colors[p.meta.systeme] || 0xcccccc;
     const base = ATL_REAL.fiche[p.meta.fiche] ?? ATL_REAL.sys[p.meta.systeme] ?? 0xcccccc,
       c = new T.Color(base);
@@ -372,14 +386,17 @@ function atlasView(L, buf, model, focusName) {
       }
       mt.color.setHex(colorOf(p));
       let op = 1;
-      if (V.xray) op = 0.28;
-      if (sys == "muscle") op = Math.min(op, V.opac);
+      if (sys == "zone") op = 0.3;
+      else if (sys == "organe" && p.meta.fiche == "pleura") op = 0.35;
+      if (V.xray) op = Math.min(op, 0.28);
+      if (sys == V.opSys) op = Math.min(op, V.opac);
       if (V.focus && V.sels.size && !V.sels.has(p)) op = Math.min(op, 0.1);
       const tr = op < 0.99;
       if (mt.transparent !== tr) mt.needsUpdate = true;
       mt.transparent = tr;
       mt.opacity = op;
       mt.depthWrite = !tr;
+      if (sys == "zone" || p.meta.fiche == "pleura") mt.side = mt.clippingPlanes && mt.clippingPlanes.length ? mt.side : T.DoubleSide;
       mt.emissive.setHex(V.sels.has(p) ? (p === V.sel ? 0x1d5f58 : 0x123f3a) : 0);
     }
     need();
@@ -402,6 +419,8 @@ function atlasView(L, buf, model, focusName) {
       V.ext = box.getSize(new T.Vector3()).multiplyScalar(0.5);
       V.radius = V.ext.length();
       V.fiches = (g.asset && g.asset.extras && g.asset.extras.fiches) || {};
+      if (g.asset && g.asset.extras && g.asset.extras.source)
+        $("atcr").textContent = /Z-Anatomy/.test(g.asset.extras.source) ? "BodyParts3D © DBCLS · CC BY 4.0 · Z-Anatomy · CC BY-SA 4.0" : "BodyParts3D © DBCLS · CC BY 4.0";
       const present = new Set();
       root.traverse((o) => {
         if (!o.isMesh) return;
@@ -418,6 +437,7 @@ function atlasView(L, buf, model, focusName) {
             mesh: o, base: o.position.clone(), q0: o.quaternion.clone(), s0: o.scale.clone(),
             c: root.worldToLocal(wb.getCenter(new T.Vector3())), size, meta: x,
             layer: ATL_LAYER_OF[x.fiche] ?? (x.systeme == "os" || x.systeme == "cartilage" ? 3 : x.systeme == "muscle" ? 1 : 5),
+            zone: x.systeme == "zone",
           };
         // axe des fibres (relief des muscles) : la plus grande dimension
         p.fib = size.x >= size.y && size.x >= size.z ? new T.Vector3(1, 0, 0) : size.y >= size.z ? new T.Vector3(0, 1, 0) : new T.Vector3(0, 0, 1);
@@ -426,6 +446,7 @@ function atlasView(L, buf, model, focusName) {
         o.userData.part = p;
         V.parts.push(p);
         present.add(x.systeme);
+        if (x.cache) V.hOne.add(p); // masquée à l'ouverture (plèvre, médiastin…)
         if (x.repere) {
           o.geometry.computeBoundingBox();
           const el = document.createElement("button");
@@ -436,7 +457,10 @@ function atlasView(L, buf, model, focusName) {
           V.labels.push({ p, el, local: o.geometry.boundingBox.getCenter(new T.Vector3()) });
         }
       });
-      document.querySelectorAll("#atl .atsys button").forEach((b) => (b.hidden = !present.has(b.dataset.s)));
+      document.querySelectorAll("#atl .atsys button").forEach((b) => (b.hidden = !present.has(b.dataset.s) || b.dataset.s == "zone"));
+      if ($("atmed")) $("atmed").hidden = !present.has("zone");
+      if (!present.has("muscle")) V.opSys = "organe";
+      vis();
       grid();
       materials(true);
       fxBuild();
@@ -689,7 +713,8 @@ function atlasView(L, buf, model, focusName) {
   };
   function showAll() {
     V.hSys.clear();
-    V.hOne.clear();
+    V.hOne = new Set(V.parts.filter((p) => p.zone || p.meta.fiche == "pleura"));
+    $("atmed").classList.remove("on");
     V.iso = null;
     V.layer = 0;
     sysBtns().forEach((b) => b.classList.remove("off"));
@@ -697,6 +722,28 @@ function atlasView(L, buf, model, focusName) {
     vis();
   }
   $("atall").onclick = showAll;
+  // compartiments du médiastin : affichés ou masqués ensemble
+  $("atmed").onclick = () => {
+    const zs = V.parts.filter((p) => p.zone),
+      on = zs.some((p) => visible(p)),
+      lungs = V.parts.filter((p) => /^(rul|rml|rll|lul|lll|pleura)$/.test(p.meta.fiche));
+    zs.forEach((p) => (on ? V.hOne.add(p) : V.hOne.delete(p)));
+    if (!on) {
+      // on retire la paroi et les poumons pour voir le médiastin, et on les rend en quittant
+      V.medPrev = { layer: V.layer, lungs: lungs.filter((p) => !V.hOne.has(p)) };
+      lungs.forEach((p) => V.hOne.add(p));
+      V.layer = ATL_LAYERS.length - 1; // « Médiastin seul »
+      sysToggle("zone", false);
+      toast("Médiastin (schématique) : supérieur en violet, antérieur en vert, moyen en rose, postérieur en jaune. Touche une zone pour sa fiche.");
+    } else if (V.medPrev) {
+      V.layer = V.medPrev.layer;
+      V.medPrev.lungs.forEach((p) => V.hOne.delete(p));
+      V.medPrev = null;
+    }
+    if (V.tool == "lay") toolPanel("lay", true);
+    $("atmed").classList.toggle("on", !on);
+    vis();
+  };
   // isolement : seulement la sélection, puis ses voisines
   function isolate(set) {
     V.iso = new Set(set);
@@ -869,7 +916,12 @@ function atlasView(L, buf, model, focusName) {
         '"><span class="atlyn">' + ATL_LAYERS[V.layer] + "</span></div>";
     else if (V.tool == "tr")
       box.innerHTML =
-        '<div class="atr"><label for="atop">Muscles transparents</label><input id="atop" type="range" min="10" max="100" value="' + Math.round(V.opac * 100) +
+        '<div class="atr atwrap"><span class="atlbl2">Rendre transparents</span><div class="atseg" id="atops">' +
+        ["muscle", "os", "organe", "artere", "veine"]
+          .filter((s) => V.parts.some((p) => p.meta.systeme == s))
+          .map((s) => '<button data-s="' + s + '"' + (V.opSys == s ? ' class="on"' : "") + ">" + ATL.sysPl[s] + "</button>")
+          .join("") +
+        '</div></div><div class="atr"><label for="atop">Opacité</label><input id="atop" type="range" min="10" max="100" value="' + Math.round(V.opac * 100) +
         '"><span>' + Math.round(V.opac * 100) + " %</span></div>";
     else if (V.tool == "cut")
       box.innerHTML =
@@ -900,6 +952,14 @@ function atlasView(L, buf, model, focusName) {
         $("atlay").classList.add("on");
         vis();
       };
+    box.querySelectorAll("#atops button").forEach(
+      (b) =>
+        (b.onclick = () => {
+          V.opSys = b.dataset.s;
+          box.querySelectorAll("#atops button").forEach((x) => x.classList.toggle("on", x === b));
+          materials();
+        }),
+    );
     if ($("atop"))
       $("atop").oninput = (e) => {
         V.opac = e.target.value / 100;
@@ -1135,7 +1195,7 @@ function atlasView(L, buf, model, focusName) {
       } else if (/^(manubrium|body of sternum|xiphoid process)$/.test(e) && ribs.right4 && ribs.left4)
         p.br = { kind: "tr", v: ribs.right4.d.clone().add(ribs.left4.d).multiplyScalar(0.5) };
       else if (e == "diaphragm") p.br = { kind: "tr", v: new T.Vector3(0, -0.016, 0.002) };
-      else if (/^(right|left) lung$/.test(e)) p.br = { kind: "sc", k: 0.05 };
+      else if (/^(right|left) lung$/.test(e) || /^(rul|rml|rll|lul|lll|pleura)$/.test(p.meta.fiche)) p.br = { kind: "sc", k: 0.05 };
     }
     B.ready = true;
   }
@@ -1295,7 +1355,12 @@ function atlasView(L, buf, model, focusName) {
       (f && atNorm(f.titre) != atNorm(p.meta.fr) ? '<small class="atpf">Fiche : ' + esc(f.titre) + "</small>" : "") +
       '<div class="atpb atpa"><button class="b" id="atiso1">Isoler' + (V.sels.size > 1 ? " la sélection" : "") +
       '</button><button class="b" id="atmul">' + (V.multi ? "✓ Sélection multiple" : "＋ Sélectionner d’autres") +
-      '</button><button class="b" id="atorb">Tourner autour</button></div>' +
+      '</button><button class="b" id="atorb">Tourner autour</button>' +
+      Object.keys(ATL.detail)
+        .filter((m) => m !== model.id && ATL.detail[m].includes(p.meta.fiche))
+        .map((m) => '<button class="b p atdet" data-m="' + m + '">Voir en détail : ' + esc((ATL.models.find((x) => x.id == m) || {}).titre || m) + "</button>")
+        .join("") +
+      "</div>" +
       (f
         ? '<p class="atpd">' + esc(f.desc) + "</p><dl>" + f.rows.map((r) => "<dt>" + esc(r[0]) + "</dt><dd>" + esc(r[1]) + "</dd>").join("") + "</dl>" +
           (f.note ? '<div class="atpn"><b>À retenir</b>' + esc(f.note) + "</div>" : "")
@@ -1320,6 +1385,7 @@ function atlasView(L, buf, model, focusName) {
       toast(V.multi ? "Touche d’autres structures pour les ajouter (sur ordinateur : Maj + clic)." : "Sélection simple");
     };
     $("atorb").onclick = () => orbitOn(p);
+    pan.querySelectorAll(".atdet").forEach((b) => (b.onclick = () => atlasOpen(b.dataset.m)));
     if ($("atfc")) $("atfc").onclick = () => atlasCardsForm(f);
   }
 
@@ -1328,7 +1394,7 @@ function atlasView(L, buf, model, focusName) {
   function quizStart() {
     if (V.breath.on) breathStop();
     select(null);
-    const pool = V.parts.filter((p) => p.mesh.visible),
+    const pool = V.parts.filter((p) => p.mesh.visible && !p.zone),
       seen = new Set(),
       list = [];
     for (const p of pool.sort(() => Math.random() - 0.5)) {
@@ -1457,7 +1523,8 @@ function atlasView(L, buf, model, focusName) {
       V.parts.filter((p) => p.mesh.visible && !(p.mesh.material.opacity < 0.15)).map((p) => p.mesh),
       false,
     );
-    return hits.find((h) => !V.clip.axis || V.clip.plane.distanceToPoint(h.point) >= -1e-4) || null;
+    const ok = hits.filter((h) => !V.clip.axis || V.clip.plane.distanceToPoint(h.point) >= -1e-4);
+    return ok.find((h) => !h.object.userData.part.zone && h.object.userData.part.meta.fiche != "pleura") || ok[0] || null;
   }
   let down = null,
     lastTap = { t: 0, p: null };
