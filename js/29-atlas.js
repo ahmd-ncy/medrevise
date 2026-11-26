@@ -10,6 +10,8 @@ const ATL = {
     { id: "coeur", titre: "Cœur", sous: "Cavités, valves, piliers, coronaires et veines du cœur" },
     { id: "poumons", titre: "Poumons et arbre bronchique", sous: "Lobes, bronches jusqu’aux segments, plèvre et vaisseaux" },
     { id: "abdomen", titre: "Abdomen", sous: "Viscères, segments du foie, vaisseaux, paroi, plexus lombal" },
+    { id: "membre-inf", titre: "Membre inférieur", sous: "Os de la hanche au pied, muscles par loges, nerfs fémoral et ischiatique, vaisseaux" },
+    { id: "membre-sup", titre: "Membre supérieur", sous: "Os de l’épaule à la main, muscles par loges, plexus brachial, nerfs, vaisseaux" },
   ],
   detail: {
     coeur: ["right atrium", "left atrium", "right ventricle", "left ventricle", "ascending aorta", "pulmonary trunk", "superior vena cava", "inferior vena cava"],
@@ -29,6 +31,8 @@ const atlasOk = () => !!(SY.sb && SY.user && SY.role && (SY.role == "admin" || (
 const ATL_ICO = {
   thorax: '<path d="M12 3v18M12 6c-3 0-6 1-7 3M12 6c3 0 6 1 7 3M12 9.5c-3 0-6 1-7 3M12 9.5c3 0 6 1 7 3M12 13c-2.6 0-5 .9-6 2.6M12 13c2.6 0 5 .9 6 2.6M12 16.5c-2 0-3.6.6-4.4 1.6M12 16.5c2 0 3.6.6 4.4 1.6"/>',
   coeur: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/><path d="M12 7.4V4M9 5l1.5 2"/>',
+  "membre-inf": '<path d="M10 3c-1 3-1 6 0 9l-.5 5c-.3 2-.5 3 .5 4h5c1 0 1-1 0-1.5l-2-1.5.5-6c1-3 1-6 0-9"/><path d="M10 12h3"/>',
+  "membre-sup": '<path d="M9 3c-1 2-1 4 0 6l1 5-1 4c-.5 2 .5 3 2 3h2c1 0 2-1 1.5-2.5L13 15l1-5c1-2 1-4 0-7"/><path d="M10 9h4"/>',
   abdomen: '<path d="M7 4c-2 3-3 6-3 9a8 8 0 0 0 16 0c0-3-1-6-3-9"/><path d="M9 10c1.5 1 4.5 1 6 0M8.5 14c2 1.5 5 1.5 7 0"/><circle cx="12" cy="17.5" r=".8"/>',
   poumons: '<path d="M12 3v8M12 11c-1.5 0-2.5 1-3.5 2M12 11c1.5 0 2.5 1 3.5 2"/><path d="M9 7c-3 1-5 5-5 10 0 2 1.5 3 3 3s2-1 2-3zM15 7c3 1 5 5 5 10 0 2-1.5 3-3 3s-2-1-2-3z"/>',
 };
@@ -2989,6 +2993,49 @@ function atlasView(L, buf, model, focusName) {
           { t: "Foie gauche", x: "Segments II, III et IV, à gauche de la ligne qui va de la vésicule à la veine cave inférieure.", view: "front", iso: ["liver segments", "gallbladder", "ivc abdominal"], sel: ["Foie : segment II", "Foie : segment III", "Foie : segment IV"] },
           { t: "Foie droit", x: "Segments V, VI, VII et VIII.", view: "q34", iso: ["liver segments", "gallbladder", "ivc abdominal"], sel: ["Foie : segment V", "Foie : segment VI", "Foie : segment VII", "Foie : segment VIII"] },
           { t: "Le lobe caudé", x: "Le segment I, en arrière contre la veine cave inférieure, se draine directement dans la VCI.", view: "back", iso: ["liver segments", "ivc abdominal"], sel: ["Foie : segment I (lobe caudé)"] },
+        ],
+      },
+    ],
+    "membre-inf": [
+      {
+        id: "nerfs-mi", n: "Les nerfs du membre inférieur",
+        steps: [
+          { t: "Deux plexus", x: "Le plexus lombal (L1-L4) donne surtout les nerfs fémoral et obturateur, en avant et en dedans ; le plexus sacral (L4-S3) donne le nerf ischiatique, en arrière.", view: "q34", iso: ["femoral nerve", "obturator nerve", "sciatic nerve", "tibial nerve", "common fibular nerve", "gluteal nerves", "hip bone", "femur", "tibia", "fibula"] },
+          { t: "Nerf fémoral", x: "Sous le ligament inguinal, en dehors de l’artère fémorale : quadriceps et sartorius ; le nerf saphène pour la peau de la jambe.", view: "front", iso: ["femoral nerve", "femoral artery", "inguinal ligament", "hip bone", "femur", "quadriceps"], sel: ["Nerf fémoral"] },
+          { t: "Nerf obturateur", x: "Traverse le canal obturateur : muscles adducteurs.", view: "front", iso: ["obturator nerve", "hip bone", "femur", "adductors"], sel: ["obturator nerve"] },
+          { t: "Nerf ischiatique", x: "Sort sous le piriforme et descend derrière la cuisse, sous les ischio-jambiers.", view: "back", iso: ["sciatic nerve", "hip bone", "femur", "deep hip rotators", "hamstrings"], sel: ["sciatic nerve"] },
+          { t: "Nerf tibial", x: "Loge postérieure de la jambe et plante du pied ; passe derrière la malléole médiale.", view: "back", iso: ["tibial nerve", "tibia", "fibula", "tarsal bones", "triceps surae", "deep posterior leg"], sel: ["Nerf tibial et nerfs plantaires"] },
+          { t: "Nerf fibulaire commun", x: "Contourne le col de la fibula, où il est vulnérable, puis se divise en fibulaire profond (releveurs) et superficiel (fibulaires).", view: "side", iso: ["common fibular nerve", "tibia", "fibula", "tarsal bones", "metatarsals", "anterior leg", "fibularis"], sel: ["Nerf fibulaire commun"] },
+        ],
+      },
+      {
+        id: "trigf", n: "Le triangle fémoral",
+        steps: [
+          { t: "Ses limites", x: "En haut le ligament inguinal, en dehors le sartorius, en dedans le long adducteur.", view: "front", iso: ["inguinal ligament", "sartorius", "adductors", "hip bone", "femur", "femoral artery", "femoral nerve", "deep leg veins", "saphenous veins"], sel: ["inguinal ligament", "sartorius", "Muscle long adducteur"] },
+          { t: "Son contenu", x: "De dehors en dedans : nerf fémoral, artère fémorale, veine fémorale (et les lymphatiques du canal fémoral).", view: "front", iso: ["inguinal ligament", "hip bone", "femur", "femoral artery", "femoral nerve", "deep leg veins"], sel: ["Nerf fémoral", "Artère fémorale"] },
+          { t: "La crosse de la grande saphène", x: "La grande saphène rejoint la veine fémorale juste sous le ligament inguinal.", view: "front", iso: ["inguinal ligament", "hip bone", "femur", "deep leg veins", "saphenous veins"], sel: ["Grande veine saphène"] },
+        ],
+      },
+    ],
+    "membre-sup": [
+      {
+        id: "nerfs-ms", n: "Les cinq nerfs du membre supérieur",
+        steps: [
+          { t: "Le plexus brachial", x: "Né des racines C5 à T1 : racines, troncs, divisions puis faisceaux, d’où naissent les nerfs terminaux.", view: "front", iso: ["brachial plexus", "axillary nerve", "musculocutaneous nerve", "median nerve", "ulnar nerve", "radial nerve", "clavicle", "scapula", "humerus", "radius", "ulna"], sel: ["brachial plexus"] },
+          { t: "Nerf axillaire", x: "Contourne le col chirurgical de l’humérus : deltoïde et petit rond.", view: "back", iso: ["axillary nerve", "humerus", "scapula", "deltoid"], sel: ["axillary nerve"] },
+          { t: "Nerf musculo-cutané", x: "Loge antérieure du bras : coraco-brachial, biceps, brachial.", view: "front", iso: ["musculocutaneous nerve", "humerus", "biceps brachii", "brachialis", "coracobrachialis"], sel: ["musculocutaneous nerve"] },
+          { t: "Nerf médian", x: "Flexion du poignet et des doigts, pince pouce-index ; traverse le canal carpien.", view: "front", iso: ["median nerve", "humerus", "radius", "ulna", "carpal bones", "metacarpals", "phalanges", "flexor retinaculum"], sel: ["median nerve"] },
+          { t: "Nerf ulnaire", x: "Passe derrière l’épicondyle médial ; motricité fine de la main (interosseux).", view: "q34", iso: ["ulnar nerve", "humerus", "radius", "ulna", "carpal bones", "metacarpals", "phalanges"], sel: ["ulnar nerve"] },
+          { t: "Nerf radial", x: "Contourne l’humérus en arrière : nerf de l’extension du coude, du poignet et des doigts.", view: "back", iso: ["radial nerve", "humerus", "radius", "ulna", "triceps brachii"], sel: ["radial nerve"] },
+        ],
+      },
+      {
+        id: "coiffe", n: "La coiffe des rotateurs",
+        steps: [
+          { t: "L’épaule", x: "Une articulation très mobile mais peu stable : quatre muscles l’entourent et plaquent la tête humérale dans la glène.", view: "q34", iso: ["scapula", "humerus", "clavicle", "supraspinatus", "infraspinatus", "teres minor", "subscapularis", "deltoid"] },
+          { t: "Supra-épineux", x: "Au-dessus : démarre l’abduction ; le tendon le plus souvent abîmé.", view: "back", iso: ["scapula", "humerus", "clavicle", "supraspinatus", "infraspinatus", "teres minor", "subscapularis"], sel: ["supraspinatus"] },
+          { t: "Infra-épineux et petit rond", x: "En arrière : rotation latérale du bras.", view: "back", iso: ["scapula", "humerus", "clavicle", "supraspinatus", "infraspinatus", "teres minor", "subscapularis"], sel: ["infraspinatus", "teres minor"] },
+          { t: "Subscapulaire", x: "En avant : rotation médiale ; s’insère sur le tubercule mineur.", view: "front", iso: ["scapula", "humerus", "clavicle", "supraspinatus", "infraspinatus", "teres minor", "subscapularis"], sel: ["subscapularis"] },
         ],
       },
     ],
