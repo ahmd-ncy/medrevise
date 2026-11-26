@@ -40,19 +40,19 @@ const TSTEPS = [
   },
   {
     tab: "cards",
-    sel: '.tabs [data-t="cards"]',
+    sel: '.subtabs [data-t="cards"]',
     t: "Flashcards",
-    x: "Après chaque carte, dis si tu la savais : <b>À revoir</b>, <b>Difficile</b>, <b>Bien</b> ou <b>Facile</b>. L’app calcule le meilleur moment pour te la reposer.",
+    x: "Dans l’onglet <b>Réviser</b>. Après chaque carte, dis si tu la savais : <b>À revoir</b>, <b>Difficile</b>, <b>Bien</b> ou <b>Facile</b>. L’app calcule le meilleur moment pour te la reposer.",
   },
   {
     tab: "qcm",
-    sel: '.tabs [data-t="qcm"]',
+    sel: '.subtabs [data-t="qcm"]',
     t: "QCM",
     x: "Entraînement avec correction immédiate, examen blanc chronométré noté sur 20, ou mode vrai ou faux. Le barème est celui de Nancy, modifiable dans les réglages.",
   },
   {
     tab: "err",
-    sel: '.tabs [data-t="err"]',
+    sel: '.subtabs [data-t="err"]',
     t: "Erreurs",
     x: "Chaque QCM raté arrive ici, rangé par UE et par chapitre, jusqu’à ce que tu le réussisses. Tu y trouves aussi tes cartes difficiles et les raisons de tes erreurs.",
   },
@@ -64,7 +64,7 @@ const TSTEPS = [
   },
   {
     tab: "add",
-    sel: '.tabs [data-t="add"]',
+    sel: ".hadd",
     t: "Ajouter ton contenu",
     x: "Dans l’ordre : une <b>UE</b>, puis ses <b>chapitres</b>, puis tes <b>livrets</b> (PDF). Pour les QCM et les flashcards, le plus rapide est <b>Import depuis Claude</b> : Claude les prépare à partir de ton cours.",
   },

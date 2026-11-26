@@ -1383,6 +1383,56 @@ header {
   background: #fff;
   color: var(--tc);
 }
+/* bouton « Ajouter » de l'en-tête (remplace l'onglet) */
+.hadd {
+  flex: none;
+  height: 38px;
+  min-width: 38px;
+  border-radius: 19px;
+  border: 1px solid #ffffff55;
+  background: #ffffff26;
+  color: #fff;
+  font: 700 13px Inter, sans-serif;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 14px 0 10px;
+}
+.hadd .ic { width: 20px; height: 20px; }
+.hadd:hover { background: #ffffff3a; }
+.hadd.on { background: #fff; color: var(--tc); }
+@media (max-width: 520px) {
+  .hadd { padding: 0; width: 38px; }
+  .hadd span { display: none; }
+}
+/* sous-onglets de « Réviser » : Flashcards, QCM, Erreurs */
+.subtabs {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 8px 8px;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 4px;
+}
+.subtabs button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 6px;
+  border: 1px solid #ffffff22;
+  border-radius: 999px;
+  background: #ffffff12;
+  color: var(--mut);
+  font: 700 13px Inter, sans-serif;
+  cursor: pointer;
+}
+.subtabs button .ic { width: 17px; height: 17px; }
+.subtabs button:hover { color: var(--fg); }
+.subtabs button.on { background: #fff; color: var(--tc, #1c2433); border-color: #fff; }
 .tabs {
   display: grid;
   grid-auto-flow: column;
@@ -4573,3 +4623,13 @@ html.atlon, html.atlon body { overflow: hidden; }
 .at3dbar b { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; margin-right: 4px; }
 .at3dbar b .ic { width: 16px; height: 16px; color: #2f8f86; }
 .at3dbar .b { padding: 5px 10px; font-size: 13px; }
+/* fiche : proposition d'ouvrir l'atlas détaillé */
+#atpan .atdet { display: flex; align-items: center; gap: 12px; width: 100%; margin: 12px 0 2px; padding: 10px 12px; text-align: left; cursor: pointer; color: #e6edf3;
+  border: 1px solid rgba(95, 212, 200, 0.45); border-radius: 14px; background: linear-gradient(135deg, rgba(95, 212, 200, 0.18), rgba(95, 212, 200, 0.05)); font: inherit; }
+#atpan .atdet:hover { border-color: #5fd4c8; background: linear-gradient(135deg, rgba(95, 212, 200, 0.26), rgba(95, 212, 200, 0.08)); }
+#atpan .atdet .atgi { width: 40px; height: 40px; border-radius: 11px; }
+#atpan .atdet .atgi svg { width: 26px; height: 26px; }
+#atpan .atdet > span:nth-child(2) { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+#atpan .atdet small { color: #5fd4c8; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+#atpan .atdet b { font-size: 14px; }
+#atpan .atdet .ic { width: 18px; height: 18px; color: #5fd4c8; transform: rotate(-90deg); flex: none; }

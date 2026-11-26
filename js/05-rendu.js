@@ -7,18 +7,33 @@ function render() {
     $("app").innerHTML = gate();
     return;
   }
+  // Navigation : 5 onglets. « Réviser » regroupe Flashcards, QCM et Erreurs (sous-onglets) ; « Ajouter » est dans l'en-tête.
+  const REV = [
+      ["cards", "Flashcards", "cards"],
+      ["qcm", "QCM", "check"],
+      ["err", "Erreurs", "errors"],
+    ],
+    isRev = ["cards", "qcm", "err", "veille"].includes(tab);
+  if (isRev && tab != "veille")
+    try {
+      localStorage.setItem("mr_rev", tab);
+    } catch (e) {}
+  let lastRev = "cards";
+  try {
+    lastRev = ["cards", "qcm", "err"].includes(localStorage.getItem("mr_rev")) ? localStorage.getItem("mr_rev") : "cards";
+  } catch (e) {}
   const TB = [
       ["home", "Accueil", "var(--c1)", "home"],
       ["cours", "Cours", "var(--c2)", "book"],
+      ["rev", "Réviser", "var(--c4)", "cards"],
       ...(typeof atlasOk == "function" && atlasOk() ? [["atlas", "Atlas", "var(--c3)", "bone"]] : []),
-      ["cards", "Cartes", "var(--c3)", "cards"],
-      ["qcm", "QCM", "var(--c4)", "check"],
-      ["err", "Erreurs", "var(--c5)", "errors"],
       ["plan", "Planning", "var(--c2)", "cal"],
-      ["add", "Ajouter", "var(--c6)", "plus"],
     ],
     pn =
-      { prof: "Profil", data: "Données", veille: "Veille d’examen", syn: "Fiche de synthèse", atlas: "Atlas 3D" }[tab] ||
+      {
+        prof: "Profil", data: "Données", veille: "Veille d’examen", syn: "Fiche de synthèse", atlas: "Atlas 3D",
+        cards: "Flashcards", qcm: "QCM", err: "Erreurs", add: "Ajouter",
+      }[tab] ||
       (TB.find((t) => t[0] === tab) || [])[1] ||
       "";
   $("top").innerHTML =
@@ -32,7 +47,9 @@ function render() {
     icn("flame") +
     " " +
     flame() +
-    '</span><button class="av' +
+    '</span><button class="hadd' + (tab == "add" ? " on" : "") + '" onclick="go(\'add\')" aria-label="Ajouter du contenu" title="Ajouter du contenu">' + icn("plus") +
+    "<span>Ajouter</span></button>" +
+    '<button class="av' +
     (tab == "prof" || tab == "data" ? " on" : "") +
     '" onclick="go(\'prof\')" aria-label="Profil">' +
     (S.photo ? avatar(S.name) : S.name ? esc(S.name[0].toUpperCase()) : icn("user")) +
@@ -44,20 +61,27 @@ function render() {
         '" style="--c:' +
         t[2] +
         '" class="' +
-        (tab === t[0] ||
-        (tab == "veille" && t[0] == "err") ||
-        (tab == "syn" && t[0] == "cours")
-          ? "on"
-          : "") +
-        '" onclick="go(\'' +
-        t[0] +
+        (tab === t[0] || (isRev && t[0] == "rev") || (tab == "syn" && t[0] == "cours") ? "on" : "") +
+        '"' +
+        (tab === t[0] || (isRev && t[0] == "rev") ? ' aria-current="page"' : "") +
+        ' onclick="go(\'' +
+        (t[0] == "rev" ? lastRev : t[0]) +
         "')\">" +
         icn(t[3]) +
         "<span>" +
         t[1] +
         "</span></button>",
     ).join("") +
-    "</div>";
+    "</div>" +
+    (isRev && !R.run
+      ? '<div class="subtabs" role="tablist" aria-label="Réviser">' +
+        REV.map(
+          (r) =>
+            '<button role="tab" data-t="' + r[0] + '" aria-selected="' + (tab == r[0] || (tab == "veille" && r[0] == "err")) + '" class="' +
+            (tab == r[0] || (tab == "veille" && r[0] == "err") ? "on" : "") + '" onclick="go(\'' + r[0] + "')\">" + icn(r[2]) + "<span>" + r[1] + "</span></button>",
+        ).join("") +
+        "</div>"
+      : "");
   $("app").innerHTML = {
     home,
     plan,

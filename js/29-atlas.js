@@ -11,8 +11,8 @@ const ATL = {
     { id: "poumons", titre: "Poumons et arbre bronchique", sous: "Lobes, bronches jusqu’aux segments, plèvre et vaisseaux" },
   ],
   detail: {
-    coeur: ["right atrium", "left atrium", "right ventricle", "left ventricle"],
-    poumons: ["rul", "rml", "rll", "lul", "lll", "right lung", "left lung", "main bronchus", "trachea", "pleura"],
+    coeur: ["right atrium", "left atrium", "right ventricle", "left ventricle", "ascending aorta", "pulmonary trunk", "superior vena cava", "inferior vena cava"],
+    poumons: ["rul", "rml", "rll", "lul", "lll", "right lung", "left lung", "main bronchus", "trachea", "pleura", "pulmonary artery", "pulmonary veins"],
   },
   cache: "mr-atlas",
   colors: { os: 0xe8dcc4, cartilage: 0xaacddc, muscle: 0xc4483c, organe: 0xe2a0a8, valve: 0xf3e6c4, artere: 0xe8342a, veine: 0x3c6edc, nerf: 0xf2c94c, zone: 0x9b8cff },
@@ -285,6 +285,10 @@ async function atlasOpen(id, focusName, overlay) {
   ATL.v = { id, alive: true, ar, overlay: !!overlay, focusName: focusName || "" };
   ATL.key = (e) => ATL.v && ATL.v.onKey && ATL.v.onKey(e);
   addEventListener("keydown", ATL.key);
+  ATL.keyup = (e) => ATL.v && ATL.v.onKeyUp && ATL.v.onKeyUp(e);
+  ATL.blur = () => ATL.v && ATL.v.onBlur && ATL.v.onBlur();
+  addEventListener("keyup", ATL.keyup);
+  addEventListener("blur", ATL.blur);
   $("atback0").onclick = () => atlasExit();
   $("atmsw").onclick = (e) => {
     e.stopPropagation();
@@ -334,6 +338,8 @@ const ATL_REAL = {
     "intervertebral disk": 0xd7dccf, "right atrium": 0x9b4a3c, "left atrium": 0x9b4a3c, "right ventricle": 0x86362b, "left ventricle": 0x86362b,
     "right lung": 0xd9a0a0, "left lung": 0xd9a0a0, trachea: 0xdccbbb, "main bronchus": 0xdccbbb, esophagus: 0xc0766a, thymus: 0xd9b48c,
     "pulmonary trunk": 0x4a62b0, "pulmonary artery": 0x4a62b0, diaphragm: 0xa1362a, "pulmonary veins": 0xb8322a,
+    "papillary rv": 0x8f3a2e, "papillary lv": 0x8f3a2e, "ascending aorta": 0xb8322a, "superior vena cava": 0x3a57a0, "inferior vena cava": 0x3a57a0,
+    "coronary sinus": 0x34508f, "tricuspid valve": 0xe6dcc2, "mitral valve": 0xe6dcc2, "aortic valve": 0xece2c8, "pulmonary valve": 0xece2c8,
     rul: 0xe0a9a4, rml: 0xd99e9a, rll: 0xe0a9a4, lul: 0xe0a9a4, lll: 0xd99e9a, pleura: 0xe9d6d2, "segmental bronchi": 0xdccbbb, "lobar bronchi": 0xdccbbb, "intermediate bronchus": 0xdccbbb,
   },
   rough: { os: 0.8, cartilage: 0.45, muscle: 0.55, organe: 0.5, valve: 0.5, artere: 0.35, veine: 0.35, nerf: 0.5, zone: 0.9 },
@@ -480,21 +486,56 @@ function atlasView(L, buf, model, focusName) {
   float atN(vec3 x){ vec3 i = floor(x); vec3 f = fract(x); f = f * f * (3.0 - 2.0 * f);
     return mix(mix(mix(atH(i), atH(i + vec3(1,0,0)), f.x), mix(atH(i + vec3(0,1,0)), atH(i + vec3(1,1,0)), f.x), f.y),
                mix(mix(atH(i + vec3(0,0,1)), atH(i + vec3(1,0,1)), f.x), mix(atH(i + vec3(0,1,1)), atH(i + vec3(1,1,1)), f.x), f.y), f.z); }`;
+  // Relief « réaliste » calculé dans le shader (aucune texture à télécharger), un motif par type de tissu :
+  // muscle (fibres), os (grain), myocarde (fibres fines, teinte nuancée), poumon (parenchyme spongieux, lobules, petites taches),
+  // voies aériennes (anneaux cartilagineux), vaisseaux (paroi lisse et brillante), nerfs (fascicules), tissus mous (valves, thymus, œsophage).
+  const RELIEF = {
+    muscle:
+      "vec3 q = vAtW * 1000.0; float s = dot(q, atFib); vec3 qq = (q - atFib * s) * 0.9; vec3 gr = atG(qq); gr -= atFib * dot(gr, atFib); atBump(gr, 1.6); diffuseColor.rgb *= 0.93 + 0.14 * atN(qq);",
+    os: "vec3 q = vAtW * 1600.0; atBump(atG(q), 0.9); diffuseColor.rgb *= 0.95 + 0.08 * atN(q * 0.5);",
+    myo:
+      "vec3 q = vAtW * 1000.0; float s = dot(q, atFib); vec3 qq = (q - atFib * s) * 1.4; vec3 gr = atG(qq); gr -= atFib * dot(gr, atFib); atBump(gr + 0.35 * atG(q * 0.35), 0.85);" +
+      "diffuseColor.rgb *= 0.9 + 0.18 * atN(q * 0.25); diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.12, 0.98, 0.86), 0.5 * atN(q * 0.05 + 3.1));",
+    lung:
+      "vec3 q = vAtW * 1000.0; atBump(atG(q * 2.4) * 0.7 + atG(q * 0.55) * 0.8, 1.15); float lob = abs(atN(q * 0.22) - 0.5); diffuseColor.rgb *= 0.84 + 0.22 * atN(q * 0.4) - 0.1 * smoothstep(0.04, 0.0, lob);" +
+      "float sp = smoothstep(0.8, 0.86, atN(q * 1.6 + 7.0)); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.32, 0.24, 0.26), sp * 0.4);",
+    air:
+      "vec3 q = vAtW * 1000.0; float s = dot(q, atFib) * 1.55; atBump(atFib * cos(s) * 0.55 + atG(q * 1.2) * 0.25, 1.0); diffuseColor.rgb *= 0.88 + 0.16 * (0.5 + 0.5 * sin(s));",
+    vessel: "vec3 q = vAtW * 1000.0; float s = dot(q, atFib); atBump(atG(q * 0.8) * 0.5 + atG(vec3(s * 0.15, 0.0, 0.0) + q * 0.05) * 0.3, 0.45); diffuseColor.rgb *= 0.92 + 0.12 * atN(q * 0.3);",
+    nerf: "vec3 q = vAtW * 1000.0; float s = dot(q, atFib); vec3 qq = (q - atFib * s) * 2.4; vec3 gr = atG(qq); gr -= atFib * dot(gr, atFib); atBump(gr, 0.9); diffuseColor.rgb *= 0.92 + 0.14 * atN(qq);",
+    soft: "vec3 q = vAtW * 1000.0; atBump(atG(q * 1.1) * 0.6 + atG(q * 0.3) * 0.4, 0.6); diffuseColor.rgb *= 0.93 + 0.12 * atN(q * 0.35);",
+  };
+  const AT_MYO = /^(right|left) (atrium|ventricle)$|^papillary/,
+    AT_LUNG = /^(rul|rml|rll|lul|lll|right lung|left lung)$/,
+    AT_AIR = /^(trachea|main bronchus|intermediate bronchus|lobar bronchi|segmental bronchi)$/;
+  function reliefKind(p) {
+    const sy = p.meta.systeme,
+      f = p.meta.fiche || "";
+    if (sy == "zone" || f == "pleura") return "";
+    if (AT_MYO.test(f)) return "myo";
+    if (AT_LUNG.test(f)) return "lung";
+    if (AT_AIR.test(f)) return "air";
+    if (sy == "muscle" || sy == "os" || sy == "nerf") return sy;
+    if (sy == "artere" || sy == "veine") return "vessel";
+    if (sy == "cartilage") return "os";
+    return "soft";
+  }
   function reliefPatch(mt, kind, fiber) {
     mt.onBeforeCompile = (sh) => {
       sh.uniforms.atFib = { value: fiber };
       sh.vertexShader = sh.vertexShader
         .replace("#include <common>", "#include <common>\nvarying vec3 vAtW;")
         .replace("#include <worldpos_vertex>", "#include <worldpos_vertex>\nvAtW = (modelMatrix * vec4(transformed, 1.0)).xyz;");
-      const f =
-        kind == "muscle"
-          ? "vec3 q = vAtW * 1000.0; float s = dot(q, atFib); vec3 qq = (q - atFib * s) * 0.9; vec3 gr = vec3(atN(qq+vec3(0.31,0,0)), atN(qq+vec3(0,0.31,0)), atN(qq+vec3(0,0,0.31))) - atN(qq); gr -= atFib * dot(gr, atFib); normal = normalize(normal + 1.6 * (viewMatrix * vec4(gr, 0.0)).xyz); diffuseColor.rgb *= 0.93 + 0.14 * atN(qq);"
-          : "vec3 q = vAtW * 1600.0; vec3 gr = vec3(atN(q+vec3(0.37,0,0)), atN(q+vec3(0,0.37,0)), atN(q+vec3(0,0,0.37))) - atN(q); normal = normalize(normal + 0.9 * (viewMatrix * vec4(gr, 0.0)).xyz); diffuseColor.rgb *= 0.95 + 0.08 * atN(q * 0.5);";
       sh.fragmentShader = sh.fragmentShader
-        .replace("#include <common>", "#include <common>\nvarying vec3 vAtW;\nuniform vec3 atFib;" + NOISE)
-        .replace("#include <normal_fragment_maps>", "#include <normal_fragment_maps>\n" + f);
+        .replace(
+          "#include <common>",
+          "#include <common>\nvarying vec3 vAtW;\nuniform vec3 atFib;" + NOISE +
+            "\nvec3 atG(vec3 p){ float n = atN(p); return vec3(atN(p+vec3(0.31,0,0)), atN(p+vec3(0,0.31,0)), atN(p+vec3(0,0,0.31))) - n; }" +
+            "\n#define atBump(g, k) normal = normalize(normal + (k) * (viewMatrix * vec4((g), 0.0)).xyz)",
+        )
+        .replace("#include <normal_fragment_maps>", "#include <normal_fragment_maps>\n{" + RELIEF[kind] + "}");
     };
-    mt.customProgramCacheKey = () => "atrelief-" + kind;
+    mt.customProgramCacheKey = () => "atrelief2-" + kind;
   }
   function hashStr(s) {
     let h = 7;
@@ -516,7 +557,9 @@ function atlasView(L, buf, model, focusName) {
       if (rebuild) {
         const old = mt;
         mt = new T.MeshStandardMaterial({ roughness: V.real ? ATL_REAL.rough[sys] ?? 0.6 : 0.65, metalness: 0 });
-        if (V.real && V.relief && (sys == "muscle" || sys == "os")) reliefPatch(mt, sys, p.fib);
+        const rk = V.real && V.relief ? reliefKind(p) : "";
+        if (rk) reliefPatch(mt, rk, p.fib);
+        if (V.real && (rk == "lung" || rk == "myo")) mt.roughness = rk == "lung" ? 0.62 : 0.48;
         mt.clippingPlanes = old.clippingPlanes;
         mt.side = old.side;
         p.mesh.material = mt;
@@ -602,7 +645,7 @@ function atlasView(L, buf, model, focusName) {
       V.present = present;
       dk("med").hidden = !present.has("zone");
       // la respiration n'a de sens que s'il y a des côtes à animer
-      dk("br").hidden = !V.parts.some((p) => / rib$/.test(p.meta.en || ""));
+      dk("br").hidden = !breathKind();
       if (V.tool) toolPanel(V.tool, true);
       if (!present.has("muscle")) V.opSys = "organe";
       atlasIndexSave(model.id, V.parts, V.fiches);
@@ -702,8 +745,8 @@ function atlasView(L, buf, model, focusName) {
     }
     if (keep) need();
   }
-  function zoomBy(k) {
-    histPush();
+  function zoomBy(k, noHist) {
+    if (!noHist) histPush();
     if (V.ortho) {
       V.cam.zoom = Math.min(400, Math.max(0.05, V.cam.zoom * k));
       V.cam.updateProjectionMatrix();
@@ -748,6 +791,13 @@ function atlasView(L, buf, model, focusName) {
           tq.setFromAxisAngle(b.axis, b.ang * s);
           m.position.sub(b.P).applyQuaternion(tq).add(b.P);
           m.quaternion.premultiply(tq);
+          if (b.v) m.position.addScaledVector(b.v, s);
+        } else if (b.kind == "an") {
+          // dilatation non uniforme autour d'un point fixe (haut de la trachée)
+          tv.copy(b.sv).multiplyScalar(s).addScalar(1);
+          if (b.rigid) tv.setScalar((tv.x + tv.y + tv.z) / 3);
+          m.position.sub(b.A).multiply(tv).add(b.A);
+          m.scale.multiply(tv);
         } else if (b.kind == "tr") m.position.addScaledVector(b.v, s);
         else if (b.kind == "sc") {
           const k = 1 + b.k * s;
@@ -1373,8 +1423,32 @@ function atlasView(L, buf, model, focusName) {
   };
 
   // ---------- respiration (schématique) ----------
+  // quel type de respiration montrer : cage thoracique (côtes), poumons seuls, ou cœur seul (il suit le diaphragme)
+  function breathKind() {
+    if (V.parts.some((p) => / rib$/.test(p.meta.en || ""))) return "cage";
+    if (V.parts.some((p) => AT_LUNG.test(p.meta.fiche || ""))) return "poumons";
+    if (V.parts.some((p) => /^(right|left) ventricle$/.test(p.meta.fiche || ""))) return "coeur";
+    return "";
+  }
   function breathSetup() {
     const B = V.breath,
+      kind = breathKind();
+    B.kind = kind;
+    if (kind == "poumons") {
+      // les poumons se gonflent : vers le bas (diaphragme), vers l'avant et sur les côtés ; l'arbre bronchique s'allonge avec eux
+      const A = new T.Vector3(V.mc.x, V.mc.y + V.ext.y, V.mc.z - V.ext.z * 0.6);
+      for (const p of V.parts) p.br = { kind: "an", A, sv: new T.Vector3(0.05, 0.09, 0.06), rigid: p.q0.lengthSq() && Math.abs(p.q0.w) < 0.9999 };
+      B.ready = true;
+      return;
+    }
+    if (kind == "coeur") {
+      // le cœur suit le diaphragme : il descend et se verticalise un peu à l'inspiration
+      const P = new T.Vector3(V.mc.x, V.mc.y + V.ext.y, V.mc.z);
+      for (const p of V.parts) p.br = { kind: "rot", P, axis: new T.Vector3(0, 0, 1), ang: -0.07, v: new T.Vector3(0, -0.01, 0.002) };
+      B.ready = true;
+      return;
+    }
+    const 
       ord = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth"],
       amp = (n) => T.MathUtils.degToRad(n == 1 ? 2 : n <= 7 ? 4.5 : n <= 10 ? 5 : 3),
       ribs = {},
@@ -1428,7 +1502,12 @@ function atlasView(L, buf, model, focusName) {
     V.breath.on = true;
     V.breath.t0 = performance.now();
     dockState();
-    toast("Respiration schématique : les côtes s’élèvent, le sternum avance, le diaphragme descend et les poumons se remplissent.");
+    toast(
+      {
+        poumons: "Respiration schématique : les poumons se gonflent vers le bas, l’avant et les côtés ; l’arbre bronchique s’allonge avec eux.",
+        coeur: "Respiration schématique : à l’inspiration, le diaphragme descend et entraîne le cœur, qui se verticalise légèrement.",
+      }[V.breath.kind] || "Respiration schématique : les côtes s’élèvent, le sternum avance, le diaphragme descend et les poumons se remplissent.",
+    );
   }
   function breathStop() {
     V.breath.on = false;
@@ -1587,13 +1666,20 @@ function atlasView(L, buf, model, focusName) {
       '<button class="atpx" aria-label="Fermer la fiche">✕</button>' + chips +
       '<small class="atpc">' + esc(f ? f.cat : ATL.sysFr[p.meta.systeme] || "") + "</small><h3>" + esc(p.meta.fr) + "</h3>" +
       (f && atNorm(f.titre) != atNorm(p.meta.fr) ? '<small class="atpf">Fiche : ' + esc(f.titre) + "</small>" : "") +
-      '<div class="atpb atpa"><button class="b" id="atiso1">Isoler' + (V.sels.size > 1 ? " la sélection" : "") +
-      '</button><button class="b" id="atmul">' + (V.multi ? "✓ Sélection multiple" : "＋ Sélectionner d’autres") +
-      '</button><button class="b" id="atorb">Tourner autour</button>' +
+      // atlas plus détaillé pour cette structure : on le propose en évidence
       Object.keys(ATL.detail)
         .filter((m) => m !== model.id && ATL.detail[m].includes(p.meta.fiche))
-        .map((m) => '<button class="b p atdet" data-m="' + m + '">Voir en détail : ' + esc((ATL.models.find((x) => x.id == m) || {}).titre || m) + "</button>")
+        .map((m) => {
+          const mm = ATL.models.find((x) => x.id == m) || { titre: m };
+          return (
+            '<button class="atdet" data-m="' + m + '" data-f="' + esc(p.meta.fr) + '"><span class="atgi">' + atlasIco(m) + "</span><span><small>Atlas détaillé disponible</small><b>Ouvrir l’atlas « " +
+            esc(mm.titre) + " »</b></span>" + icn("chev") + "</button>"
+          );
+        })
         .join("") +
+      '<div class="atpb atpa"><button class="b" id="atiso1">Isoler' + (V.sels.size > 1 ? " la sélection" : "") +
+      '</button><button class="b" id="atnei">Voir les voisines</button><button class="b" id="atmul">' + (V.multi ? "✓ Sélection multiple" : "＋ Sélectionner d’autres") +
+      '</button><button class="b" id="atorb">Tourner autour</button>' +
       "</div>" +
       (f
         ? '<p class="atpd">' + esc(f.desc) + "</p><dl>" + f.rows.map((r) => "<dt>" + esc(r[0]) + "</dt><dd>" + esc(r[1]) + "</dd>").join("") + "</dl>" +
@@ -1625,7 +1711,12 @@ function atlasView(L, buf, model, focusName) {
       toast(V.multi ? "Touche d’autres structures pour les ajouter (sur ordinateur : Maj + clic)." : "Sélection simple");
     };
     $("atorb").onclick = () => orbitOn(p);
-    pan.querySelectorAll(".atdet").forEach((b) => (b.onclick = () => (V.overlay ? atlasOpen(b.dataset.m, "", true) : atlasGo(b.dataset.m))));
+    pan.querySelectorAll(".atdet").forEach((b) => (b.onclick = () => (V.overlay ? atlasOpen(b.dataset.m, b.dataset.f, true) : atlasGo(b.dataset.m, b.dataset.f))));
+    // voisines : on isole la sélection puis on ajoute les structures à son contact
+    $("atnei").onclick = () => {
+      isolate(V.sels);
+      neighbours();
+    };
     if ($("atfc")) $("atfc").onclick = () => atlasCardsForm(f);
     $("atsnap").onclick = snapCards;
     let nt = 0;
@@ -1984,6 +2075,33 @@ function atlasView(L, buf, model, focusName) {
     controls.update();
     need();
   }
+  const HOLD = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "+", "=", "-"]);
+  V.keys = new Set();
+  V.kv = { x: 0, y: 0, z: 0 };
+  V.onKeyUp = (e) => V.keys.delete(e.key);
+  V.onBlur = () => V.keys.clear();
+  // vitesse de rotation (rad/s) et de zoom, qui accélère et ralentit en douceur
+  function keyMotion(dt) {
+    const K = V.keys,
+      tx = (K.has("ArrowRight") ? 1 : 0) - (K.has("ArrowLeft") ? 1 : 0),
+      ty = (K.has("ArrowDown") ? 1 : 0) - (K.has("ArrowUp") ? 1 : 0),
+      tz = (K.has("+") || K.has("=") ? 1 : 0) - (K.has("-") ? 1 : 0),
+      a = (t, v) => Math.min(1, dt * (t ? 9 : 5)),
+      kv = V.kv;
+    kv.x += (tx * 2.0 - kv.x) * a(tx, kv.x);
+    kv.y += (ty * 1.6 - kv.y) * a(ty, kv.y);
+    kv.z += (tz * 1.5 - kv.z) * a(tz, kv.z);
+    let moved = false;
+    if (Math.abs(kv.x) + Math.abs(kv.y) > 1e-3) {
+      rotate(kv.x * dt, kv.y * dt);
+      moved = true;
+    } else kv.x = kv.y = 0;
+    if (Math.abs(kv.z) > 1e-3) {
+      zoomBy(Math.exp(kv.z * dt), true);
+      moved = true;
+    } else kv.z = 0;
+    return moved;
+  }
   V.onKey = (e) => {
     const ae = document.activeElement || {},
       typing = /INPUT|TEXTAREA|SELECT/.test(ae.tagName || "") && ae.type != "range" && ae.type != "checkbox";
@@ -1998,11 +2116,20 @@ function atlasView(L, buf, model, focusName) {
       return atlasExit();
     }
     if (typing || e.ctrlKey || e.metaKey || e.altKey) return;
+    // flèches et +/− : mouvement continu et amorti tant que la touche est enfoncée (voir la boucle d'animation)
+    if (HOLD.has(e.key)) {
+      e.preventDefault();
+      if (!e.repeat) {
+        if (!V.keys.size) histPush();
+        V.anim = null;
+        V.keys.add(e.key);
+        need();
+      }
+      return;
+    }
     const k = e.key.length == 1 ? e.key.toLowerCase() : e.key,
       act = {
         f: () => setView("front"), d: () => setView("back"), p: () => setView("side"), 3: () => setView("q34"), v: () => setView("persp"),
-        ArrowLeft: () => rotate(-0.17, 0), ArrowRight: () => rotate(0.17, 0), ArrowUp: () => rotate(0, -0.17), ArrowDown: () => rotate(0, 0.17),
-        "+": () => zoomBy(1.3), "=": () => zoomBy(1.3), "-": () => zoomBy(1 / 1.3),
         r: () => $("atreset").click(), Backspace: () => $("atback").click(),
         o: () => (setOrtho(!V.ortho), prefSave(), V.tool == "disp" && toolPanel("disp", true)),
         g: () => $("atgrid").click(), e: labToggle, i: () => V.sels.size && isolate(V.sels), h: () => $("athide") && $("athide").click(),
@@ -2167,7 +2294,18 @@ function atlasView(L, buf, model, focusName) {
     V.ro.observe(canvas);
   }
   resize();
+  let last = performance.now();
   renderer.setAnimationLoop((now) => {
+    const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
+    last = now;
+    if ((V.keys.size || V.kv.x || V.kv.y || V.kv.z) && keyMotion(dt)) {
+      V.moving = true;
+      clearTimeout(V.movT);
+      V.movT = setTimeout(() => {
+        V.moving = false;
+        need();
+      }, 150);
+    }
     if (V.anim) {
       V.anim(now);
       V.dirty = true;
@@ -2205,6 +2343,8 @@ function atlasClose() {
     }
   }
   if (ATL.key) removeEventListener("keydown", ATL.key);
+  if (ATL.keyup) removeEventListener("keyup", ATL.keyup);
+  if (ATL.blur) removeEventListener("blur", ATL.blur);
   document.documentElement.classList.remove("atlon");
   const d = $("atl");
   if (d) d.remove();
