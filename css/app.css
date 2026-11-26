@@ -4264,7 +4264,7 @@ body.pf {
 html.atlon, html.atlon body { overflow: hidden; }
 #atl { position: fixed; inset: 0; z-index: 60; background: #0e1116; color: #e6edf3; font-family: Inter, sans-serif; }
 #atc { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-.atb { position: absolute; left: 50%; transform: translateX(-50%); background: rgba(22, 27, 34, 0.9); border: 1px solid #2a313c; border-radius: 12px; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.atb { position: absolute; left: 50%; transform: translateX(-50%); background: #161b22; border: 1px solid #2a313c; border-radius: 12px; }
 .atop { top: max(10px, env(safe-area-inset-top)); width: min(96vw, 560px); display: flex; align-items: center; gap: 6px; padding: 5px; }
 .atop > b { font-size: 14px; padding: 0 4px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .atx { width: 44px; height: 40px; border: 0; border-radius: 9px; background: #2a313c; color: #e6edf3; font-size: 16px; cursor: pointer; flex: none; }
@@ -4287,7 +4287,7 @@ html.atlon, html.atlon body { overflow: hidden; }
 @media (max-width: 420px) { .atop > b { display: none; } .atv { flex: 1; justify-content: space-between; } }
 #atlab.on { color: #e6edf3; background: #2a313c; }
 #atlbl { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
-.atlb { position: absolute; left: 0; top: 0; margin: -13px 0 0 -6px; display: flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: #e6edf3; font: 600 11px Inter, sans-serif; white-space: nowrap; cursor: pointer; pointer-events: auto; transition: opacity 0.2s; }
+.atlb { position: absolute; left: 0; top: 0; will-change: transform; margin: -13px 0 0 -6px; display: flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: #e6edf3; font: 600 11px Inter, sans-serif; white-space: nowrap; cursor: pointer; pointer-events: auto; transition: opacity 0.2s; }
 .atlb i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #0e1116; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5); flex: none; }
 .atlb { text-shadow: 0 1px 3px #000; }
 .atlb.occ { opacity: 0.3; }

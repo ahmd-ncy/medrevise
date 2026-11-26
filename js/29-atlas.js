@@ -177,7 +177,7 @@ function atlasView(L, buf) {
     V = ATL.v,
     canvas = $("atc"),
     renderer = new T.WebGLRenderer({ canvas, antialias: true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, matchMedia("(pointer: coarse)").matches ? 1.5 : 2));
   renderer.outputColorSpace = T.SRGBColorSpace;
   const scene = new T.Scene(),
     camera = new T.PerspectiveCamera(35, 1, 0.01, 50),
@@ -190,7 +190,15 @@ function atlasView(L, buf) {
   key.position.set(1, 2, 3);
   camera.add(key);
   scene.add(camera);
-  Object.assign(V, { renderer, controls, parts: [], labels: [], fiches: {}, radius: 0.3, anim: null, sel: null, hSys: new Set(), hOne: new Set(), showLbl: true, frame: 0 });
+  Object.assign(V, { renderer, controls, parts: [], labels: [], fiches: {}, radius: 0.3, anim: null, sel: null, hSys: new Set(), hOne: new Set(), showLbl: true, dirty: true, idleT: 0 });
+  // rendu à la demande : on ne redessine que quand quelque chose bouge (économise la batterie et évite les saccades)
+  const need = () => {
+    V.dirty = true;
+    clearTimeout(V.idleT);
+    V.idleT = setTimeout(occlusion, 180);
+  };
+  V.need = need;
+  controls.addEventListener("change", need);
 
   const loader = new L.GLTFLoader().setMeshoptDecoder(L.MeshoptDecoder);
   loader.parse(
@@ -228,6 +236,7 @@ function atlasView(L, buf) {
         }
       });
       setView("front", false);
+      need();
       if ($("atmsg")) $("atmsg").remove();
     },
     (e) => {
@@ -254,7 +263,10 @@ function atlasView(L, buf) {
         e = 1 - Math.pow(1 - k, 3);
       camera.position.lerpVectors(from, d, e);
       controls.target.lerp(zero, e);
-      if (k === 1) V.anim = null;
+      if (k === 1) {
+        V.anim = null;
+        need();
+      }
     };
   }
   document.querySelectorAll("#atl .atv button").forEach(
@@ -270,12 +282,14 @@ function atlasView(L, buf) {
     const f = e.target.value / 100;
     $("atp").textContent = e.target.value + " %";
     for (const p of V.parts) p.mesh.position.copy(p.base).addScaledVector(p.dir, f * 1.2);
+    need();
   };
 
   // systèmes et structures masquées
   const vis = () => {
     for (const p of V.parts) p.mesh.visible = !V.hSys.has(p.meta.systeme) && !V.hOne.has(p);
     if (V.sel && !V.sel.mesh.visible) select(null);
+    need();
   };
   document.querySelectorAll("#atl .atsys button[data-s]").forEach(
     (b) =>
@@ -290,6 +304,7 @@ function atlasView(L, buf) {
     V.showLbl = !V.showLbl;
     e.currentTarget.classList.toggle("on", V.showLbl);
     $("atlbl").hidden = !V.showLbl;
+    need();
   };
   $("atall").onclick = () => {
     V.hSys.clear();
@@ -304,6 +319,7 @@ function atlasView(L, buf) {
   function select(p) {
     if (V.sel) V.sel.mesh.material.emissive.setHex(0);
     V.sel = p;
+    need();
     const pan = $("atpan");
     if (!p) {
       pan.classList.remove("show");
@@ -362,44 +378,54 @@ function atlasView(L, buf) {
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    need();
   }
   V.resize = resize;
   addEventListener("resize", resize);
   resize();
-  // étiquettes des repères : suivent le modèle, estompées quand la structure est cachée par une autre
+  // étiquettes des repères : suivent le modèle ; on vérifie qu'elles ne sont pas cachées seulement à l'arrêt
   const lray = new T.Raycaster(),
     wp = new T.Vector3(),
     sp = new T.Vector3();
   function labels() {
     if (!V.showLbl || !V.labels.length) return;
     const w = canvas.clientWidth,
-      h = canvas.clientHeight,
-      check = V.frame++ % 8 === 0,
-      vis = check ? V.parts.filter((x) => x.mesh.visible).map((x) => x.mesh) : null;
+      h = canvas.clientHeight;
     for (const L of V.labels) {
-      if (!L.p.mesh.visible) {
-        L.el.style.display = "none";
-        continue;
+      let show = L.p.mesh.visible;
+      if (show) {
+        L.p.mesh.localToWorld(wp.copy(L.local));
+        sp.copy(wp).project(camera);
+        show = sp.z <= 1;
       }
+      if (show !== L.shown) {
+        L.el.style.display = show ? "" : "none";
+        L.shown = show;
+      }
+      if (show) L.el.style.transform = "translate(" + Math.round(((sp.x + 1) / 2) * w) + "px," + Math.round(((1 - sp.y) / 2) * h) + "px)";
+    }
+  }
+  function occlusion() {
+    if (ATL.v !== V || !V.showLbl || !V.labels.length) return;
+    const vis = V.parts.filter((x) => x.mesh.visible).map((x) => x.mesh);
+    for (const L of V.labels) {
+      if (!L.p.mesh.visible) continue;
       L.p.mesh.localToWorld(wp.copy(L.local));
-      sp.copy(wp).project(camera);
-      if (sp.z > 1) {
-        L.el.style.display = "none";
-        continue;
-      }
-      if (check) {
-        lray.set(camera.position, wp.clone().sub(camera.position).normalize());
-        const hit = lray.intersectObjects(vis, false)[0];
-        L.occ = !!(hit && hit.object !== L.p.mesh && hit.distance < camera.position.distanceTo(wp) - 0.01);
-      }
-      L.el.style.display = "";
-      L.el.classList.toggle("occ", L.occ);
-      L.el.style.transform = "translate(" + ((sp.x + 1) / 2) * w + "px," + ((1 - sp.y) / 2) * h + "px)";
+      const d = camera.position.distanceTo(wp);
+      lray.set(camera.position, wp.clone().sub(camera.position).normalize());
+      lray.far = d;
+      const hit = lray.intersectObjects(vis, false)[0];
+      L.el.classList.toggle("occ", !!(hit && hit.object !== L.p.mesh && hit.distance < d - 0.01));
     }
   }
   renderer.setAnimationLoop((now) => {
-    if (V.anim) V.anim(now);
-    controls.update();
+    if (V.anim) {
+      V.anim(now);
+      V.dirty = true;
+    }
+    controls.update(); // déclenche « change » tant que l'inertie de rotation continue
+    if (!V.dirty) return;
+    V.dirty = false;
     renderer.render(scene, camera);
     labels();
   });
