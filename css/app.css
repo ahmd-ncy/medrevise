@@ -4256,3 +4256,37 @@ body.pf {
   filter: none !important;
   transform: none !important;
 }
+
+/* ===== Atlas 3D (js/29-atlas.js) ===== */
+.atc .ic { width: 28px; height: 28px; flex: none; color: var(--sc); }
+.atc .ic:last-child { width: 18px; height: 18px; color: var(--mut); transform: rotate(-90deg); }
+.atc small { color: var(--mut); font-weight: 500; }
+html.atlon, html.atlon body { overflow: hidden; }
+#atl { position: fixed; inset: 0; z-index: 60; background: #0e1116; color: #e6edf3; font-family: Inter, sans-serif; }
+#atc { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.atb { position: absolute; left: 50%; transform: translateX(-50%); background: rgba(22, 27, 34, 0.9); border: 1px solid #2a313c; border-radius: 12px; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.atop { top: max(10px, env(safe-area-inset-top)); width: min(96vw, 560px); display: flex; align-items: center; gap: 6px; padding: 5px; }
+.atop > b { font-size: 14px; padding: 0 4px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.atx { width: 44px; height: 40px; border: 0; border-radius: 9px; background: #2a313c; color: #e6edf3; font-size: 16px; cursor: pointer; flex: none; }
+.atv { display: flex; gap: 2px; }
+.atv button, .atsys button { background: none; border: 0; color: #8b949e; font: 600 13px Inter, sans-serif; padding: 9px 10px; border-radius: 9px; cursor: pointer; min-height: 40px; }
+.atv button.on { background: #2a313c; color: #e6edf3; }
+.abot { bottom: max(12px, env(safe-area-inset-bottom)); width: min(96vw, 560px); padding: 10px 12px; }
+.atr { display: flex; align-items: center; gap: 10px; }
+.atr label { font-size: 12px; color: #8b949e; white-space: nowrap; }
+.atr input { flex: 1; accent-color: #4fb3a9; min-width: 0; }
+#atp { font: 600 12px ui-monospace, monospace; color: #4fb3a9; width: 40px; text-align: right; }
+.atsys { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.atsys button { border: 1px solid #2a313c; padding: 6px 10px; font-size: 12px; min-height: 36px; display: flex; align-items: center; gap: 6px; }
+.atsys button i { width: 9px; height: 9px; border-radius: 50%; }
+.atsys button.off { opacity: 0.35; }
+#atall { margin-left: auto; color: #4fb3a9; }
+#atup { color: #e6edf3; }
+#atcard { top: calc(max(10px, env(safe-area-inset-top)) + 60px); padding: 10px 14px; text-align: center; max-width: 90vw; border-color: #4fb3a9; opacity: 0; pointer-events: none; transition: opacity 0.18s; }
+#atcard.show { opacity: 1; pointer-events: auto; }
+#atcard b { display: block; font-size: 15px; }
+#atcard small { display: block; color: #8b949e; font-size: 11px; margin: 2px 0 6px; }
+#atcard .b { font-size: 12px; padding: 5px 10px; background: none; color: #8b949e; border-color: #2a313c; }
+#atmsg { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: #8b949e; font-size: 14px; pointer-events: none; }
+#atcr { position: absolute; right: 8px; bottom: 1px; font-size: 9px; color: #555; pointer-events: none; }
+@media (max-width: 420px) { .atop > b { display: none; } .atv { flex: 1; justify-content: space-between; } }

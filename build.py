@@ -32,7 +32,7 @@ js = sorted(js + ["00-version.js"])
 cfg = open(P("js", "00-config.js")).read()
 sb = re.search(r'SB_URL = "([^"]+)"', cfg).group(1)
 csp = (
-    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
     "font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' "
     + sb + " " + sb.replace("https", "wss") + " data: blob:; "
     "worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'none'; manifest-src 'self'"

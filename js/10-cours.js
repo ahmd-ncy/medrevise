@@ -2,6 +2,7 @@ function list() {
   const lc = S.courses.find((x) => x.id === S.lc);
   return (
     '<h2 class="ti">Cours</h2>' +
+    atlasCard() +
     (lc
       ? '<button class="rs" style="--sc:' +
         mof(lc).couleur +

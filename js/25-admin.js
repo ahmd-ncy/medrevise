@@ -389,6 +389,23 @@ function adMember(uid) {
         '<button class="b ko2" onclick="adConfirm(\'Retirer définitivement l’accès de ce membre ? Il devra recevoir un nouveau code pour revenir. Ses données sont conservées.\',\'retirer_membre\',{p_user:\'' +
         u +
         "'},'Accès retiré','Retirer l’accès')\">Retirer l’accès</button></div></div>") +
+    (adm || m.atlas === undefined
+      ? ""
+      : '<div class="c"><b>Atlas 3D</b><p class="m" style="margin:.3em 0 .6em">' +
+        (m.atlas
+          ? "Ce membre peut ouvrir l’atlas 3D depuis sa page Cours."
+          : "Ce membre ne voit pas l’atlas 3D. Le fichier reste unique et partagé : donner l’accès ne prend aucune place en plus.") +
+        '</p><button class="b' +
+        (m.atlas ? "" : " p") +
+        '" onclick="adDo(\'donner_atlas\',{p_user:\'' +
+        u +
+        "',p_ok:" +
+        !m.atlas +
+        "},'" +
+        (m.atlas ? "Accès à l’atlas retiré" : "Accès à l’atlas donné") +
+        "')\">" +
+        (m.atlas ? "Retirer l’accès à l’atlas" : "Donner l’accès à l’atlas") +
+        "</button></div>") +
     (adm ? "" : pkContent(uid) + pkSend(uid)) +
     '<div class="c"><b>Contact</b><div class="r"><a class="b" href="mailto:' +
     encodeURIComponent(em).replace(/%40/g, "@") +

@@ -98,6 +98,7 @@ function syncInit() {
       // rôle mémorisé (permet d'ouvrir l'app hors connexion), puis vérifié auprès du serveur
       const c = syRoleCache();
       SY.role = c && c.uid === u.id ? c.role : null;
+      SY.atl = !!(c && c.uid === u.id && c.atlas);
       setTimeout(syCheckMember, 0);
     }
     syUI(true);
@@ -739,7 +740,10 @@ async function syCheckMember() {
       S.name = String(pm).slice(0, 40);
       save();
     }
-    syRoleCache(role ? { uid, role } : null);
+    // atlas 3D : accès donné par l'administrateur (copie locale effacée s'il est retiré)
+    SY.atl = !!(role && (role == "admin" || (SY.acc && SY.acc.atlas)));
+    if (!SY.atl && typeof atlasForget == "function") atlasForget();
+    syRoleCache(role ? { uid, role, atlas: SY.atl } : null);
   } catch (e) {
     SY.roleErr = 1; // hors connexion : on garde le rôle mémorisé
   }
@@ -754,6 +758,8 @@ async function syOut() {
   syMetaSave();
   syRoleCache(null);
   SY.role = null;
+  SY.atl = false;
+  atlasForget();
   render();
 }
 // ---------- mot de passe solide ----------

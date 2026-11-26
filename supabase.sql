@@ -89,6 +89,7 @@ alter table public.membres add column if not exists expire timestamptz;         
 alter table public.invitations add column if not exists acces_heures int;
 alter table public.invitations add column if not exists libelle text check (char_length(libelle) <= 60);  -- « pour qui ? »
 alter table public.invitations add column if not exists archive boolean not null default false;
+alter table public.membres add column if not exists atlas boolean not null default false;  -- accès à l'atlas 3D, donné par l'administrateur
 alter table public.membres add column if not exists note text check (char_length(note) <= 1000);        -- note privée de l'administrateur         -- durée d'accès donnée par le code (vide = illimité)
 
 -- Un membre dont l'accès a expiré n'a plus accès aux données (les règles de la base utilisent est_membre)
@@ -102,7 +103,8 @@ language sql stable security definer set search_path = '' as $$
 $$;
 create or replace function public.mon_acces() returns json
 language sql stable security definer set search_path = '' as $$
-  select json_build_object('role', role, 'expire', expire, 'expire_deja', expire is not null and expire <= now())
+  select json_build_object('role', role, 'expire', expire, 'expire_deja', expire is not null and expire <= now(),
+                           'atlas', role = 'admin' or atlas)
   from public.membres where user_id = auth.uid();
 $$;
 
@@ -361,7 +363,7 @@ returns table (
   user_id uuid, email text, role text, depuis timestamptz, expire timestamptz,
   derniere_connexion timestamptz, cree_le timestamptz,
   prenom text, nom text, filiere text, fac text, bio text, photo text, stats jsonb, maj timestamptz,
-  taille_donnees bigint, nb_fichiers bigint, note text, banniere text
+  taille_donnees bigint, nb_fichiers bigint, note text, banniere text, atlas boolean
 )
 language plpgsql stable security definer set search_path = '' as $$
 begin
@@ -374,7 +376,7 @@ begin
            (select coalesce(sum(char_length(e.data)), 0)::bigint from public.etat e where e.user_id = m.user_id),
            (select count(*)::bigint from storage.objects o
              where o.bucket_id = 'fichiers' and (storage.foldername(o.name))[1] = m.user_id::text),
-           m.note, p.banniere
+           m.note, p.banniere, m.atlas
     from public.membres m
     join auth.users u on u.id = m.user_id
     left join public.profils p on p.user_id = m.user_id
@@ -510,3 +512,43 @@ create policy "fichiers pack lecture" on storage.objects for select to authentic
      where p.pour = auth.uid() and p.statut = 'attente'
        and (storage.foldername(name))[1] = p.de::text
        and storage.filename(name) = any (p.fichiers)));
+
+-- ============ Atlas 3D (modèles anatomiques) ============
+-- Un seul fichier par modèle, partagé : l'administrateur choisit quels membres peuvent l'ouvrir.
+-- L'administrateur y a toujours accès ; un membre seulement si sa case « atlas » est cochée et son accès valide.
+create or replace function public.a_atlas() returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.membres
+                  where user_id = auth.uid() and (expire is null or expire > now()) and (role = 'admin' or atlas));
+$$;
+revoke all on function public.a_atlas() from public, anon;
+grant execute on function public.a_atlas() to authenticated;
+
+create or replace function public.donner_atlas(p_user uuid, p_ok boolean) returns void
+language plpgsql volatile security definer set search_path = '' as $$
+begin
+  if coalesce(public.mon_role(), '') <> 'admin' then
+    raise exception 'Réservé à l''administrateur';
+  end if;
+  update public.membres set atlas = coalesce(p_ok, false) where user_id = p_user and role <> 'admin';
+end $$;
+revoke all on function public.donner_atlas(uuid, boolean) from public, anon;
+grant execute on function public.donner_atlas(uuid, boolean) to authenticated;
+
+-- Espace privé « atlas » : modèles 3D au format .glb, 20 Mo au plus
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('atlas', 'atlas', false, 20971520, array['model/gltf-binary'])
+on conflict (id) do update set public = false, file_size_limit = 20971520, allowed_mime_types = array['model/gltf-binary'];
+
+drop policy if exists "atlas lecture" on storage.objects;
+create policy "atlas lecture" on storage.objects for select to authenticated
+  using (bucket_id = 'atlas' and public.a_atlas());
+drop policy if exists "atlas ajout" on storage.objects;
+create policy "atlas ajout" on storage.objects for insert to authenticated
+  with check (bucket_id = 'atlas' and coalesce(public.mon_role(), '') = 'admin');
+drop policy if exists "atlas modification" on storage.objects;
+create policy "atlas modification" on storage.objects for update to authenticated
+  using (bucket_id = 'atlas' and coalesce(public.mon_role(), '') = 'admin');
+drop policy if exists "atlas suppression" on storage.objects;
+create policy "atlas suppression" on storage.objects for delete to authenticated
+  using (bucket_id = 'atlas' and coalesce(public.mon_role(), '') = 'admin');
