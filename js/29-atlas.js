@@ -12,6 +12,8 @@ const ATL = {
     { id: "abdomen", titre: "Abdomen", sous: "Viscères, segments du foie, vaisseaux, paroi, plexus lombal" },
     { id: "membre-inf", titre: "Membre inférieur", sous: "Os de la hanche au pied, muscles par loges, nerfs fémoral et ischiatique, vaisseaux" },
     { id: "membre-sup", titre: "Membre supérieur", sous: "Os de l’épaule à la main, muscles par loges, plexus brachial, nerfs, vaisseaux" },
+    { id: "tete-cou", titre: "Tête et cou", sous: "Crâne, face, muscles masticateurs et du cou, larynx, thyroïde, carotides, jugulaires" },
+    { id: "encephale", titre: "Encéphale", sous: "Lobes et gyri, noyaux gris, ventricules, tronc cérébral, cervelet, nerfs crâniens, polygone de Willis" },
   ],
   detail: {
     coeur: ["right atrium", "left atrium", "right ventricle", "left ventricle", "ascending aorta", "pulmonary trunk", "superior vena cava", "inferior vena cava"],
@@ -33,6 +35,8 @@ const ATL_ICO = {
   coeur: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/><path d="M12 7.4V4M9 5l1.5 2"/>',
   "membre-inf": '<path d="M10 3c-1 3-1 6 0 9l-.5 5c-.3 2-.5 3 .5 4h5c1 0 1-1 0-1.5l-2-1.5.5-6c1-3 1-6 0-9"/><path d="M10 12h3"/>',
   "membre-sup": '<path d="M9 3c-1 2-1 4 0 6l1 5-1 4c-.5 2 .5 3 2 3h2c1 0 2-1 1.5-2.5L13 15l1-5c1-2 1-4 0-7"/><path d="M10 9h4"/>',
+  "tete-cou": '<path d="M12 3c-3.3 0-5.5 2.4-5.5 5.6 0 2 .8 3.6 2 4.6V16c0 1 .8 1.6 1.6 1.6h3.8c.8 0 1.6-.6 1.6-1.6v-2.8c1.2-1 2-2.6 2-4.6C17.5 5.4 15.3 3 12 3z"/><path d="M10 17.6V21M14 17.6V21M9.5 9.5h.01M14.5 9.5h.01"/>',
+  encephale: '<path d="M12 5c-1-1.5-4-1.8-5.3.2C4.8 5.6 4 7.6 4.8 9.3 3.6 10.5 3.8 13 5.4 13.8c-.2 1.8 1.3 3.2 3 3 .8 1.3 2.6 1.6 3.6.6 1 1 2.8.7 3.6-.6 1.7.2 3.2-1.2 3-3 1.6-.8 1.8-3.3.6-4.5.8-1.7 0-3.7-1.9-4.1C16 3.2 13 3.5 12 5z"/><path d="M12 5v12.4M12 9c-1.4 0-2.4-.8-3-1.8M12 12.5c1.4 0 2.6-.8 3.2-2"/>',
   abdomen: '<path d="M7 4c-2 3-3 6-3 9a8 8 0 0 0 16 0c0-3-1-6-3-9"/><path d="M9 10c1.5 1 4.5 1 6 0M8.5 14c2 1.5 5 1.5 7 0"/><circle cx="12" cy="17.5" r=".8"/>',
   poumons: '<path d="M12 3v8M12 11c-1.5 0-2.5 1-3.5 2M12 11c1.5 0 2.5 1 3.5 2"/><path d="M9 7c-3 1-5 5-5 10 0 2 1.5 3 3 3s2-1 2-3zM15 7c3 1 5 5 5 10 0 2-1.5 3-3 3s-2-1-2-3z"/>',
 };
@@ -3036,6 +3040,66 @@ function atlasView(L, buf, model, focusName) {
           { t: "Supra-épineux", x: "Au-dessus : démarre l’abduction ; le tendon le plus souvent abîmé.", view: "back", iso: ["scapula", "humerus", "clavicle", "supraspinatus", "infraspinatus", "teres minor", "subscapularis"], sel: ["supraspinatus"] },
           { t: "Infra-épineux et petit rond", x: "En arrière : rotation latérale du bras.", view: "back", iso: ["scapula", "humerus", "clavicle", "supraspinatus", "infraspinatus", "teres minor", "subscapularis"], sel: ["infraspinatus", "teres minor"] },
           { t: "Subscapulaire", x: "En avant : rotation médiale ; s’insère sur le tubercule mineur.", view: "front", iso: ["scapula", "humerus", "clavicle", "supraspinatus", "infraspinatus", "teres minor", "subscapularis"], sel: ["subscapularis"] },
+        ],
+      },
+    ],
+    "tete-cou": [
+      {
+        id: "carot", n: "Les carotides et les jugulaires",
+        steps: [
+          { t: "Carotide commune", x: "À droite elle naît du tronc brachio-céphalique, à gauche directement de l’arc aortique ; elle monte sous le sterno-cléido-mastoïdien.", view: "front", iso: ["common carotid artery", "external carotid", "internal carotid", "jugular veins", "thyroid gland", "larynx", "hyoid", "mandible", "cervical vertebra", "brachiocephalic trunk"], sel: ["common carotid artery"] },
+          { t: "La bifurcation", x: "Au bord supérieur du cartilage thyroïde (C4) : carotide interne en arrière et en dehors, externe en avant et en dedans.", view: "q34", iso: ["common carotid artery", "external carotid", "internal carotid", "larynx", "hyoid", "mandible", "cervical vertebra"], sel: ["external carotid", "internal carotid"] },
+          { t: "Carotide interne", x: "Ne donne aucune branche au cou : elle entre dans le crâne par le canal carotidien pour l’encéphale et l’œil.", view: "side", iso: ["internal carotid", "common carotid artery", "cranial bones", "cervical vertebra", "mandible"], sel: ["internal carotid"] },
+          { t: "Carotide externe", x: "Branches pour la face et le cou : thyroïdienne supérieure, linguale, faciale, occipitale, puis temporale superficielle et maxillaire.", view: "side", iso: ["external carotid", "external carotid branches", "common carotid artery", "mandible", "facial bones", "cranial bones"], sel: ["external carotid branches"] },
+          { t: "Veine jugulaire interne", x: "En dehors de la carotide dans la gaine carotidienne, avec le nerf vague entre les deux, en arrière.", view: "front", iso: ["jugular veins", "common carotid artery", "internal carotid", "vagus", "sternocleidomastoid", "mandible", "cervical vertebra"], sel: ["jugular veins", "vagus"] },
+        ],
+      },
+      {
+        id: "masti", n: "La mastication",
+        steps: [
+          { t: "La mandibule", x: "Seul os mobile de la tête, articulé au temporal par l’articulation temporo-mandibulaire.", view: "side", iso: ["mandible", "cranial bones", "facial bones", "masseter", "temporalis", "pterygoids"], sel: ["mandible"] },
+          { t: "Masséter et temporal", x: "Ferment la bouche (élévation de la mandibule) ; le temporal la tire aussi en arrière.", view: "side", iso: ["mandible", "cranial bones", "facial bones", "masseter", "temporalis"], sel: ["masseter", "temporalis"] },
+          { t: "Les ptérygoïdiens", x: "Le médial ferme la bouche, le latéral l’ouvre et porte la mandibule en avant : leur action alternée donne la diduction (mouvement latéral).", view: "back", iso: ["mandible", "cranial bones", "facial bones", "pterygoids"], sel: ["pterygoids"] },
+          { t: "L’innervation", x: "Tous les muscles masticateurs sont innervés par le nerf mandibulaire (V3), branche du trijumeau.", view: "side", iso: ["mandible", "cranial bones", "facial bones", "trigeminal", "masseter", "pterygoids"], sel: ["trigeminal"] },
+        ],
+      },
+      {
+        id: "thyr", n: "Larynx et thyroïde",
+        steps: [
+          { t: "Le larynx", x: "Squelette cartilagineux : thyroïde (pomme d’Adam), cricoïde, aryténoïdes et épiglotte ; il se projette de C3 à C6.", view: "front", iso: ["larynx", "hyoid", "thyroid gland", "parathyroid", "cervical vertebra"], sel: ["larynx"] },
+          { t: "La glande thyroïde", x: "Deux lobes reliés par l’isthme, devant les 2e à 4e anneaux trachéaux.", view: "front", iso: ["larynx", "hyoid", "thyroid gland", "parathyroid", "common carotid artery", "jugular veins"], sel: ["thyroid gland"] },
+          { t: "Les parathyroïdes", x: "Quatre petites glandes à la face postérieure de la thyroïde : elles règlent le calcium (PTH).", view: "back", iso: ["larynx", "thyroid gland", "parathyroid"], sel: ["parathyroid"] },
+        ],
+      },
+    ],
+    encephale: [
+      {
+        id: "cortex", n: "Le cortex et ses fonctions",
+        steps: [
+          { t: "Quatre lobes", x: "Frontal, pariétal, temporal et occipital ; l’insula est cachée au fond du sillon latéral.", view: "side", all: 1 },
+          { t: "Cortex moteur", x: "Gyrus précentral, en avant du sillon central : commande du côté opposé du corps.", view: "side", sel: ["precentral gyrus"] },
+          { t: "Cortex somesthésique", x: "Gyrus postcentral, juste derrière : sensibilité du côté opposé.", view: "side", sel: ["postcentral gyrus"] },
+          { t: "Le langage", x: "Broca (gyrus frontal inférieur gauche) pour produire le langage ; Wernicke (temporal supérieur et supramarginal) pour le comprendre.", view: "side", sel: ["broca", "Gyrus temporal supérieur gauche", "Gyrus supramarginal gauche"] },
+          { t: "Vision", x: "Le cortex visuel primaire borde le sillon calcarin, sur la face médiale du lobe occipital.", view: "back", sel: ["visual cortex"] },
+        ],
+      },
+      {
+        id: "profond", n: "Les structures profondes",
+        steps: [
+          { t: "Sous le cortex", x: "La substance blanche relie les aires ; au centre se trouvent les noyaux gris, le thalamus et les ventricules.", view: "q34", layer: 1, sel: ["white matter"] },
+          { t: "Noyaux gris centraux", x: "Noyau caudé et putamen (striatum), globus pallidus : régulation du mouvement.", view: "front", iso: ["basal ganglia", "thalamus", "ventricles", "brainstem"], sel: ["basal ganglia"] },
+          { t: "Thalamus", x: "Relais vers le cortex de presque toutes les informations sensitives.", view: "q34", iso: ["basal ganglia", "thalamus", "hypothalamus", "ventricles", "brainstem"], sel: ["thalamus"] },
+          { t: "Hippocampe et amygdale", x: "Mémoire et émotions : le système limbique, sur la face médiale du lobe temporal.", view: "side", iso: ["hippocampus", "limbic system", "thalamus", "hypothalamus", "brainstem"], sel: ["hippocampus", "Corps amygdaloïde droit", "Corps amygdaloïde gauche"] },
+          { t: "Les ventricules", x: "Le LCS passe des ventricules latéraux au 3e ventricule, puis par l’aqueduc au 4e ventricule.", view: "q34", iso: ["ventricles", "thalamus", "brainstem", "cerebellum"], sel: ["ventricles"] },
+        ],
+      },
+      {
+        id: "willis", n: "La vascularisation de l’encéphale",
+        steps: [
+          { t: "Deux systèmes", x: "En avant les deux carotides internes, en arrière les deux artères vertébrales qui forment le tronc basilaire.", view: "front", iso: ["internal carotid", "vertebral artery", "circle of willis", "cerebral arteries", "cerebellar arteries", "brainstem"], sel: ["internal carotid", "vertebral artery"] },
+          { t: "Le polygone de Willis", x: "Anastomose à la base du cerveau grâce aux communicantes antérieure et postérieures.", view: "persp", iso: ["internal carotid", "vertebral artery", "circle of willis", "cerebral arteries", "brainstem"], sel: ["circle of willis"] },
+          { t: "Les trois artères cérébrales", x: "Antérieure (face médiale), moyenne (face latérale, la plus touchée par les AVC), postérieure (lobe occipital).", view: "side", iso: ["cerebral arteries", "circle of willis", "internal carotid", "brainstem", "cerebellum"], sel: ["cerebral arteries"] },
+          { t: "Le drainage veineux", x: "Les sinus de la dure-mère conduisent le sang vers les veines jugulaires internes.", view: "q34", iso: ["dural sinuses", "brainstem", "cerebellum"], sel: ["dural sinuses"] },
         ],
       },
     ],
