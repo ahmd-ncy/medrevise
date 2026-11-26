@@ -178,7 +178,14 @@ function atlasForget() {
 
 // ---------- fichier du modèle : copie locale à jour, sinon téléchargement ----------
 // Deux niveaux de détail : « <id>-hd.glb » (plus fin) pour les ordinateurs s'il existe, sinon « <id>.glb ».
-const atlasWantHD = () => matchMedia("(pointer: fine)").matches && Math.min(screen.width, screen.height) >= 700;
+// version détaillée seulement sur un ordinateur assez puissant (et pas en mode « Économie »)
+const atlasWantHD = () => {
+  let eco = false;
+  try {
+    eco = JSON.parse(localStorage.getItem("mr_atlas_aff") || "{}").q == "eco";
+  } catch (e) {}
+  return !eco && matchMedia("(pointer: fine)").matches && Math.min(screen.width, screen.height) >= 700 && (navigator.hardwareConcurrency || 8) >= 6 && (navigator.deviceMemory || 8) >= 8;
+};
 async function atlasFile(id, force) {
   const ca = window.caches ? await caches.open(ATL.cache).catch(() => null) : null,
     st = SY.sb.storage.from("atlas");
@@ -455,16 +462,18 @@ function atlasView(L, buf, model, focusName) {
     dirty: true, idleT: 0, view: "front", opac: 1,
     clip: { axis: "", pos: 0, plane: new T.Plane(new T.Vector3(0, -1, 0), 0), caps: false },
     breath: { on: false, ready: false, t0: 0, s: 0 }, hb: { on: false, speed: 1, snd: true }, path: null, tour: null, quiz: null, tool: "",
-    opSys: "muscle", real: false, relief: true, ao: fine, outline: true, focus: false, xray: false, ortho: false, grid: false,
+    opSys: "muscle", real: false, relief: true, ao: false, outline: true, qMode: "auto", focus: false, xray: false, ortho: false, grid: false,
     hist: [], meas: { on: false, pts: [] },
   });
   try {
     const pr = JSON.parse(localStorage.getItem("mr_atlas_aff") || "{}");
-    ["real", "relief", "ao", "outline", "focus", "xray", "ortho"].forEach((k) => typeof pr[k] == "boolean" && (V[k] = pr[k]));
+    ["real", "relief", "outline", "focus", "xray", "ortho"].forEach((k) => typeof pr[k] == "boolean" && (V[k] = pr[k]));
+    if (pr.ao2 === true) V.ao = true; // ombres de contact : seulement si on les a réactivées depuis la correction
+    if (["auto", "high", "eco"].includes(pr.q)) V.qMode = pr.q;
   } catch (e) {}
   const prefSave = () => {
     try {
-      localStorage.setItem("mr_atlas_aff", JSON.stringify({ real: V.real, relief: V.relief, ao: V.ao, outline: V.outline, focus: V.focus, xray: V.xray, ortho: V.ortho }));
+      localStorage.setItem("mr_atlas_aff", JSON.stringify({ real: V.real, relief: V.relief, ao2: V.ao, outline: V.outline, focus: V.focus, xray: V.xray, ortho: V.ortho, q: V.qMode }));
     } catch (e) {}
   };
   // rendu à la demande : on ne redessine que quand quelque chose bouge
@@ -526,9 +535,51 @@ function atlasView(L, buf, model, focusName) {
   }
   function draw() {
     if (outline) outline.selectedObjects = [...V.sels].map((p) => p.mesh);
-    const useFx = composer && !V.moving && !V.anim && (V.ao || (outline && V.sels.size));
-    if (useFx) composer.render();
-    else renderer.render(scene, V.cam);
+    const busy = V.moving || V.anim || FADE || V.breath.on || V.hb.on || V.path || V.pres || V.keys.size;
+    const useFx = composer && !busy && !V.fxFail && (V.ao || (outline && V.sels.size));
+    if (useFx) {
+      try {
+        composer.render();
+      } catch (e) {
+        V.fxFail = true; // un effet qui plante ne doit jamais bloquer l'affichage
+        renderer.render(scene, V.cam);
+      }
+      return;
+    }
+    renderer.render(scene, V.cam);
+  }
+  // ---------- qualité automatique : si l'appareil peine, on allège l'affichage par paliers ----------
+  // 0 complet · 1 résolution réduite, sans ombres de contact · 2 sans relief ni contour · 3 résolution basse
+  const DPR = devicePixelRatio || 1;
+  V.q = { lvl: 0, ema: 16, n: 0, warned: false };
+  function qualityApply(l, quiet) {
+    V.q.lvl = l;
+    renderer.setPixelRatio(Math.min(DPR, [fine ? 1.75 : 1.5, 1.25, 1, 0.8][l]));
+    if (l >= 1 && V.ao) V.ao = false;
+    if (l >= 2) {
+      V.outline = false;
+      if (V.relief) {
+        V.relief = false;
+        materials(true);
+      }
+    }
+    fxBuild();
+    resize();
+    if (!quiet && !V.q.warned) {
+      V.q.warned = true;
+      toast("Affichage allégé automatiquement pour rester fluide (Affichage → Qualité).");
+    }
+  }
+  function perfTick(t0, dt) {
+    if (V.qMode != "auto" || V.q.lvl >= 3) return;
+    // on mesure seulement pendant un mouvement continu (rotation, animation)
+    if (!(V.moving || V.anim || V.breath.on || V.hb.on || V.path || V.pres || FADE)) return;
+    V.q.ema = V.q.ema * 0.9 + dt * 1000 * 0.1;
+    if (++V.q.n > 20 && V.q.ema > 34) {
+      V.q.n = 0;
+      V.q.ema = 16;
+      qualityApply(V.q.lvl + 1);
+    }
   }
 
   // ---------- matériaux : couleurs, relief, transparence, rayons X, focus ----------
@@ -602,6 +653,56 @@ function atlasView(L, buf, model, focusName) {
     return c.getHex();
   }
   const selEm = new T.Color(V.acc || 0x5fd4c8).multiplyScalar(0.33);
+  // opacité voulue d'une structure (transparence, rayons X, focus, structures « en retrait » pendant une animation ou un parcours)
+  function opOf(p) {
+    const sys = p.meta.systeme;
+    let op = 1;
+    if (sys == "zone") op = 0.3;
+    else if (sys == "organe" && p.meta.fiche == "pleura") op = 0.35;
+    if (V.xray) op = Math.min(op, 0.28);
+    if (sys == V.opSys) op = Math.min(op, V.opac);
+    if (V.focus && V.sels.size && !V.sels.has(p)) op = Math.min(op, 0.1);
+    if (V.ghost && !V.ghost.has(p)) op = Math.min(op, 0.1);
+    return op;
+  }
+  // fondu : opacité et visibilité changent en douceur au lieu d'apparaître ou disparaître d'un coup
+  let FADE = null;
+  function fadeTo(dur) {
+    const list = [];
+    for (const p of V.parts) {
+      const was = p.mesh.visible,
+        will = visible(p),
+        mt = p.mesh.material,
+        o0 = was ? mt.opacity : 0,
+        o1 = will ? opOf(p) : 0;
+      if (!was && !will) continue;
+      if (Math.abs(o0 - o1) < 0.01 && was === will) continue;
+      if (!was && will) p.mesh.visible = true;
+      list.push([p, o0, o1, will]);
+    }
+    if (!list.length) return materials();
+    for (const [p] of list) {
+      const mt = p.mesh.material;
+      if (!mt.transparent) mt.needsUpdate = true;
+      mt.transparent = true;
+      mt.depthWrite = false;
+    }
+    FADE = { t0: performance.now(), dur: dur || 450, list, map: new Set(list.map((x) => x[0])) };
+    need();
+  }
+  function fadeTick(now) {
+    const F = FADE,
+      k = Math.min(1, Math.max(0, (now - F.t0) / F.dur)),
+      e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+    for (const [p, o0, o1] of F.list) p.mesh.material.opacity = o0 + (o1 - o0) * e;
+    if (k >= 1) {
+      FADE = null;
+      for (const [p, , , will] of F.list) if (!will) p.mesh.visible = false;
+      materials();
+      if (V.tool == "struct") treePaint();
+    }
+    V.dirty = true;
+  }
   function materials(rebuild) {
     for (const p of V.parts) {
       const sys = p.meta.systeme;
@@ -618,12 +719,8 @@ function atlasView(L, buf, model, focusName) {
         old.dispose();
       }
       mt.color.setHex(colorOf(p));
-      let op = 1;
-      if (sys == "zone") op = 0.3;
-      else if (sys == "organe" && p.meta.fiche == "pleura") op = 0.35;
-      if (V.xray) op = Math.min(op, 0.28);
-      if (sys == V.opSys) op = Math.min(op, V.opac);
-      if (V.focus && V.sels.size && !V.sels.has(p)) op = Math.min(op, 0.1);
+      const op = opOf(p);
+      if (FADE && FADE.map.has(p)) continue; // un fondu est en cours sur cette structure
       const tr = op < 0.99;
       if (mt.transparent !== tr) mt.needsUpdate = true;
       mt.transparent = tr;
@@ -711,6 +808,7 @@ function atlasView(L, buf, model, focusName) {
       grid();
       materials(true);
       fxBuild();
+      if (V.qMode == "eco") qualityApply(2, true);
       if (V.ortho) setOrtho(true, false);
       setView("front", false);
       V.hist = [];
@@ -749,7 +847,7 @@ function atlasView(L, buf, model, focusName) {
     V.hist.push(s);
     if (V.hist.length > 40) V.hist.shift();
   }
-  function moveCam(pos, target, smooth = true, zoom, noHist) {
+  function moveCam(pos, target, smooth = true, zoom, noHist, dur) {
     if (!noHist) histPush();
     const C = V.cam,
       z1 = zoom ?? C.zoom;
@@ -766,8 +864,9 @@ function atlasView(L, buf, model, focusName) {
       z0 = C.zoom,
       t0 = performance.now();
     V.anim = (now) => {
-      const k = Math.min(1, (now - t0) / 500),
-        e = 1 - Math.pow(1 - k, 3);
+      const k = Math.min(1, Math.max(0, (now - t0) / (dur || 500))),
+        // longs déplacements (parcours) : départ et arrivée en douceur
+        e = dur ? (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2) : 1 - Math.pow(1 - k, 3);
       C.position.lerpVectors(fp, pos, e);
       controls.target.lerpVectors(ft, target, e);
       C.zoom = z0 + (z1 - z0) * e;
@@ -943,7 +1042,9 @@ function atlasView(L, buf, model, focusName) {
   }
 
   // ---------- visibilité : systèmes, structures masquées, isolement, couches ----------
-  const visible = (p) => !V.hSys.has(p.meta.systeme) && !V.hOne.has(p) && (!V.iso || V.iso.has(p)) && p.layer >= V.layer;
+  // structures « en retrait » : transparentes, ou masquées si l'appareil est lent (moins de calcul)
+  const visible = (p) =>
+    !V.hSys.has(p.meta.systeme) && !V.hOne.has(p) && (!V.iso || V.iso.has(p)) && p.layer >= V.layer && !(V.ghost && V.q.lvl >= 1 && !V.ghost.has(p));
   const vis = () => {
     for (const p of V.parts) p.mesh.visible = visible(p);
     capObjs.forEach((o) => o.userData.sys && (o.visible = !V.hSys.has(o.userData.sys)));
@@ -1106,7 +1207,28 @@ function atlasView(L, buf, model, focusName) {
     help: () => helpToggle(),
     ar: () => arOpen(),
   };
-  document.querySelectorAll("#atdock button").forEach((b) => (b.onclick = () => DOCK[b.dataset.k] && DOCK[b.dataset.k]()));
+  document.querySelectorAll("#atdock button").forEach((b) => (b.onclick = () => ((V.moreHover = false), DOCK[b.dataset.k] && DOCK[b.dataset.k]())));
+  // ordinateur : survoler « Plus » affiche les autres outils, qui se referment quand la souris s'en va
+  if (fine) {
+    const mb = document.querySelector('#atdock [data-k="more"]'),
+      sh = $("atsheet");
+    let hT = 0;
+    const stay = () => clearTimeout(hT),
+      leave = () => {
+        clearTimeout(hT);
+        hT = setTimeout(() => V.moreHover && V.tool == "more" && ((V.moreHover = false), toolPanel("more")), 350);
+      };
+    mb.addEventListener("mouseenter", () => {
+      stay();
+      if (V.tool != "more") {
+        toolPanel("more");
+        V.moreHover = true;
+      }
+    });
+    mb.addEventListener("mouseleave", leave);
+    sh.addEventListener("mouseenter", stay);
+    sh.addEventListener("mouseleave", () => V.tool == "more" && leave());
+  }
 
   // ---------- liste des structures ----------
   V.treeOpen = V.treeOpen || {};
@@ -1212,7 +1334,7 @@ function atlasView(L, buf, model, focusName) {
     if (V.tool == "tour") return toursPaint(box);
     if (V.tool == "more") {
       const items = [...document.querySelectorAll("#atdock [data-x], #atdock [data-y]")]
-        .filter((b) => !b.hidden)
+        .filter((b) => !b.hidden && b.offsetParent === null) // seulement ceux qui ne sont pas déjà dans la barre
         .map((b) => [b.dataset.k, b.querySelector("span").textContent]);
       items.push(["help", "Raccourcis et aide"]);
       if (V.ar) items.push(["ar", "Voir en réalité augmentée"]);
@@ -1224,6 +1346,7 @@ function atlasView(L, buf, model, focusName) {
         (b) =>
           (b.onclick = () => {
             const k = b.dataset.k;
+            V.moreHover = false;
             if (["lay", "tr", "vues", "anim", "tour"].includes(k)) return toolPanel(k);
             if (!["lab", "br", "med"].includes(k)) toolPanel("more");
             DOCK[k]();
@@ -1236,15 +1359,28 @@ function atlasView(L, buf, model, focusName) {
       box.innerHTML =
         '<div class="atr atwrap"><span class="atlbl2">Couleurs</span><div class="atseg" id="atcol"><button data-c="sys"' + (V.real ? "" : ' class="on"') +
         '>Par système</button><button data-c="real"' + (V.real ? ' class="on"' : "") + ">Réalistes</button></div></div>" +
+        '<div class="atr atwrap"><span class="atlbl2">Qualité</span><div class="atseg" id="atqual">' +
+        [["auto", "Automatique"], ["high", "Haute"], ["eco", "Économie"]].map((q) => '<button data-q="' + q[0] + '"' + (V.qMode == q[0] ? ' class="on"' : "") + ">" + q[1] + "</button>").join("") +
+        "</div></div>" +
         '<div class="atsws">' +
         sw("atsrel", "Relief des tissus", V.relief, "avec les couleurs réalistes") +
-        sw("atsao", "Ombres de contact", V.ao, fine ? "" : "peut ralentir le téléphone") +
+        sw("atsao", "Ombres de contact", V.ao, "plus réaliste, mais gourmand : à éviter sur un appareil modeste") +
         sw("atsout", "Contour de la sélection", V.outline) +
         sw("atsfoc", "Mode focus", V.focus, "le reste devient translucide") +
         sw("atsxr", "Rayons X", V.xray) +
         sw("atsort", "Vue orthographique", V.ortho, "sans perspective, comme un atlas") +
         sw("atsgr", "Quadrillage 3D", V.grid) +
         "</div>";
+      box.querySelectorAll("#atqual button").forEach(
+        (b) =>
+          (b.onclick = () => {
+            V.qMode = b.dataset.q;
+            prefSave();
+            if (V.qMode == "eco") qualityApply(2, true);
+            else if (V.qMode == "high") qualityApply(0, true);
+            toolPanel("disp", true);
+          }),
+      );
       box.querySelectorAll("#atcol button").forEach(
         (b) =>
           (b.onclick = () => {
@@ -1426,7 +1562,6 @@ function atlasView(L, buf, model, focusName) {
     if (!c) return;
     V.clip.axis = c.axis;
     V.clip.pos = Math.max(-100, Math.min(100, Math.round((c.at / (V.ext[c.axis] * 1.05)) * 100)));
-    V.clip.caps = true;
     clip();
     if (V.tool == "cut") toolPanel("cut", true);
     setView({ y: "top", z: "front", x: "left" }[c.axis]);
@@ -1464,10 +1599,11 @@ function atlasView(L, buf, model, focusName) {
     Object.assign(V, { f: v.f || 0, mode: v.mode || "eclate", exDir: v.exDir || "all", exScope: v.exScope || "all" });
     clip();
     pose();
-    vis();
+    fadeTo(650);
+    isoBar();
     if (!!v.cam.o !== V.ortho) setOrtho(!!v.cam.o);
     V.view = v.cam.v || V.view;
-    moveCam(new T.Vector3(...v.cam.p), new T.Vector3(...v.cam.t), true, v.cam.z);
+    moveCam(new T.Vector3(...v.cam.p), new T.Vector3(...v.cam.t), true, v.cam.z, false, V.tour ? 1300 : 800);
     const sel = [...ps(v.sel)];
     V.sels = new Set(sel);
     V.sel = sel[0] || null;
@@ -1543,6 +1679,36 @@ function atlasView(L, buf, model, focusName) {
     }
     capObjs.length = 0;
   }
+  // surface fermée ? (presque toutes les arêtes partagées par deux triangles)
+  function isClosed(p) {
+    if (p.closed !== undefined) return p.closed;
+    const g = p.mesh.geometry,
+      pos = g.attributes.position,
+      idx = g.index,
+      n = idx ? idx.count : pos.count,
+      // clé numérique (bien plus rapide qu'une chaîne) : coordonnées arrondies au 1/20 de mm
+      key = (i) => (Math.round(pos.getX(i) * 2e4) + 32768) * 4294967296 + (Math.round(pos.getY(i) * 2e4) + 32768) * 65536 + (Math.round(pos.getZ(i) * 2e4) + 32768),
+      ids = new Map(),
+      vid = (i) => {
+        const k = key(i);
+        let v = ids.get(k);
+        if (v === undefined) ids.set(k, (v = ids.size));
+        return v;
+      },
+      edges = new Map();
+    for (let t = 0; t < n; t += 3) {
+      const a = vid(idx ? idx.getX(t) : t),
+        b = vid(idx ? idx.getX(t + 1) : t + 1),
+        c = vid(idx ? idx.getX(t + 2) : t + 2);
+      for (const [u, v] of [[a, b], [b, c], [c, a]]) {
+        const k = u < v ? u * 4194304 + v : v * 4194304 + u;
+        edges.set(k, (edges.get(k) || 0) + 1);
+      }
+    }
+    let open = 0;
+    edges.forEach((c) => c == 1 && open++);
+    return (p.closed = open / Math.max(1, edges.size) < 0.004);
+  }
   function caps() {
     capsClear();
     if (!V.clip.axis || !V.clip.caps) return need();
@@ -1556,6 +1722,8 @@ function atlasView(L, buf, model, focusName) {
           stencilWrite: true, stencilFunc: T.AlwaysStencilFunc, stencilFail: op, stencilZFail: op, stencilZPass: op,
         });
       for (const p of ps) {
+        // une surface ouverte (paroi fine, vaisseau mal fermé) donnerait des formes parasites : pas de remplissage
+        if (!isClosed(p)) continue;
         const b = new T.Mesh(p.mesh.geometry, mk(T.BackSide, T.IncrementWrapStencilOp)),
           f = new T.Mesh(p.mesh.geometry, mk(T.FrontSide, T.DecrementWrapStencilOp));
         b.renderOrder = f.renderOrder = gi * 2 + 1;
@@ -1565,7 +1733,7 @@ function atlasView(L, buf, model, focusName) {
       }
       const col = V.real ? ATL_REAL.sys[s] : ATL.colors[s],
         pm = new T.MeshStandardMaterial({
-          color: new T.Color(col).lerp(new T.Color(0xffffff), 0.45), roughness: 0.95, metalness: 0,
+          color: new T.Color(col).lerp(new T.Color(0xffffff), 0.12).multiplyScalar(0.92), roughness: 0.95, metalness: 0,
           stencilWrite: true, stencilRef: 0, stencilFunc: T.NotEqualStencilFunc,
           stencilFail: T.ReplaceStencilOp, stencilZFail: T.ReplaceStencilOp, stencilZPass: T.ReplaceStencilOp,
         }),
@@ -1631,21 +1799,30 @@ function atlasView(L, buf, model, focusName) {
         minor = [],
         major = [],
         L = (arr, a, c) => arr.push(a[0] / 100, a[1] / 100, a[2] / 100, c[0] / 100, c[1] / 100, c[2] / 100);
-      // sol (y bas), mur postérieur (z arrière), mur latéral droit (x droite), un trait par centimètre
+      // un sol et deux murs, placés du côté opposé à la caméra (ils ne passent jamais devant le modèle)
+      const C0 = lo.clone().add(hi).multiplyScalar(0.005),
+        cp = V.cam.position,
+        sx = cp.x > C0.x ? -1 : 1,
+        sy = cp.y > C0.y ? -1 : 1,
+        sz = cp.z > C0.z ? -1 : 1,
+        X = sx < 0 ? lo.x : hi.x,
+        Y = sy < 0 ? lo.y : hi.y,
+        Z = sz < 0 ? lo.z : hi.z;
+      V.gside = sx + "," + sy + "," + sz;
       for (let x = lo.x; x <= hi.x; x++) {
         const arr = x % 5 ? minor : major;
-        L(arr, [x, lo.y, lo.z], [x, lo.y, hi.z]);
-        L(arr, [x, lo.y, lo.z], [x, hi.y, lo.z]);
+        L(arr, [x, Y, lo.z], [x, Y, hi.z]);
+        L(arr, [x, lo.y, Z], [x, hi.y, Z]);
       }
       for (let z = lo.z; z <= hi.z; z++) {
         const arr = z % 5 ? minor : major;
-        L(arr, [lo.x, lo.y, z], [hi.x, lo.y, z]);
-        L(arr, [lo.x, lo.y, z], [lo.x, hi.y, z]);
+        L(arr, [lo.x, Y, z], [hi.x, Y, z]);
+        L(arr, [X, lo.y, z], [X, hi.y, z]);
       }
       for (let y = lo.y; y <= hi.y; y++) {
         const arr = y % 5 ? minor : major;
-        L(arr, [lo.x, y, lo.z], [hi.x, y, lo.z]);
-        L(arr, [lo.x, y, lo.z], [lo.x, y, hi.z]);
+        L(arr, [lo.x, y, Z], [hi.x, y, Z]);
+        L(arr, [X, y, lo.z], [X, y, hi.z]);
       }
       gridObj = new T.Group();
       [
@@ -1670,7 +1847,7 @@ function atlasView(L, buf, model, focusName) {
   // reconstruit le quadrillage quand la disposition change (sans le faire à chaque image)
   let gridT = 0;
   function gridFollow() {
-    if (!V.grid || V.breath.on) return;
+    if (!V.grid || V.breath.on || V.hb.on) return;
     clearTimeout(gridT);
     gridT = setTimeout(() => V.grid && gridToggle(true, true), 90);
   }
@@ -1756,6 +1933,11 @@ function atlasView(L, buf, model, focusName) {
   function breathStart() {
     if (V.hb.on) hbStop();
     if (!V.breath.ready) breathSetup();
+    // cage thoracique : on garde nettes les structures qui bougent, le reste devient transparent
+    if (V.breath.kind == "cage") {
+      V.ghost = new Set(V.parts.filter((p) => p.br));
+      fadeTo(500);
+    }
     exSet(0, true);
     V.breath.on = true;
     V.breath.t0 = performance.now();
@@ -1768,6 +1950,10 @@ function atlasView(L, buf, model, focusName) {
     );
   }
   function breathStop() {
+    if (V.breath.kind == "cage" && V.ghost && !V.path && !V.tour) {
+      V.ghost = null;
+      fadeTo(500);
+    }
     V.breath.on = false;
     V.breath.s = 0;
     dockState();
@@ -1868,12 +2054,22 @@ function atlasView(L, buf, model, focusName) {
     }, 650);
   }
   V.focusPart = focusPart;
+  function frameParts(ps, mult, dir, dur) {
+    if (!ps.length) return;
+    const bx = new T.Box3();
+    ps.forEach((p) => bx.expandByObject(p.mesh));
+    const c = bx.getCenter(new T.Vector3()),
+      r = Math.max(bx.getSize(new T.Vector3()).length() / 2, 0.05),
+      d = (dir || V.cam.position.clone().sub(controls.target)).clone().normalize();
+    moveCam(c.clone().addScaledVector(d, fitDist(r * (mult || 2.2))), c, true, V.ortho ? orthoZoomFor(r * (mult || 2.2)) : 1, false, dur);
+  }
+  V.frameParts = frameParts;
   function orbitOn(p) {
     const b = new T.Box3().setFromObject(p.mesh),
       c = b.getCenter(new T.Vector3()),
-      r = Math.max(b.getSize(new T.Vector3()).length() / 2, 0.04),
+      r = Math.max(b.getSize(new T.Vector3()).length() / 2, 0.05),
       dir = V.cam.position.clone().sub(controls.target).normalize();
-    moveCam(c.clone().addScaledVector(dir, fitDist(r * 1.5)), c, true, V.ortho ? orthoZoomFor(r * 1.5) : 1);
+    moveCam(c.clone().addScaledVector(dir, fitDist(r * 2.2)), c, true, V.ortho ? orthoZoomFor(r * 2.2) : 1);
   }
 
   // ---------- sélection (simple ou multiple) et fiche ----------
@@ -1897,6 +2093,8 @@ function atlasView(L, buf, model, focusName) {
     panel();
     if (V.tool == "ex") toolPanel("ex", true);
     if (V.tool == "struct") treePaint();
+    // une structure choisie : la fenêtre d'outils ouverte se replie pour laisser voir le modèle
+    if (p && V.tool && !$("atsheet").classList.contains("min")) sheetMin(true);
   }
   V.select = select;
   // noms des autres structures dans le texte d'une fiche → liens qui les montrent sur le modèle
@@ -2471,6 +2669,11 @@ function atlasView(L, buf, model, focusName) {
     if (!V.hb.ready) hbSetup();
     exSet(0, true);
     bar("");
+    // atlas du thorax : le cœur et ses gros vaisseaux restent nets, le reste passe en retrait
+    if (V.parts.some((p) => !p.hb && p.meta.systeme == "os")) {
+      V.ghost = new Set(V.parts.filter((p) => p.hb || /valve|aorta|pulmonary|vena cava/.test(p.meta.fiche || "")));
+      fadeTo(500);
+    }
     Object.assign(V.hb, { on: true, t0: performance.now(), ph: -1, cyc: 0, last: 0 });
     dockState();
     if (V.tool == "anim") toolPanel("anim", true);
@@ -2479,7 +2682,8 @@ function atlasView(L, buf, model, focusName) {
     V.hb.on = false;
     bar("");
     pose();
-    materials();
+    if (V.ghost && !V.tour) V.ghost = null;
+    fadeTo(500);
     dockState();
     if (V.tool == "anim") toolPanel("anim", true);
   }
@@ -2593,6 +2797,12 @@ function atlasView(L, buf, model, focusName) {
       else pts.push(wc(st.ps));
       last = pts[pts.length - 1];
     }
+    // points trop proches (ou invalides) : la courbe deviendrait indéfinie
+    for (let k = pts.length - 1; k > 0; k--)
+      if (!isFinite(pts[k].x + pts[k].y + pts[k].z) || pts[k].distanceTo(pts[k - 1]) < 0.0015) {
+        pts.splice(k, 1);
+        for (let m = 0; m < marks.length; m++) if (marks[m] >= k) marks[m] = Math.max(0, marks[m] - 1);
+      }
     if (pts.length < 2) return toast("Trajet indisponible dans cet atlas.");
     const curve = new T.CatmullRomCurve3(pts, false, "centripetal"),
       lens = curve.getLengths(pts.length * 8),
@@ -2608,9 +2818,9 @@ function atlasView(L, buf, model, focusName) {
       halo = new T.Mesh(new T.SphereGeometry(0.0065, 16, 12), new T.MeshBasicMaterial({ color: 0x5aa2ff, depthTest: false, transparent: true, opacity: 0.25 })),
       tube = new T.Mesh(new T.TubeGeometry(curve, Math.min(400, pts.length * 6), 0.0012, 6, false), new T.MeshBasicMaterial({ color: 0xffffff, depthTest: false, transparent: true, opacity: 0.25 }));
     [dot, halo, tube].forEach((o) => ((o.renderOrder = 998), (o.raycast = () => {}), scene.add(o)));
-    V.path = { P, curve, at: at.map((d) => d / (dtot || 1)), dur: Math.min(22, Math.max(7, total * 55)) * 1000, t0: performance.now(), dot, halo, tube, st: -1, xr: V.xray, paused: false, u: 0 };
-    V.xray = true;
-    materials();
+    V.path = { P, curve, at: at.map((d) => d / (dtot || 1)), dur: Math.min(22, Math.max(7, total * 55)) * 1000, t0: performance.now(), dot, halo, tube, st: -1, paused: false, u: 0 };
+    V.ghost = new Set(P.steps.flatMap((st) => st.ps));
+    fadeTo(600);
     const b = new T.Box3().setFromPoints(pts),
       c = b.getCenter(new T.Vector3()),
       r = Math.max(0.05, b.getSize(new T.Vector3()).length() / 2);
@@ -2645,7 +2855,8 @@ function atlasView(L, buf, model, focusName) {
   }
   function pathTick(now) {
     const Pa = V.path;
-    if (!Pa.paused) Pa.u = Math.min(1, (now - Pa.t0) / Pa.dur);
+    // l'horloge de l'animation peut être un peu en retard sur performance.now() : on borne entre 0 et 1
+    if (!Pa.paused) Pa.u = Math.min(1, Math.max(0, (now - Pa.t0) / Pa.dur));
     const u = Pa.u,
       q = Pa.curve.getPointAt(u);
     Pa.dot.position.copy(q);
@@ -2677,8 +2888,8 @@ function atlasView(L, buf, model, focusName) {
     if (!Pa) return;
     [Pa.dot, Pa.halo, Pa.tube].forEach((o) => (o.removeFromParent(), o.geometry.dispose(), o.material.dispose()));
     V.path = null;
-    V.xray = Pa.xr;
-    materials();
+    if (!V.tour) V.ghost = null;
+    fadeTo(500);
     if (!quiet) bar("");
     dockState();
   }
@@ -2884,42 +3095,35 @@ function atlasView(L, buf, model, focusName) {
     else {
       const byF = (keys) => V.parts.filter((p) => keys.includes(p.meta.fiche) || keys.includes(p.meta.fr));
       V.hSys.clear();
-      V.layer = 0;
-      V.iso = st.iso ? new Set(byF(st.iso)) : null;
+      sysBtns().forEach((b) => b.classList.remove("off"));
+      V.iso = null;
+      V.layer = st.layer || 0;
       V.hOne = new Set(V.parts.filter((p) => (p.zone && !st.med) || p.meta.fiche == "pleura"));
       if (st.med) {
         V.parts.filter((p) => /^(rul|rml|rll|lul|lll|pleura|right lung|left lung)$/.test(p.meta.fiche || "")).forEach((p) => V.hOne.add(p));
         V.layer = V.LN.length - 1;
       }
       if (st.sysOnly) V.parts.forEach((p) => !st.sysOnly.includes(p.meta.systeme) && V.hOne.add(p));
-      if (st.layer) V.layer = st.layer;
-      sysBtns().forEach((b) => b.classList.remove("off"));
-      vis();
       const sel = st.sel ? byF(st.sel) : [];
       sel.forEach((p) => V.hOne.delete(p));
-      if (sel.length) vis();
+      // les structures hors sujet passent en retrait (transparentes) au lieu de disparaître d'un coup
+      const keep = st.iso ? [...byF(st.iso), ...sel] : null;
+      V.ghost = keep ? new Set(keep) : null;
       V.sels = new Set(sel);
       V.sel = sel[0] || null;
-      materials();
+      fadeTo(750);
       panel();
       // téléphone : on laisse la place au texte du parcours (la fiche reste accessible en touchant la structure)
       if (matchMedia("(max-width: 760px), (orientation: landscape) and (max-height: 500px)").matches) {
         $("atpan").classList.remove("show");
         $("atl").classList.remove("pan-open");
       }
-      if (sel.length) {
-        setView(st.view || V.view, false);
-        if (sel.length == 1) orbitOn(sel[0]);
-        else {
-          // plusieurs structures : on cadre l'ensemble
-          const bx = new T.Box3();
-          sel.forEach((p) => bx.expandByObject(p.mesh));
-          const c = bx.getCenter(new T.Vector3()),
-            r = Math.max(bx.getSize(new T.Vector3()).length() / 2, 0.04),
-            dir = V.cam.position.clone().sub(controls.target).normalize();
-          moveCam(c.clone().addScaledVector(dir, fitDist(r * 1.2)), c, true, V.ortho ? orthoZoomFor(r * 1.2) : 1);
-        }
-      } else setView(st.view || "front");
+      // déplacement continu de la caméra vers l'angle et le cadrage de l'étape
+      const dir = new T.Vector3(...VIEWS[st.view || "front"]),
+        target = sel.length ? sel : keep || V.parts.filter((p) => visible(p));
+      V.view = st.view || V.view;
+      document.querySelectorAll("#atl .atv button").forEach((x) => x.classList.toggle("on", x.dataset.v === V.view));
+      frameParts(target, sel.length ? (sel.length == 1 ? 2.4 : 1.5) : 1.05, dir, 1300);
     }
     const n = Tr.t.steps.length;
     bar(
@@ -2936,13 +3140,15 @@ function atlasView(L, buf, model, focusName) {
     const Tr = V.tour;
     if (!Tr) return;
     V.tour = null;
+    V.ghost = null;
     bar("");
     V.layer = Tr.prev.layer;
     V.hOne = Tr.prev.hOne;
     V.hSys = Tr.prev.hSys;
     V.iso = Tr.prev.iso;
     select(null);
-    vis();
+    fadeTo(600);
+    isoBar();
     dockState();
   }
 
@@ -3130,7 +3336,9 @@ function atlasView(L, buf, model, focusName) {
       return focusPart(p);
     }
     lastTap = { t: now, p };
-    select(p, e.shiftKey || e.ctrlKey || e.metaKey);
+    const add = e.shiftKey || e.ctrlKey || e.metaKey;
+    select(p, add);
+    if (p && !V.path && !V.tour) frameParts(add || V.multi ? [...V.sels] : [p], 2.4, null, 650);
   });
   // survol sur ordinateur : nom sous la souris
   let hovT = 0;
@@ -3308,6 +3516,15 @@ function atlasView(L, buf, model, focusName) {
       if (!V.moving || !V.lblDone) labelLayout(shown);
     }
     if (V.grid && V.gdist) {
+      const Cg = V.gdist.C,
+        cp = V.cam.position,
+        side = (cp.x > Cg.x ? -1 : 1) + "," + (cp.y > Cg.y ? -1 : 1) + "," + (cp.z > Cg.z ? -1 : 1);
+      if (side !== V.gside) {
+        V.gside = side;
+        gridFollow();
+      }
+    }
+    if (V.grid && V.gdist) {
       const G = V.gdist,
         els = $("atgl").children;
       gdirs.forEach((d, i) => {
@@ -3450,7 +3667,22 @@ function atlasView(L, buf, model, focusName) {
   resize();
   let last = performance.now();
   renderer.setAnimationLoop((now) => {
-    const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
+    // une erreur dans une animation ne doit jamais figer le modèle : on arrête l'animation fautive et on continue
+    try {
+      frame(now);
+    } catch (e) {
+      console.error(e);
+      V.anim = null;
+      FADE = null;
+      if (V.path) pathStop();
+      if (V.hb.on) hbStop();
+      if (V.breath.on) breathStop();
+      V.dirty = true;
+    }
+  });
+  function frame(now) {
+    const raw = Math.max(0, now - last),
+      dt = Math.min(0.05, raw / 1000);
     last = now;
     if ((V.keys.size || V.kv.x || V.kv.y || V.kv.z) && keyMotion(dt)) {
       V.moving = true;
@@ -3464,6 +3696,7 @@ function atlasView(L, buf, model, focusName) {
       V.anim(now);
       V.dirty = true;
     }
+    if (FADE) fadeTick(now);
     if (V.hb.on) hbTick(now);
     if (V.path) pathTick(now);
     if (V.breath.on) {
@@ -3473,9 +3706,11 @@ function atlasView(L, buf, model, focusName) {
     if (controls.update() && V.pres) V.dirty = true;
     if (!V.dirty) return;
     V.dirty = false;
+    const tf = performance.now();
     draw();
+    perfTick(tf, Math.min(0.25, raw / 1000));
     overlays();
-  });
+  }
 }
 
 // ---------- fermeture : on libère la mémoire graphique ----------
