@@ -4265,33 +4265,55 @@ html.atlon, html.atlon body { overflow: hidden; }
 #atl { position: fixed; inset: 0; z-index: 60; background: #0e1116; color: #e6edf3; font-family: Inter, sans-serif; }
 #atc { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 .atb { position: absolute; left: 50%; transform: translateX(-50%); background: #161b22; border: 1px solid #2a313c; border-radius: 12px; }
-.atop { top: max(10px, env(safe-area-inset-top)); width: min(96vw, 560px); display: flex; align-items: center; gap: 6px; padding: 5px; }
-.atop > b { font-size: 14px; padding: 0 4px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.atx { width: 44px; height: 40px; border: 0; border-radius: 9px; background: #2a313c; color: #e6edf3; font-size: 16px; cursor: pointer; flex: none; }
-.atv { display: flex; gap: 2px; }
-.atv button, .atsys button { background: none; border: 0; color: #8b949e; font: 600 13px Inter, sans-serif; padding: 9px 10px; border-radius: 9px; cursor: pointer; min-height: 40px; }
-.atv button.on { background: #2a313c; color: #e6edf3; }
-.abot { bottom: max(12px, env(safe-area-inset-bottom)); width: min(96vw, 560px); padding: 10px 12px; }
+.atop { top: max(10px, env(safe-area-inset-top)); width: min(96vw, 820px); display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 5px; z-index: 3; }
+.atx { width: 42px; height: 40px; border: 0; border-radius: 9px; background: #2a313c; color: #e6edf3; font-size: 16px; cursor: pointer; flex: none; }
+.ats { position: relative; flex: 1 1 200px; min-width: 0; }
+#atq { width: 100%; height: 40px; border-radius: 9px; border: 1px solid #2a313c; background: #0e1116; color: #e6edf3; font: 500 16px Inter, sans-serif; padding: 0 12px; }
+#atq::placeholder { color: #6e7681; }
+#atq:focus { outline: 2px solid #4fb3a9; outline-offset: -1px; }
+#atsug { position: absolute; left: 0; right: 0; top: 46px; background: #161b22; border: 1px solid #2a313c; border-radius: 10px; padding: 4px; display: none; max-height: 50vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
+#atsug.show { display: block; }
+#atsug button { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; background: none; border: 0; color: #e6edf3; font: 500 14px Inter, sans-serif; padding: 10px; border-radius: 7px; cursor: pointer; min-height: 44px; }
+#atsug button span { flex: 1; min-width: 0; }
+#atsug button small { color: #8b949e; font-size: 11px; }
+#atsug button.on, #atsug button:hover { background: #2a313c; }
+#atsug i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.atnone { margin: 0; padding: 10px; color: #8b949e; font-size: 13px; }
+.atv { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+.atv::-webkit-scrollbar, .atrow::-webkit-scrollbar { display: none; }
+.atv button, .atrow button, .atseg button { background: none; border: 0; color: #8b949e; font: 600 13px Inter, sans-serif; padding: 9px 10px; border-radius: 9px; cursor: pointer; min-height: 40px; white-space: nowrap; flex: none; }
+.atv button.on, .atseg button.on { background: #2a313c; color: #e6edf3; }
+.abot { bottom: max(12px, env(safe-area-inset-bottom)); width: min(96vw, 640px); padding: 8px 10px; z-index: 1; }
 .atr { display: flex; align-items: center; gap: 10px; }
 .atr label { font-size: 12px; color: #8b949e; white-space: nowrap; }
-.atr input { flex: 1; accent-color: #4fb3a9; min-width: 0; }
-#atp { font: 600 12px ui-monospace, monospace; color: #4fb3a9; width: 40px; text-align: right; }
-.atsys { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.atsys button { border: 1px solid #2a313c; padding: 6px 10px; font-size: 12px; min-height: 36px; display: flex; align-items: center; gap: 6px; }
-.atsys button i { width: 9px; height: 9px; border-radius: 50%; }
+.atr input { flex: 1; accent-color: #4fb3a9; min-width: 60px; }
+.atr span { font: 600 12px ui-monospace, monospace; color: #4fb3a9; min-width: 38px; text-align: right; }
+.atseg { display: flex; gap: 2px; background: #0e1116; border-radius: 10px; padding: 2px; flex: none; }
+.atseg button { min-height: 34px; padding: 6px 10px; font-size: 12px; }
+.atrow { display: flex; gap: 6px; margin-top: 8px; overflow-x: auto; scrollbar-width: none; }
+.atrow button { border: 1px solid #2a313c; padding: 6px 10px; font-size: 12px; min-height: 36px; display: flex; align-items: center; gap: 6px; }
+.atrow button i { width: 9px; height: 9px; border-radius: 50%; }
 .atsys button.off { opacity: 0.35; }
-#atall { margin-left: auto; color: #4fb3a9; }
-#atup { color: #e6edf3; }
+.attools button.on { color: #e6edf3; background: #2a313c; }
+#atall { color: #4fb3a9; }
+#attool { padding: 2px 0 8px; margin-bottom: 4px; border-bottom: 1px solid #2a313c; }
+#attool .atr { margin-top: 6px; }
+#attool .atseg { display: inline-flex; }
+#atquiz { top: calc(max(10px, env(safe-area-inset-top)) + 60px); width: min(94vw, 460px); padding: 10px 12px; z-index: 2; text-align: center; }
+.atqz small { display: block; color: #8b949e; font-size: 12px; }
+.atqz b { display: block; font-size: 16px; margin-top: 2px; }
+.atqz.ok b { color: #56d364; }
+.atqz.ko b { color: #ff7b72; }
+#atquiz .atpb { justify-content: center; margin-top: 8px; }
+#atquiz .b { background: none; color: #c9d1d9; border-color: #2a313c; font-size: 13px; }
+#atquiz .b.p { background: #4fb3a9; border-color: #4fb3a9; color: #0e1116; }
 #atmsg { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: #8b949e; font-size: 14px; pointer-events: none; }
 #atcr { position: absolute; right: 8px; bottom: 1px; font-size: 9px; color: #555; pointer-events: none; }
-@media (max-width: 420px) { .atop > b { display: none; } .atv { flex: 1; justify-content: space-between; } }
-#atlab.on { color: #e6edf3; background: #2a313c; }
 #atlbl { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
-.atlb { position: absolute; left: 0; top: 0; will-change: transform; margin: -13px 0 0 -6px; display: flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: #e6edf3; font: 600 11px Inter, sans-serif; white-space: nowrap; cursor: pointer; pointer-events: auto; transition: opacity 0.2s; }
+.atlb { position: absolute; left: 0; top: 0; will-change: transform; margin: -13px 0 0 -6px; display: flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: #e6edf3; font: 600 11px Inter, sans-serif; white-space: nowrap; cursor: pointer; pointer-events: auto; transition: opacity 0.2s; text-shadow: 0 1px 3px #000; }
 .atlb i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #0e1116; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5); flex: none; }
-.atlb { text-shadow: 0 1px 3px #000; }
 .atlb.occ { opacity: 0.3; }
-#atpan { position: absolute; z-index: 2; background: rgba(18, 22, 29, 0.96); border: 1px solid #2a313c; color: #e6edf3; overflow-y: auto; -webkit-overflow-scrolling: touch; opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.25s; padding: 16px 18px 18px; }
+#atpan { position: absolute; z-index: 4; background: #12161d; border: 1px solid #2a313c; color: #e6edf3; overflow-y: auto; -webkit-overflow-scrolling: touch; opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.25s; padding: 16px 18px 18px; }
 #atpan.show { opacity: 1; pointer-events: auto; transform: none; }
 #atpan h3 { margin: 2px 34px 2px 0; font: 700 20px/1.2 Inter, sans-serif; }
 .atpx { position: absolute; top: 10px; right: 10px; width: 36px; height: 36px; border: 0; border-radius: 9px; background: #2a313c; color: #e6edf3; cursor: pointer; }
@@ -4312,8 +4334,12 @@ html.atlon, html.atlon body { overflow: hidden; }
 .atfcf label { display: block; font-size: 12px; color: #8b949e; margin-bottom: 6px; }
 .atfcf select { width: 100%; font-size: 16px; }
 @media (min-width: 761px) {
-  #atpan { left: 12px; top: calc(max(10px, env(safe-area-inset-top)) + 62px); bottom: 12px; width: 360px; border-radius: 14px; transform: translateX(-12px); }
+  #atpan { right: 12px; top: calc(max(10px, env(safe-area-inset-top)) + 62px); bottom: 12px; width: 360px; border-radius: 14px; transform: translateX(12px); }
+  .atv { flex: none; }
 }
 @media (max-width: 760px) {
   #atpan { left: 0; right: 0; bottom: 0; max-height: 62vh; border-radius: 16px 16px 0 0; padding-bottom: max(18px, env(safe-area-inset-bottom)); transform: translateY(24px); }
+  .atv { order: 3; flex: 1 1 100%; justify-content: space-between; }
+  #atquiz { top: calc(max(10px, env(safe-area-inset-top)) + 104px); }
+  .atr > label { display: none; }
 }

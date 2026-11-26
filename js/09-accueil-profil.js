@@ -470,6 +470,7 @@ function prof() {
         .replace("<h3>Maîtrise par UE</h3>", "")
         .replace("<h3>Priorités</h3>", '<div class="lb" style="margin:0 0 6px">Priorités</div>') +
       memo() +
+      atlasStats() +
       '<h3>Contenu</h3><div class="c">' +
       [
         [S.mat.length, "UE"],

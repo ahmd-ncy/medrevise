@@ -6,7 +6,7 @@
 // remote (date distante de chaque morceau connu), pf (fichiers à envoyer), pd (fichiers à supprimer).
 const SY = { sb: null, user: null, st: "off", busy: 0, again: 0, t: 0, meta: null, last: 0, err: "", ready: 0, role: null, gt: "in" };
 const SYK = ["qcm", "cards", "courses"],
-  STK = ["hist", "act", "tm", "tu", "rc", "cs", "ms", "cf", "er", "days", "jm", "fsq", "err"],
+  STK = ["hist", "act", "tm", "tu", "rc", "cs", "ms", "cf", "er", "days", "jm", "fsq", "err", "atq"],
   DEMO = ["a1", "p1", "p2", "b1"];
 function syMeta() {
   if (!SY.meta) {
