@@ -30,6 +30,7 @@ const ATL = {
     { id: "epaule", cat: "organe", titre: "Épaule", sous: "Articulations gléno-humérale, acromio- et sterno-claviculaire, coiffe des rotateurs, bourses" },
     { id: "main", cat: "organe", titre: "Main et poignet", sous: "Os du carpe, ligaments du poignet, gaines des tendons, muscles thénariens et hypothénariens, arcades" },
     { id: "genou", cat: "organe", titre: "Genou", sous: "Ménisques, ligaments croisés et collatéraux, capsule, bourses, muscles et vaisseaux poplités" },
+    { id: "corps", cat: "corps", titre: "Corps entier", sous: "Squelette, muscles, organes, vaisseaux et nerfs du corps entier (plus de 1 000 structures)" },
   ],
   detail: {
     foie: ["liver", "liver segments", "gallbladder", "portal vein", "proper hepatic artery", "bile duct"],
@@ -78,6 +79,7 @@ const ATL_ICO = {
   "epaule": '<circle cx="9" cy="9" r="3.5"/><path d="M4 5c3-2 9-2 15 0M9 12.5V21M12.5 9l7 2"/>',
   "main": '<path d="M8 21v-4l-3-5c-.5-1 .5-2 1.5-1.5L8 12V4.5a1.2 1.2 0 0 1 2.4 0V10V3.5a1.2 1.2 0 0 1 2.4 0V10V4.5a1.2 1.2 0 0 1 2.4 0V11V7a1.2 1.2 0 0 1 2.4 0v7c0 3-1.5 5-3 7"/>',
   "genou": '<path d="M9 3v7c0 1.5-1 2-1 3.5S9 16 9 17v4M15 3v7c0 1.5 1 2 1 3.5S15 16 15 17v4"/><circle cx="12" cy="11.5" r="2.2"/>',
+  "corps": '<circle cx="12" cy="4.5" r="2"/><path d="M12 7v7M8 9.5l4 1.5 4-1.5M12 14l-3 7M12 14l3 7"/>',
   abdomen: '<path d="M7 4c-2 3-3 6-3 9a8 8 0 0 0 16 0c0-3-1-6-3-9"/><path d="M9 10c1.5 1 4.5 1 6 0M8.5 14c2 1.5 5 1.5 7 0"/><circle cx="12" cy="17.5" r=".8"/>',
   poumons: '<path d="M12 3v8M12 11c-1.5 0-2.5 1-3.5 2M12 11c1.5 0 2.5 1 3.5 2"/><path d="M9 7c-3 1-5 5-5 10 0 2 1.5 3 3 3s2-1 2-3zM15 7c3 1 5 5 5 10 0 2-1.5 3-3 3s-2-1-2-3z"/>',
 };
@@ -812,7 +814,15 @@ function atlasView(L, buf, model, focusName) {
       V.LC = (g.asset && g.asset.extras && g.asset.extras.couches) || null;
       V.LN = V.LC ? V.LC.names : ATL_LAYERS;
       if (g.asset && g.asset.extras && g.asset.extras.source)
-        $("atcr").textContent = /Z-Anatomy/.test(g.asset.extras.source) ? "BodyParts3D © DBCLS · CC BY 4.0 · Z-Anatomy · CC BY-SA 4.0" : "BodyParts3D © DBCLS · CC BY 4.0";
+        {
+          const src = g.asset.extras.source || "",
+            cr = [];
+          if (/Z-Anatomy|BodyParts3D/.test(src) || !src) cr.push("BodyParts3D © DBCLS · CC BY 4.0");
+          if (/Z-Anatomy/.test(src)) cr.push("Z-Anatomy · CC BY-SA 4.0");
+          if (/Human Reference Atlas/.test(src)) cr.push("Human Reference Atlas (HuBMAP, NIH) · CC BY 4.0");
+          if (/MedRevise \(modèle/.test(src)) cr.push("Modèle MedRevise");
+          $("atcr").textContent = cr.join(" · ");
+        }
       const present = new Set();
       root.traverse((o) => {
         if (!o.isMesh) return;
@@ -3781,6 +3791,67 @@ function atlasView(L, buf, model, focusName) {
               "popliteal artery",
               "tibial nerve"
             ]
+          }
+        ]
+      }
+    ],
+    "corps": [
+      {
+        "id": "systemes",
+        "n": "Les grands systèmes",
+        "steps": [
+          {
+            "t": "Le squelette",
+            "x": "Environ 206 os : squelette axial (crâne, rachis, thorax) et appendiculaire (membres et ceintures).",
+            "view": "front",
+            "sysOnly": [
+              "os",
+              "cartilage"
+            ],
+            "all": 1
+          },
+          {
+            "t": "Les muscles",
+            "x": "Plus de 600 muscles striés squelettiques.",
+            "view": "front",
+            "sysOnly": [
+              "muscle",
+              "os"
+            ],
+            "all": 1
+          },
+          {
+            "t": "La circulation",
+            "x": "Le cœur, les artères (en rouge) et les veines (en bleu).",
+            "view": "front",
+            "sysOnly": [
+              "artere",
+              "veine",
+              "organe"
+            ],
+            "sel": [
+              "right ventricle",
+              "left ventricle"
+            ]
+          },
+          {
+            "t": "Le système nerveux",
+            "x": "Encéphale, moelle spinale et nerfs périphériques.",
+            "view": "back",
+            "sysOnly": [
+              "nerf",
+              "os"
+            ],
+            "all": 1
+          },
+          {
+            "t": "Les viscères",
+            "x": "Organes du thorax, de l’abdomen et du bassin.",
+            "view": "front",
+            "sysOnly": [
+              "organe"
+            ],
+            "all": 1
           }
         ]
       }
