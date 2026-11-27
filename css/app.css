@@ -4350,9 +4350,9 @@ html.atlon, html.atlon body { overflow: hidden; }
 #atl { --g: rgba(15, 20, 28, 0.88); --gb: rgba(148, 163, 184, 0.16); --tx: #e6edf3; --mu: #94a3b8; --ac: var(--atac, #5fd4c8); --top: max(10px, env(safe-area-inset-top));
   position: fixed; inset: 0; z-index: 60; background: #0b0f16; color: var(--tx); font-family: Inter, sans-serif; -webkit-tap-highlight-color: transparent; }
 #atl svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-#atc, #atlbl, #atgl, #atmeas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+#atc, #atlbl, #atgl, #atmeas, #atpml { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
 #atc { display: block; touch-action: none; }
-#atlbl, #atgl, #atmeas { pointer-events: none; overflow: hidden; }
+#atlbl, #atgl, #atmeas, #atpml { pointer-events: none; overflow: hidden; }
 .atb { position: absolute; background: var(--g); border: 1px solid var(--gb); border-radius: 14px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); }
 #atl button { -webkit-user-select: none; user-select: none; }
 
@@ -4793,3 +4793,77 @@ html.atlon #md { z-index: 80; }
 /* pathologies */
 .atpg .atpgi { background: color-mix(in srgb, #e5484d 18%, transparent); color: #ff8a8f; }
 .atpg em { font-style: normal; color: #ff8a8f; font-size: 11.5px; font-weight: 600; }
+/* atlas : fond clair */
+.atlight .atlb { color: #17202b; text-shadow: 0 0 3px #fff, 0 0 2px #fff, 0 0 1px #fff; }
+.atlight .atlb em { background: rgba(23, 32, 43, 0.55); }
+.atlight .atlb i { border-color: #fff; box-shadow: 0 0 0 1px rgba(23, 32, 43, 0.6); }
+.atlight #atscale i { border-color: #3a4656; }
+.atlight #atscale span { color: #3a4656; text-shadow: none; }
+/* atlas modifié (pathologie) : étiquettes des lésions */
+.atpmk { position: absolute; left: 0; top: 0; width: 0; height: 0; font: 700 12px Inter, sans-serif; color: #ffd9de; white-space: nowrap; }
+.atpmk i { position: absolute; left: -7px; top: -7px; width: 14px; height: 14px; border-radius: 50%; background: #e2364d; border: 2px solid #fff; box-shadow: 0 0 0 4px rgba(226, 54, 77, 0.35); animation: atpmp 1.6s ease-in-out infinite; }
+.atpmk span { position: absolute; left: 12px; top: -11px; padding: 3px 8px; border-radius: 8px; background: rgba(110, 16, 32, 0.92); border: 1px solid #e2364d; }
+@keyframes atpmp { 50% { box-shadow: 0 0 0 9px rgba(226, 54, 77, 0); } }
+.atlight .atpmk span { color: #fff; }
+/* atlas : page d'accueil des atlas (recherche, corps cliquable, onglets, récents, favoris) */
+.atgs { position: relative; margin: 4px 0 14px; }
+.atgs input { width: 100%; padding: 13px 16px; border-radius: 14px; border: 1px solid var(--bd, #263241); background: var(--s1, #121a26); color: var(--tx); font: inherit; font-size: 15px; }
+#atgsr { position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + 6px); max-height: 360px; overflow: auto; background: #101722; border: 1px solid #263241; border-radius: 14px; padding: 6px; box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45); }
+#atgsr button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; text-align: left; padding: 9px 12px; border: 0; border-radius: 10px; background: none; color: #e6edf3; font: inherit; cursor: pointer; }
+#atgsr button:hover { background: #1b2635; }
+#atgsr small { color: #8b9bb0; font-size: 12px; }
+.athub { display: grid; grid-template-columns: 150px 1fr; gap: 18px; align-items: start; }
+.athubm { min-width: 0; }
+.atbodyw { position: sticky; top: 12px; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 8px; border-radius: 16px; background: radial-gradient(120% 120% at 50% 0%, #1d2b3d, #0d131c); border: 1px solid #1f2b3a; }
+.atbodyw small { color: #8b9bb0; font-size: 11.5px; }
+#atbody { width: 118px; height: auto; }
+#atbody path { fill: #2a3a4f; stroke: #4d6178; stroke-width: 1; cursor: pointer; transition: fill 0.15s; }
+#atbody path:hover { fill: color-mix(in srgb, var(--atac, #5fd4c8) 45%, #2a3a4f); }
+#atbody path.on { fill: var(--atac, #5fd4c8); }
+.attabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 6px; scrollbar-width: none; }
+.attabs button { flex: none; padding: 8px 14px; border-radius: 999px; border: 1px solid #263241; background: #121a26; color: #b5c2d0; font: 600 13px Inter, sans-serif; cursor: pointer; }
+.attabs button.on { background: var(--atac, #5fd4c8); border-color: transparent; color: #071016; }
+.atzc { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 10px 2px; color: #b5c2d0; }
+.atzc button { padding: 5px 12px; border-radius: 999px; border: 1px solid #263241; background: #121a26; color: #e6edf3; font: inherit; font-size: 12.5px; cursor: pointer; }
+.atrec { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin; }
+.atrec button { flex: none; width: 104px; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px; border-radius: 14px; border: 1px solid #1f2b3a; background: #111925; color: #e6edf3; font: inherit; cursor: pointer; }
+.atrec span { width: 84px; height: 84px; border-radius: 12px; overflow: hidden; display: grid; place-items: center; background: #0b1119; color: var(--atac, #5fd4c8); }
+.atrec span svg { width: 40px; height: 40px; fill: none; stroke: currentColor; stroke-width: 1.6; }
+.atrec img, .atgi img, .atmth img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.atrec b { font-size: 12.5px; text-align: center; line-height: 1.2; }
+.atgi:has(img) { overflow: hidden; background: #0b1119; }
+.atfav { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 0; background: none; color: #6e7f92; font-size: 20px; line-height: 1; cursor: pointer; }
+.atfav.on { color: #e3b341; }
+.atfav:hover { background: rgba(255, 255, 255, 0.06); }
+.atcrumb { display: block; font: 600 10.5px Inter, sans-serif; letter-spacing: 0.03em; color: #8b9bb0; text-align: left; margin-bottom: -2px; }
+#atmsw { flex-wrap: wrap; }
+.atmth { width: 38px; height: 38px; flex: none; border-radius: 9px; overflow: hidden; display: grid; place-items: center; background: #0b1119; color: var(--atac, #5fd4c8); }
+.atmth svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.6; }
+.atmrel { display: flex; gap: 6px; overflow-x: auto; padding: 0 6px 6px; }
+#atmlist .atmrel button { flex-direction: column; width: 84px; flex: none; gap: 4px; padding: 6px; }
+#atmlist .atmrel b { font-size: 11.5px; text-align: center; }
+@media (max-width: 700px) {
+  .athub { grid-template-columns: 1fr; }
+  .atbodyw { position: static; flex-direction: row; justify-content: center; }
+  #atbody { width: 92px; }
+}
+#atmlist button:has(.atmth) { flex-direction: row; align-items: center; gap: 10px; }
+#atmlist button > span:not(.atmth) { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+#atmlist .atmrel button:has(.atmth) { flex-direction: column; align-items: center; }
+.athub { grid-template-columns: 132px 1fr; }
+.athubm .atgg { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+@media (max-width: 700px) {
+  .athub { grid-template-columns: 1fr; gap: 10px; }
+  .atbodyw { padding: 8px; }
+  #atbody { width: 62px; }
+}
+/* atlas : repères cliniques */
+#atclm { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden; }
+.atclk { position: absolute; left: 0; top: 0; width: 0; height: 0; padding: 0; border: 0; background: none; pointer-events: auto; cursor: pointer; font: 700 12px Inter, sans-serif; color: #dff4ff; white-space: nowrap; }
+.atclk i { position: absolute; left: -8px; top: -8px; width: 16px; height: 16px; border-radius: 50%; background: radial-gradient(#4cc9f0 35%, rgba(76, 201, 240, 0.25) 36%); border: 2px solid #fff; }
+.atclk span { position: absolute; left: 12px; top: -11px; padding: 3px 8px; border-radius: 8px; background: rgba(10, 60, 90, 0.92); border: 1px solid #4cc9f0; }
+.atlight .atclk span { color: #fff; }
+/* atlas : dessin */
+.atdrc { display: flex; gap: 10px; margin: 12px 0; }
+.atdrc button { width: 32px; height: 32px; border-radius: 50%; border: 3px solid transparent; background: var(--c); cursor: pointer; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25); }
+.atdrc button.on { border-color: #fff; }

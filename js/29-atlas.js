@@ -226,24 +226,100 @@ const ATL_PATHO = [
     ],
   },
 ];
+// version modifiée de l'atlas : ce que la maladie change dans le modèle
+// k : blob (masse ajoutée), patch (zone de tissu atteint), scale (gonflement), tear (rupture/fracture), tint (teinte), hide
+// on/to/near : structures (fiche ou nom français, ou {re}) ; r, off, up, down : centimètres
+const ATL_PMODS = {
+  idm: [
+    { k: "patch", on: ["left ventricle", "interventricular septum"], near: "anterior interventricular artery", r: 1.7, col: "#3d0d22", col2: "#a04a5e", fr: "Myocarde nécrosé (infarctus antérieur)" },
+    { k: "blob", on: "anterior interventricular artery", to: "left coronary artery", r: 0.3, col: "#1e0306", fr: "Caillot : l’IVA est bouchée" },
+    { k: "tint", f: ["anterior interventricular artery", "diagonal branch"], col: "#6b3a44" },
+  ],
+  avc: [
+    { k: "patch", on: { re: "^(Gyrus|Gyri|Insula|Pôle temporal|Lobule pariétal).*gauches?$" }, near: "Artère cérébrale moyenne gauche", r: 2.4, col: "#3d0d22", col2: "#9a5a6a", fr: "Territoire sylvien privé de sang" },
+    { k: "blob", on: "Artère cérébrale moyenne gauche", to: "Artère carotide interne gauche", r: 0.25, col: "#1e0306", fr: "Caillot dans l’artère cérébrale moyenne" },
+  ],
+  hernie: [
+    { k: "blob", on: "Disques intervertébraux lombaires", frac: [0.42, 0.3, 0], off: [-0.3, 0, -0.35], r: 0.5, sq: [1, 0.7, 1], col: "#e9dcc0", fr: "Hernie discale L4-L5" },
+    { k: "tint", f: ["Racines des nerfs spinaux droits"], col: "#e0a32e" },
+  ],
+  appendicite: [
+    { k: "scale", f: ["Appendice vermiforme"], s: 1.55, fr: "Appendice gonflé, enflammé" },
+    { k: "tint", f: ["Appendice vermiforme"], col: "#c4372f" },
+  ],
+  carpien: [
+    { k: "scale", f: ["Gaines des tendons fléchisseurs (radial du carpe, long fléchisseur du pouce)"], s: 1.3, fr: "Ténosynovite : les gaines gonflent" },
+    { k: "tint", f: ["Gaines des tendons fléchisseurs (radial du carpe, long fléchisseur du pouce)"], col: "#d47a7a" },
+    { k: "tint", f: ["Nerf médian"], col: "#e0a32e" },
+  ],
+  lca: [{ k: "tear", f: ["Ligament croisé antérieur"], y: 0.5, up: [0, 0.25, 0.15], down: [0, -0.25, -0.15], fr: "LCA rompu", col: "#b8545a" }],
+  colhum: [{ k: "tear", f: ["Humérus"], ytop: 5, up: [0, 0, 0], down: [0.45, 0.3, 0], tilt: 9, fr: "Fracture du col chirurgical" }],
+  geu: [{ k: "blob", on: "Trompe utérine droite (isthme, ampoule, infundibulum, franges)", frac: [0.3, 0.5, 0.5], r: 0.55, sq: [1.25, 1, 1], col: "#c98a8a", fr: "Œuf implanté dans l’ampoule" }],
+};
+// repères cliniques (projection approximative sur le modèle) : on = structure, frac = position dans sa boîte, off = décalage (cm)
+const ATL_FOYERS = [
+  { t: "Foyer aortique", on: "ascending aorta", frac: [0.1, 0.75, 1], off: [0, 0, 1.2], x: "2e espace intercostal droit, au bord droit du sternum : souffle du rétrécissement aortique (irradie aux carotides)." },
+  { t: "Foyer pulmonaire", on: "pulmonary trunk", frac: [0.8, 0.8, 1], off: [0, 0, 1.2], x: "2e espace intercostal gauche, au bord gauche du sternum : dédoublement de B2, souffles pulmonaires." },
+  { t: "Foyer tricuspide", on: "right ventricle", frac: [0.35, 0.25, 1], off: [0, 0, 1], x: "Bas du sternum (4e-5e espace intercostal gauche, appendice xiphoïde) : insuffisance tricuspide, augmente à l’inspiration." },
+  { t: "Foyer mitral (pointe)", on: "left ventricle", frac: [1, 0, 0.6], off: [0.5, 0, 0.8], x: "Pointe du cœur, 5e espace intercostal gauche sur la ligne médio-claviculaire : choc de pointe, souffles mitraux (irradient vers l’aisselle)." },
+];
+const ATL_CLIN = {
+  coeur: ATL_FOYERS,
+  thorax: ATL_FOYERS,
+  abdomen: [
+    { t: "Point de McBurney", on: "Appendice vermiforme", frac: [0.5, 0.6, 1], off: [0, 0, 4], x: "Au tiers externe de la ligne ombilic – épine iliaque antéro-supérieure droite : douleur provoquée dans l’appendicite." },
+    { t: "Signe de Murphy", on: "Vésicule biliaire", frac: [0.5, 0.3, 1], off: [0, 0, 3], x: "Sous le rebord costal droit, ligne médio-claviculaire : l’inspiration profonde bloquée par la douleur évoque une cholécystite." },
+  ],
+  "membre-sup": [
+    { t: "Pouls radial", on: "Artère radiale", frac: [0.5, 0.04, 0.6], x: "Au poignet, en dehors du tendon du fléchisseur radial du carpe, contre le radius." },
+    { t: "Pouls huméral (brachial)", on: "Artère brachiale", frac: [0.5, 0.02, 0.6], x: "Au pli du coude, en dedans du tendon du biceps : on y place le stéthoscope pour la tension artérielle." },
+  ],
+  main: [{ t: "Pouls radial", on: "Artère radiale", to: "Rétinaculum des fléchisseurs", off: [0, 1.5, 0], x: "Au poignet, en dehors du tendon du fléchisseur radial du carpe, contre le radius." }],
+  "membre-inf": [
+    { t: "Pouls fémoral", on: "Artère fémorale", frac: [0.5, 1, 0.8], x: "Au pli de l’aine, à mi-distance entre l’épine iliaque antéro-supérieure et la symphyse pubienne." },
+    { t: "Pouls poplité", on: "Artère poplitée", frac: [0.5, 0.5, 0], x: "Au creux poplité, genou légèrement fléchi, palpé à deux mains." },
+    { t: "Pouls tibial postérieur", on: "Artère tibiale postérieure", frac: [0.5, 0, 0.5], x: "En arrière de la malléole médiale." },
+    { t: "Pouls pédieux", on: "Artère dorsale du pied et ses branches", frac: [0.5, 1, 1], x: "Sur le dos du pied, en dehors du tendon du long extenseur de l’hallux." },
+  ],
+  genou: [{ t: "Pouls poplité", on: "Artère poplitée", frac: [0.5, 0.5, 0], x: "Au creux poplité, genou légèrement fléchi, palpé à deux mains." }],
+  corps: [
+    { t: "Pouls carotidien", on: "Artère carotide commune droite", frac: [0.5, 0.85, 1], x: "Au bord antérieur du sternocléido-mastoïdien, à hauteur du cartilage thyroïde : un seul côté à la fois." },
+    { t: "Pouls radial", on: "Artère radiale (droit)", frac: [0.5, 0.04, 0.6], x: "Au poignet, en dehors du tendon du fléchisseur radial du carpe." },
+    { t: "Point de McBurney", on: "Appendice vermiforme", frac: [0.5, 0.6, 1], off: [0, 0, 4], x: "Douleur provoquée dans l’appendicite." },
+  ],
+};
+// cadrage de l'atlas modifié : systèmes masqués, couche, angle et structures à cadrer
+const ATL_PSCENE = {
+  idm: { view: "front", frame: ["left ventricle"] },
+  avc: { view: "side", frame: ["Artère cérébrale moyenne gauche", "Insula gauche", "Gyrus précentral (cortex moteur) gauche"] },
+  hernie: { hide: ["muscle"], view: "back", frame: ["Vertèbre L4", "Vertèbre L5"] },
+  appendicite: { hide: ["muscle", "zone"], hideF: ["Jéjunum", "Mésocôlon", "Côlon transverse"], view: "front", frame: ["Appendice vermiforme"] },
+  carpien: { view: "front", frame: ["Rétinaculum des fléchisseurs", "Nerf médian"] },
+  lca: { hide: ["muscle"], fade: ["Fémur", "Patella", "Tibia", "Fibula"], view: "q34", frame: ["Ligament croisé antérieur"] },
+  colhum: { hide: ["muscle"], view: "front", frame: ["Humérus"] },
+  geu: { view: "front", frame: ["Trompe utérine droite (isthme, ampoule, infundibulum, franges)", "Ovaire droit"] },
+};
 function atlasPatho(id) {
   const P = ATL_PATHO.find((x) => x.id == id);
   if (!P) return;
+  if (ATL.v && ATL.v.id == P.base && ATL.v.pathoOpen) return ATL.v.pathoOpen(P);
   if (!atlasHas(P.base)) return toast("L’atlas « " + ((ATL.models.find((m) => m.id == P.base) || {}).titre || P.base) + " » n’est pas encore en ligne.");
   ATL.auto = "patho:" + id;
   atlasGo(P.base);
 }
-function atlasPathoCards() {
+function atlasPathoCards(ms) {
+  const L = ms ? ATL_PATHO.filter((P) => ms.some((m) => m.id == P.base)) : ATL_PATHO;
+  if (!L.length) return "";
   return (
-    '<h3 class="atgh">Pathologies <small>' + ATL_PATHO.length + "</small></h3>" +
+    '<h3 class="atgh">Pathologies <small>' + L.length + "</small></h3>" +
     '<div class="atgg">' +
-    ATL_PATHO.map((P) => {
+    L.map((P) => {
       const ok = atlasHas(P.base),
         b = ATL.models.find((m) => m.id == P.base) || { titre: P.base };
       return (
         '<button class="atgc atpg' + (ok ? "" : " off") + '" onclick="atlasPatho(\'' + P.id + "')\">" +
-        '<span class="atgi atpgi">' + atlasIco(P.base) + '</span><span class="atgt"><b>' + esc(P.titre) + "</b><small>" + esc(P.sous) + "</small>" +
-        "<em>Atlas « " + esc(b.titre) + " » · " + P.steps.length + " étapes</em></span>" + icn("chev") + "</button>"
+        '<span class="atgi atpgi">' + atlasThumb(P.base) + '</span><span class="atgt"><b>' + esc(P.titre) + "</b><small>" + esc(P.sous) + "</small>" +
+        "<em>Atlas « " + esc(b.titre) + " » modifié · " + P.steps.length + " étapes</em></span>" + icn("chev") + "</button>"
       );
     }).join("") +
     "</div>"
@@ -252,22 +328,182 @@ function atlasPathoCards() {
 
 // atlas rangés par rubrique (corps entier, régions, organes, microscopique)
 const atlasByCat = () => ATL.cats.map(([k, t]) => [k, t, ATL.models.filter((m) => (m.cat || "region") == k)]).filter((c) => c[2].length);
-function atlasGallery() {
-  return atlasByCat()
-    .map(([k, t, ms]) => '<h3 class="atgh">' + esc(t) + ' <small>' + ms.length + "</small></h3>" + '<div class="atgg">' + atlasGalleryCards(ms) + "</div>")
-    .join("") + atlasPathoCards();
+// ---------- navigation : rubriques, corps cliquable, recherche, récents, favoris, vignettes ----------
+// zones du corps et atlas qui les montrent (aussi : atlas liés entre eux)
+const ATL_ZONES = {
+  tete: ["Tête", ["tete-cou", "encephale", "oeil", "oreille", "nez", "bouche", "dent"]],
+  cou: ["Cou", ["tete-cou", "larynx", "endocrine", "lymphe"]],
+  thorax: ["Thorax", ["thorax", "coeur", "poumons", "sein", "alveole"]],
+  abdomen: ["Abdomen", ["abdomen", "foie", "rein", "nephron", "villosite", "endocrine"]],
+  bassin: ["Bassin", ["bassin", "bassin-f", "rachis"]],
+  msup: ["Membre supérieur", ["membre-sup", "epaule", "main"]],
+  minf: ["Membre inférieur", ["membre-inf", "genou"]],
+};
+const ATL_TABS = [["tout", "Tout"], ["corps", "Corps entier"], ["region", "Régions"], ["organe", "Organes"], ["micro", "Microscopique"], ["patho", "Pathologies"], ["fav", "Favoris"]];
+const atlasLS = (k, d) => {
+  try {
+    return JSON.parse(localStorage.getItem(k) || "null") || d;
+  } catch (e) {
+    return d;
+  }
+};
+const atlasLSset = (k, v) => {
+  try {
+    localStorage.setItem(k, JSON.stringify(v));
+  } catch (e) {}
+};
+function atlasThumb(id) {
+  const t = atlasLS("mr_atlas_th", {})[id];
+  return t ? '<img src="' + t + '" alt="" loading="lazy">' : atlasIco(id);
+}
+// vignette prise dans le visualiseur (une fois par semaine au plus)
+function atlasThumbSave(id, canvas) {
+  try {
+    const all = atlasLS("mr_atlas_th", {}),
+      age = atlasLS("mr_atlas_tht", {});
+    if (all[id] && Date.now() - (age[id] || 0) < 7 * 864e5) return;
+    const c = document.createElement("canvas"),
+      W = canvas.width,
+      H = canvas.height,
+      sz = Math.min(W, H) * 0.86;
+    c.width = c.height = 120;
+    c.getContext("2d").drawImage(canvas, (W - sz) / 2, (H - sz) / 2, sz, sz, 0, 0, 120, 120);
+    all[id] = c.toDataURL("image/jpeg", 0.72);
+    age[id] = Date.now();
+    atlasLSset("mr_atlas_th", all);
+    atlasLSset("mr_atlas_tht", age);
+  } catch (e) {}
+}
+function atlasRecent(id) {
+  const r = atlasLS("mr_atlas_rec", []).filter((x) => x != id);
+  r.unshift(id);
+  atlasLSset("mr_atlas_rec", r.slice(0, 8));
+}
+function atlasFav(id, ev) {
+  if (ev) ev.stopPropagation();
+  const f = atlasLS("mr_atlas_fav", []),
+    i = f.indexOf(id);
+  i < 0 ? f.push(id) : f.splice(i, 1);
+  atlasLSset("mr_atlas_fav", f);
+  atlasGalRepaint();
+}
+function atlasTab(k) {
+  ATL.tab = k;
+  ATL.zone = null;
+  atlasGalRepaint();
+}
+function atlasZone(z) {
+  ATL.zone = ATL.zone == z ? null : z;
+  ATL.tab = "tout";
+  atlasGalRepaint();
+}
+function atlasGalRepaint() {
+  const g = $("atgal");
+  if (g) g.innerHTML = atlasGallery();
+  const t = $("attabs");
+  if (t) t.outerHTML = atlasTabs();
+  document.querySelectorAll("#atbody [data-z]").forEach((x) => x.classList.toggle("on", x.dataset.z == ATL.zone));
+}
+const ATL_CATS_S = { corps: "Corps entier", region: "Régions", organe: "Organes", micro: "Microscopique" };
+// atlas liés : même zone du corps, ou liens de détail entre atlas
+function atlasRelated(id) {
+  const ids = new Set();
+  for (const z in ATL_ZONES) if (ATL_ZONES[z][1].includes(id)) ATL_ZONES[z][1].forEach((x) => ids.add(x));
+  for (const k in ATL.detail || {}) if (k == id) ids.add(k);
+  ids.delete(id);
+  return ATL.models.filter((m) => ids.has(m.id) && atlasHas(m.id));
+}
+function atlasTabs() {
+  const k = ATL.tab || "tout";
+  return '<div id="attabs" class="attabs" role="tablist">' + ATL_TABS.map(([t, n]) => '<button role="tab"' + (t == k ? ' class="on" aria-selected="true"' : "") + ' onclick="atlasTab(\'' + t + "')\">" + n + "</button>").join("") + "</div>";
+}
+// silhouette cliquable : chaque zone filtre les atlas qui la montrent
+function atlasBody() {
+  const Z = (z, d) => '<path data-z="' + z + '" d="' + d + '" onclick="atlasZone(\'' + z + '\')"><title>' + ATL_ZONES[z][0] + "</title></path>";
+  return (
+    '<div class="atbodyw"><svg id="atbody" viewBox="0 0 120 250" aria-label="Choisir une zone du corps">' +
+    Z("tete", "M60 6c11 0 18 8 18 19s-7 21-18 21-18-10-18-21S49 6 60 6z") +
+    Z("cou", "M52 45h16l2 12H50z") +
+    Z("thorax", "M38 58h44c6 0 9 4 9 10l-3 30H32l-3-30c0-6 3-10 9-10z") +
+    Z("abdomen", "M32 99h56l-2 30H34z") +
+    Z("bassin", "M34 130h52l4 16-14 10H60l-1-4-1 4H44l-14-10z") +
+    Z("msup", "M29 62l-9 4-8 44-6 40 8 2 9-38 8-26zM91 62l9 4 8 44 6 40-8 2-9-38-8-26z") +
+    Z("minf", "M44 158h14l-1 40-3 44h-9l-2-44zM62 158h14l1 40-2 44h-9l-3-44z") +
+    "</svg><small>Touche une zone</small></div>"
+  );
+}
+function atlasCard(m) {
+  const ok = atlasHas(m.id),
+    fav = atlasLS("mr_atlas_fav", []).includes(m.id);
+  return (
+    '<div class="atgc' + (ok ? "" : " off") + '" role="button" tabindex="0" onclick="atlasGo(\'' + m.id + "')\" onkeydown=\"event.key=='Enter'&&atlasGo('" + m.id + "')\">" +
+    '<span class="atgi">' + atlasThumb(m.id) + '</span><span class="atgt"><b>' + esc(m.titre) + "</b><small>" + esc(m.sous) + "</small>" +
+    (ok ? "" : "<em>Pas encore en ligne</em>") + "</span>" +
+    '<button class="atfav' + (fav ? " on" : "") + '" aria-label="' + (fav ? "Retirer des favoris" : "Ajouter aux favoris") + '" onclick="atlasFav(\'' + m.id + "',event)\">" + (fav ? "★" : "☆") + "</button></div>"
+  );
 }
 function atlasGalleryCards(ms) {
-  return ms
-    .map((m) => {
-      const ok = atlasHas(m.id);
-      return (
-        '<button class="atgc' + (ok ? "" : " off") + '" onclick="atlasGo(\'' + m.id + "')\"" + (ok ? "" : ' aria-disabled="true"') + ">" +
-        '<span class="atgi">' + atlasIco(m.id) + '</span><span class="atgt"><b>' + esc(m.titre) + "</b><small>" + esc(m.sous) + "</small>" +
-        (ok ? "" : '<em>Pas encore en ligne</em>') + "</span>" + icn("chev") + "</button>"
-      );
-    })
-    .join("");
+  return ms.map(atlasCard).join("");
+}
+function atlasGallery() {
+  const k = ATL.tab || "tout",
+    sec = (t, ms) => (ms.length ? '<h3 class="atgh">' + esc(t) + " <small>" + ms.length + '</small></h3><div class="atgg">' + atlasGalleryCards(ms) + "</div>" : "");
+  if (ATL.zone) {
+    const [zn, ids] = ATL_ZONES[ATL.zone],
+      ms = ATL.models.filter((m) => ids.includes(m.id));
+    return '<p class="atzc">Zone : <b>' + esc(zn) + '</b> <button onclick="atlasZone(null)">Tout afficher</button></p>' + sec("Atlas de cette zone", ms) + atlasPathoCards(ms);
+  }
+  if (k == "patho") return atlasPathoCards();
+  if (k == "fav") {
+    const f = atlasLS("mr_atlas_fav", []),
+      ms = ATL.models.filter((m) => f.includes(m.id));
+    return ms.length ? sec("Favoris", ms) : '<p class="m atzc">Touche l’étoile ☆ d’un atlas pour le retrouver ici.</p>';
+  }
+  if (k != "tout") {
+    const c = ATL.cats.find((x) => x[0] == k);
+    return sec(c ? c[1] : k, ATL.models.filter((m) => (m.cat || "region") == k));
+  }
+  const rec = atlasLS("mr_atlas_rec", []).map((id) => ATL.models.find((m) => m.id == id)).filter(Boolean);
+  return (
+    (rec.length
+      ? '<h3 class="atgh">Récemment ouverts</h3><div class="atrec">' +
+        rec.map((m) => '<button onclick="atlasGo(\'' + m.id + "')\"><span>" + atlasThumb(m.id) + "</span><b>" + esc(m.titre) + "</b></button>").join("") +
+        "</div>"
+      : "") +
+    atlasByCat().map(([, t, ms]) => sec(t, ms)).join("") +
+    atlasPathoCards()
+  );
+}
+// recherche dans tous les atlas (noms de toutes les structures, même dans un atlas jamais ouvert)
+async function atlasSearchAll(q) {
+  const box = $("atgsr");
+  if (!box) return;
+  q = (q || "").trim();
+  if (q.length < 2) return (box.innerHTML = ""), (box.hidden = true);
+  if (!ATL.noms) {
+    try {
+      ATL.noms = await (await fetch("vendor/atlas-noms.json")).json();
+    } catch (e) {
+      ATL.noms = {};
+    }
+    const loc = atlasIdx();
+    for (const id in loc) ATL.noms[id] = [...new Set([...(ATL.noms[id] || []), ...Object.values(loc[id])])];
+  }
+  const n = (t) => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""),
+    nq = n(q),
+    res = [];
+  for (const m of ATL.models.concat([])) {
+    if (n(m.titre).includes(nq)) res.push({ m, t: "", s: 0 });
+    for (const t of ATL.noms[m.id] || []) {
+      const i = n(t).indexOf(nq);
+      if (i >= 0) res.push({ m, t, s: (i == 0 ? 0 : 1) + t.length / 200 + (m.cat == "corps" ? 0.5 : 0) });
+    }
+  }
+  res.sort((a, b) => a.s - b.s);
+  box.hidden = false;
+  box.innerHTML = res.length
+    ? res.slice(0, 30).map((r) => '<button onclick="atlasGo(\'' + r.m.id + "'," + (r.t ? JSON.stringify(r.t).replace(/"/g, "&quot;") : "''") + ')"><b>' + esc(r.t || r.m.titre) + "</b><small>" + (r.t ? "Atlas " + esc(r.m.titre) : "Ouvrir l’atlas") + "</small></button>").join("")
+    : '<p class="m">Aucune structure trouvée.</p>';
 }
 function atlasAdminFiles() {
   if (!ATL.files) return '<p class="m">Lecture des fichiers…</p>';
@@ -309,7 +545,9 @@ function atlasPage() {
   atlasAccent();
   return (
     '<h2 class="ti">Atlas 3D</h2><p class="m atsub">Explore les structures en 3D : touche une structure pour sa fiche, écarte, coupe, fais un quiz.</p>' +
-    '<div id="atgal" class="atgal">' + atlasGallery() + "</div>" +
+    '<div class="atgs"><input id="atgsq" type="search" placeholder="Chercher une structure dans tous les atlas (ex. : nerf médian, mitrale…)" oninput="atlasSearchAll(this.value)" autocomplete="off"><div id="atgsr" hidden></div></div>' +
+    '<div class="athub">' + atlasBody() + '<div class="athubm">' + atlasTabs() +
+    '<div id="atgal" class="atgal">' + atlasGallery() + "</div></div></div>" +
     '<div id="atoff" class="offbar"></div>' +
     (SY.role == "admin"
       ? '<details class="bn atadmw"><summary><b>Fichiers des modèles</b><small>réservé à l’administrateur</small></summary><div id="atadm">' + atlasAdminFiles() + "</div></details>"
@@ -428,6 +666,7 @@ const ATI = {
   tr: '<rect x="4" y="4" width="11" height="11" rx="2"/><rect x="9" y="9" width="11" height="11" rx="2" stroke-dasharray="2 2"/>',
   mes: '<path d="m4 16 12-12 4 4L8 20z"/><path d="m8 12 2 2M11 9l2 2M14 6l2 2"/>',
   med: '<path d="M12 4c-3 0-5 2-5 5v6c0 3 2 5 5 5s5-2 5-5V9c0-3-2-5-5-5z"/><path d="M7 12h10M12 4v16" stroke-dasharray="2 2"/>',
+  dessin: '<path d="M4 20l1-4L16 5l3 3L8 19z"/><path d="M14 7l3 3"/><path d="M4 20h6"/>',
   schema: '<rect x="3" y="4" width="12" height="16" rx="2"/><circle cx="8" cy="9" r="1.6"/><circle cx="10" cy="15" r="1.6"/><path d="M18 8h3M18 12h3M18 16h3"/>',
   anim: '<path d="M3 12h3l2-5 4 10 3-7 2 2h4"/>',
   tour: '<path d="M5 20V5M5 5h11l-2 3 2 3H5"/><circle cx="17" cy="18" r="2"/>',
@@ -473,10 +712,18 @@ async function atlasOpen(id, focusName, overlay) {
     '<div id="atlbl"></div><div id="atgl"></div><div id="atmeas"></div><div id="athov" hidden></div>' +
     '<header class="atb atop"><button class="atx" id="atback0" aria-label="Retour aux atlas" title="Retour aux atlas">' +
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>' +
-    '<div class="atmsw"><button id="atmsw" aria-haspopup="listbox" aria-expanded="false"><b>' + esc(m.titre) + '</b><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button>' +
+    '<div class="atmsw"><button id="atmsw" aria-haspopup="listbox" aria-expanded="false"><span class="atcrumb">Atlas › ' + esc(ATL_CATS_S[m.cat || "region"] || "") + "</span><b>" + esc(m.titre) + '</b><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button>' +
     '<div id="atmlist" role="listbox" hidden>' +
+    (() => {
+      const rel = atlasRelated(id),
+        pa = ATL_PATHO.filter((P) => P.base == id);
+      return (
+        (rel.length ? '<p class="atmh">Atlas liés</p><div class="atmrel">' + rel.map((x) => '<button role="option" data-m="' + x.id + '"><span class="atmth">' + atlasThumb(x.id) + "</span><b>" + esc(x.titre) + "</b></button>").join("") + "</div>" : "") +
+        (pa.length ? '<p class="atmh">Version pathologique</p>' + pa.map((P) => '<button role="option" data-p="' + P.id + '" class="atmpa"><span class="atmth">' + atlasIco(id) + "</span><span><b>" + esc(P.titre) + "</b><small>" + esc(P.sous) + "</small></span></button>").join("") : "")
+      );
+    })() +
     atlasByCat()
-      .map(([k, t, ms]) => '<p class="atmh">' + esc(t) + "</p>" + ms.map((x) => '<button role="option" data-m="' + x.id + '"' + (x.id == id ? ' class="on" aria-selected="true"' : "") + "><b>" + esc(x.titre) + "</b><small>" + esc(x.sous) + "</small></button>").join(""))
+      .map(([k, t, ms]) => '<p class="atmh">' + esc(t) + "</p>" + ms.map((x) => '<button role="option" data-m="' + x.id + '"' + (x.id == id ? ' class="on" aria-selected="true"' : "") + '><span class="atmth">' + atlasThumb(x.id) + "</span><span><b>" + esc(x.titre) + "</b><small>" + esc(x.sous) + "</small></span></button>").join(""))
       .join("") +
     "</div></div>" +
     '<div class="ats"><input id="atq" type="search" placeholder="Rechercher…" autocomplete="off" aria-label="Rechercher une structure"><div id="atsug" role="listbox"></div></div>' +
@@ -498,6 +745,7 @@ async function atlasOpen(id, focusName, overlay) {
     dock("lab", "Étiquettes", ' data-y="1" class="on"') +
     dock("pres", "Présentation", ' data-y="1"') +
     dock("schema", "Schéma", ' data-x="1"') +
+    dock("dessin", "Dessiner", ' data-x="1"') +
     dock("quiz", "Quiz") +
     dock("more", "Plus") +
     "</div>" +
@@ -533,7 +781,9 @@ async function atlasOpen(id, focusName, overlay) {
     $("atmsw").setAttribute("aria-expanded", String(!l.hidden));
   };
   d.addEventListener("click", (e) => !e.target.closest(".atmsw") && $("atmlist") && ($("atmlist").hidden = true));
-  d.querySelectorAll("#atmlist button").forEach((b) => (b.onclick = () => b.dataset.m != id && (overlay ? atlasOpen(b.dataset.m, "", true) : atlasGo(b.dataset.m))));
+  d.querySelectorAll("#atmlist button[data-m]").forEach((b) => (b.onclick = () => b.dataset.m != id && (overlay ? atlasOpen(b.dataset.m, "", true) : atlasGo(b.dataset.m))));
+  d.querySelectorAll("#atmlist button[data-p]").forEach((b) => (b.onclick = () => (($("atmlist").hidden = true), atlasPatho(b.dataset.p))));
+  atlasRecent(id);
   try {
     const [lib, buf] = await Promise.all([atlasLib(), atlasFile(id)]);
     if (!ATL.v || ATL.v.id !== id || !ATL.v.alive) return;
@@ -612,21 +862,69 @@ function atlasView(L, buf, model, focusName) {
     controls = new L.OrbitControls(camP, canvas),
     ORIGIN = new T.Vector3();
   // fond : dégradé radial doux (plus clair derrière le modèle)
-  {
-    const cv = document.createElement("canvas"),
-      g = cv.getContext("2d");
-    cv.width = cv.height = 512;
-    const gr = g.createRadialGradient(256, 230, 20, 256, 256, 380);
-    gr.addColorStop(0, "#" + new T.Color("#26354a").lerp(new T.Color(V.acc || "#5fd4c8"), 0.14).getHexString());
-    gr.addColorStop(0.55, "#141c28");
-    gr.addColorStop(1, "#07090e");
+  const bgCv = document.createElement("canvas");
+  bgCv.width = bgCv.height = 512;
+  // fond sombre (par défaut) ou clair, façon planche d'atlas
+  const bgPaint = () => {
+    const g = bgCv.getContext("2d"),
+      gr = g.createRadialGradient(256, 230, 20, 256, 256, 380);
+    if (V.light) {
+      gr.addColorStop(0, "#ffffff");
+      gr.addColorStop(0.6, "#e9edf2");
+      gr.addColorStop(1, "#c7cfd9");
+    } else {
+      gr.addColorStop(0, "#" + new T.Color("#26354a").lerp(new T.Color(V.acc || "#5fd4c8"), 0.14).getHexString());
+      gr.addColorStop(0.55, "#141c28");
+      gr.addColorStop(1, "#07090e");
+    }
     g.fillStyle = gr;
     g.fillRect(0, 0, 512, 512);
-    const tx = new T.CanvasTexture(cv);
+    if (V.bgTex) V.bgTex.needsUpdate = true;
+    canvas.parentNode && canvas.parentNode.classList.toggle("atlight", !!V.light);
+  };
+  {
+    const tx = new T.CanvasTexture(bgCv);
     tx.colorSpace = T.SRGBColorSpace;
     scene.background = tx;
     V.bgTex = tx;
   }
+  // éclairage « studio » : une pièce lumineuse floutée sert de reflets (surfaces humides, vernies)
+  let envTex = null;
+  const envGet = () => {
+    if (envTex) return envTex;
+    // pièce équirectangulaire dessinée : plafonnier, deux boîtes à lumière latérales, sol sombre
+    const cv = document.createElement("canvas"),
+      g = cv.getContext("2d");
+    cv.width = 512;
+    cv.height = 256;
+    const gr = g.createLinearGradient(0, 0, 0, 256);
+    gr.addColorStop(0, "#8a909c");
+    gr.addColorStop(0.5, "#4a505c");
+    gr.addColorStop(1, "#1c1f25");
+    g.fillStyle = gr;
+    g.fillRect(0, 0, 512, 256);
+    g.filter = "blur(6px)";
+    g.fillStyle = "#ffffff";
+    g.fillRect(150, 4, 212, 40);
+    g.fillStyle = "#fff1e4";
+    g.fillRect(40, 80, 60, 70);
+    g.fillStyle = "#e4eeff";
+    g.fillRect(400, 90, 50, 60);
+    g.fillStyle = "#f4f4f4";
+    g.fillRect(220, 100, 70, 30);
+    const tx = new T.CanvasTexture(cv);
+    tx.mapping = T.EquirectangularReflectionMapping;
+    tx.colorSpace = T.SRGBColorSpace;
+    const pm = new T.PMREMGenerator(renderer);
+    envTex = pm.fromEquirectangular(tx).texture;
+    tx.dispose();
+    pm.dispose();
+    return envTex;
+  };
+  const STUDIO = {
+    organe: { cc: 0.55, ccr: 0.38, sh: 0.25 }, muscle: { cc: 0.35, ccr: 0.45, sh: 0.45 }, artere: { cc: 0.8, ccr: 0.22 }, veine: { cc: 0.8, ccr: 0.22 },
+    valve: { cc: 0.45, ccr: 0.3, sh: 0.6 }, nerf: { cc: 0.5, ccr: 0.3, sh: 0.3 }, os: { cc: 0.15, ccr: 0.6 }, cartilage: { cc: 0.5, ccr: 0.3 }, ligament: { cc: 0.4, ccr: 0.35, sh: 0.4 },
+  };
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
   scene.add(new T.HemisphereLight(0xffffff, 0x334455, 1.5));
@@ -644,18 +942,19 @@ function atlasView(L, buf, model, focusName) {
     dirty: true, idleT: 0, view: "front", opac: 1,
     clip: { axis: "", pos: 0, plane: new T.Plane(new T.Vector3(0, -1, 0), 0), caps: false },
     breath: { on: false, ready: false, t0: 0, s: 0 }, hb: { on: false, speed: 1, snd: true }, path: null, tour: null, quiz: null, tool: "",
-    opSys: "muscle", real: false, relief: true, ao: false, outline: true, qMode: "auto", focus: false, xray: false, ortho: false, grid: false,
+    opSys: "muscle", real: false, relief: true, studio: true, light: false, ao: false, outline: true, qMode: "auto", focus: false, xray: false, ortho: false, grid: false,
     hist: [], meas: { on: false, pts: [] },
   });
   try {
     const pr = JSON.parse(localStorage.getItem("mr_atlas_aff") || "{}");
-    ["real", "relief", "outline", "focus", "xray", "ortho"].forEach((k) => typeof pr[k] == "boolean" && (V[k] = pr[k]));
+    ["real", "relief", "outline", "focus", "xray", "ortho", "studio", "light"].forEach((k) => typeof pr[k] == "boolean" && (V[k] = pr[k]));
     if (pr.ao2 === true) V.ao = true; // ombres de contact : seulement si on les a réactivées depuis la correction
     if (["auto", "high", "eco"].includes(pr.q)) V.qMode = pr.q;
   } catch (e) {}
+  bgPaint();
   const prefSave = () => {
     try {
-      localStorage.setItem("mr_atlas_aff", JSON.stringify({ real: V.real, relief: V.relief, ao2: V.ao, outline: V.outline, focus: V.focus, xray: V.xray, ortho: V.ortho, q: V.qMode }));
+      localStorage.setItem("mr_atlas_aff", JSON.stringify({ real: V.real, relief: V.relief, studio: V.studio, light: V.light, ao2: V.ao, outline: V.outline, focus: V.focus, xray: V.xray, ortho: V.ortho, q: V.qMode }));
     } catch (e) {}
   };
   // rendu à la demande : on ne redessine que quand quelque chose bouge
@@ -828,6 +1127,7 @@ function atlasView(L, buf, model, focusName) {
   }
   function colorOf(p) {
     if (p.meta.systeme == "zone") return ATL.zoneCol[p.meta.fiche] || ATL.colors.zone;
+    if (V.pTint && V.pTint.has(p)) return V.pTint.get(p); // atlas modifié (pathologie)
     if (V.lesion && V.lesion.has(p)) return 0x5c1330; // zone atteinte (pathologie)
     if (V.grp) return V.grp.of.get(p) ?? 0x3a3f47; // colorer par innervation / vascularisation
     if (p.meta.col) return parseInt(String(p.meta.col).replace("#", ""), 16); // couleur propre (sclère, iris, cellules…)
@@ -889,13 +1189,20 @@ function atlasView(L, buf, model, focusName) {
     }
     V.dirty = true;
   }
+  function envApply() {
+    scene.environment = V.real && V.studio ? envGet() : null;
+  }
   function materials(rebuild) {
+    if (rebuild) envApply();
     for (const p of V.parts) {
       const sys = p.meta.systeme;
       let mt = p.mesh.material;
       if (rebuild) {
         const old = mt;
-        mt = new T.MeshStandardMaterial({ roughness: V.real ? ATL_REAL.rough[sys] ?? 0.6 : 0.65, metalness: 0 });
+        const st = V.real && V.studio && STUDIO[sys];
+        mt = st
+          ? new T.MeshPhysicalMaterial({ roughness: ATL_REAL.rough[sys] ?? 0.6, metalness: 0, clearcoat: st.cc, clearcoatRoughness: st.ccr, sheen: st.sh || 0, sheenRoughness: 0.6, sheenColor: 0xffe3dc, envMapIntensity: 0.5 })
+          : new T.MeshStandardMaterial({ roughness: V.real ? ATL_REAL.rough[sys] ?? 0.6 : 0.65, metalness: 0, envMapIntensity: 0.35 });
         const rk = V.real && V.relief ? reliefKind(p) : "";
         if (rk) reliefPatch(mt, rk, p.fib);
         if (V.real && (rk == "lung" || rk == "myo")) mt.roughness = rk == "lung" ? 0.62 : 0.48;
@@ -1018,12 +1325,16 @@ function atlasView(L, buf, model, focusName) {
         if (p) setTimeout(() => focusPart(p), 300);
       };
       if (focusName) V.focusBy(focusName);
+      setTimeout(() => ATL.v === V && !V.pm && !V.tour && !V.quiz && (draw(), atlasThumbSave(V.id, canvas)), 3500);
       // révision du jour : quiz lancé tout seul sur les structures à retravailler
       if (ATL.auto) {
         const a = ATL.auto;
         ATL.auto = null;
         const P = /^patho:/.test(a) && ATL_PATHO.find((x) => "patho:" + x.id == a);
-        if (P) setTimeout(() => ATL.v === V && tourStart({ id: "p-" + P.id, n: P.titre, steps: P.steps }), 700);
+        if (P) {
+          pmStart(P);
+          setTimeout(() => ATL.v === V && tourStart({ id: "p-" + P.id, n: P.titre, steps: P.steps }), 700);
+        }
         else setTimeout(() => ATL.v === V && quizStart("nom"), 700);
       }
     },
@@ -1031,6 +1342,566 @@ function atlasView(L, buf, model, focusName) {
       if ($("atmsg")) $("atmsg").textContent = "Fichier 3D illisible : " + (e && e.message ? e.message : "erreur");
     },
   );
+
+  // ---------- territoire d'un nerf ou d'une artère : structures qu'il innerve ou vascularise (d'après les fiches) ----------
+  function territory(p) {
+    const nz = (t) => String(t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s*\(.*?\)\s*/g, " ").replace(/\s+/g, " ").trim(),
+      f = V.fiches[p.meta.fiche] || {},
+      names = [p.meta.fr, f.titre].filter(Boolean).map(nz),
+      keys = new Set();
+    names.forEach((n) => {
+      keys.add(n);
+      keys.add(n.replace(/ (droite?|gauche)s?$/, ""));
+    });
+    const kind = p.meta.systeme == "nerf" ? /innerv/i : /vascular|irrigation|drainage|art[èe]re/i,
+      L = [...keys].filter((k) => k.length >= 6);
+    const hit = V.parts.filter((q) => {
+      if (q === p) return false;
+      const fq = V.fiches[q.meta.fiche];
+      if (!fq) return false;
+      return fq.rows.some((r) => kind.test(r[0]) && L.some((k) => nz(r[1]).includes(k)));
+    });
+    if (!hit.length) return toast("Aucune structure de ce modèle n’indique « " + p.meta.fr + " » dans sa fiche.");
+    V.sels = new Set([p, ...hit]);
+    V.sel = p;
+    materials();
+    panel();
+    frameParts([p, ...hit].filter((q) => visible(q)), 1.4, null, 900);
+    toast("Territoire : " + hit.length + " structure" + (hit.length > 1 ? "s" : "") + (p.meta.systeme == "nerf" ? " innervée" : " vascularisée") + (hit.length > 1 ? "s" : "") + " (d’après les fiches)");
+  }
+
+  // ---------- dissection progressive : on retire les plans un à un, du superficiel au profond ----------
+  const DS_ORDER = [["zone", "Repères et enveloppes"], ["muscle", "Muscles"], ["ligament", "Ligaments"], ["veine", "Veines"], ["artere", "Artères"], ["nerf", "Nerfs"], ["organe", "Organes"], ["valve", "Valves"], ["cartilage", "Cartilages"]];
+  function dsSteps() {
+    if (V.LN.length > 1) return V.LN.map((n, i) => ({ n, layer: i, hide: [] }));
+    const have = DS_ORDER.filter(([y]) => V.parts.some((p) => p.meta.systeme == y));
+    if (have.length < 2) return [];
+    const st = [{ n: "Tout", layer: 0, hide: [] }];
+    for (let i = 0; i < have.length - 1; i++) st.push({ n: "Sans : " + have.slice(0, i + 1).map((h) => h[1].toLowerCase()).join(", "), layer: 0, hide: have.slice(0, i + 1).map((h) => h[0]) });
+    return st;
+  }
+  function dsApply(i) {
+    const st = V.ds.steps[i];
+    V.ds.i = i;
+    V.layer = st.layer;
+    V.hSys = new Set([...V.ds.prev.hSys, ...st.hide]);
+    if (typeof fadeTo == "function") fadeTo(700);
+    else vis();
+    bar(
+      '<div class="attour"><small>Dissection progressive · ' + (i + 1) + " / " + V.ds.steps.length + "</small><b>" + esc(st.n) + "</b></div>" +
+        '<div class="atanb"><button id="atdsp"' + (i ? "" : " disabled") + '>‹</button><button id="atdsg" class="p">' + (V.ds.t ? "Pause" : "Lecture") + '</button><button id="atdsn"' + (i < V.ds.steps.length - 1 ? "" : " disabled") + '>›</button><button id="atdsq">Quitter</button></div>',
+    ).classList.add("tour");
+    $("atdsp").onclick = () => (dsPause(), dsApply(i - 1));
+    $("atdsn").onclick = () => (dsPause(), dsApply(i + 1));
+    $("atdsg").onclick = () => (V.ds.t ? dsPause() : dsPlay(), dsApply(V.ds.i));
+    $("atdsq").onclick = () => dsStop();
+  }
+  function dsPlay() {
+    clearInterval(V.ds.t);
+    V.ds.t = setInterval(() => {
+      if (!V.ds || ATL.v !== V) return;
+      if (V.ds.i >= V.ds.steps.length - 1) return dsPause(), dsApply(V.ds.i);
+      dsApply(V.ds.i + 1);
+    }, 2600);
+  }
+  function dsPause() {
+    if (V.ds) clearInterval(V.ds.t), (V.ds.t = 0);
+  }
+  function dsStart() {
+    const steps = dsSteps();
+    if (!steps.length) return toast("Ce modèle n’a pas assez de plans pour une dissection.");
+    if (V.tour) tourStop();
+    V.ds = { steps, i: 0, t: 0, prev: { layer: V.layer, hSys: new Set(V.hSys) } };
+    dsApply(0);
+    dsPlay();
+  }
+  function dsStop() {
+    if (!V.ds) return;
+    dsPause();
+    V.layer = V.ds.prev.layer;
+    V.hSys = V.ds.prev.hSys;
+    V.ds = null;
+    bar("");
+    if (typeof fadeTo == "function") fadeTo(600);
+    else vis();
+  }
+
+  // ---------- repères cliniques : foyers d'auscultation, pouls, points douloureux ----------
+  function clinToggle(on) {
+    V.clin = on ? [] : null;
+    let box = $("atclm");
+    if (box) box.remove();
+    if (!on) return need();
+    for (const c of ATL_CLIN[V.id] || []) {
+      const at = pmPoint(c);
+      if (!at) continue;
+      const o = new T.Object3D();
+      o.position.copy(at.p.mesh.worldToLocal(at.w.clone()));
+      at.p.mesh.add(o);
+      V.clin.push({ o, c, p: at.p });
+    }
+    box = document.createElement("div");
+    box.id = "atclm";
+    canvas.parentNode.insertBefore(box, $("atlbl"));
+    box.innerHTML = V.clin.map((k, i) => '<button class="atclk" data-i="' + i + '"><i></i><span>' + esc(k.c.t) + "</span></button>").join("");
+    box.querySelectorAll(".atclk").forEach((b) => (b.onclick = () => toast(V.clin[+b.dataset.i].c.t + " : " + V.clin[+b.dataset.i].c.x)));
+    if (!V.clin.length) toast("Aucun repère clinique trouvé dans ce modèle.");
+    need();
+  }
+  function clinLabels(w, h) {
+    const box = $("atclm");
+    if (!box || !V.clin) return;
+    box.querySelectorAll(".atclk").forEach((el) => {
+      const k = V.clin[+el.dataset.i];
+      k.o.getWorldPosition(wp);
+      const xy = k.p.mesh.visible ? proj(wp, w, h) : null;
+      el.style.display = xy ? "" : "none";
+      if (xy) el.style.transform = "translate(" + xy[0] + "px," + xy[1] + "px)";
+    });
+  }
+
+  // ---------- dessiner sur le modèle : les traits collent à la surface et tournent avec lui ----------
+  const DRAW_COL = ["#ffd23f", "#ff5d73", "#4cc9f0", "#ffffff", "#7bd389"];
+  function drawSet(on) {
+    V.draw = V.draw || { col: DRAW_COL[0], w: 1, strokes: [], cur: null };
+    V.draw.on = on;
+    controls.enabled = !on;
+    canvas.style.cursor = on ? "crosshair" : "";
+  }
+  const drawRay = new T.Raycaster(),
+    drawNdc = new T.Vector2();
+  function drawHit(e) {
+    const r = canvas.getBoundingClientRect();
+    drawNdc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    drawRay.setFromCamera(drawNdc, V.cam);
+    return drawRay.intersectObjects(V.parts.filter((p) => p.mesh.visible && p.mesh.material.opacity > 0.3).map((p) => p.mesh), false)[0] || null;
+  }
+  function drawLift(h) {
+    const n = h.face ? h.face.normal.clone().transformDirection(h.object.matrixWorld) : new T.Vector3();
+    return h.point.clone().addScaledVector(n, V.radius * 0.004);
+  }
+  function drawDown(e) {
+    if (!V.draw || !V.draw.on) return;
+    e.stopImmediatePropagation();
+    e.preventDefault();
+    const h = drawHit(e);
+    if (!h) return;
+    canvas.setPointerCapture && canvas.setPointerCapture(e.pointerId);
+    const host = h.object,
+      line = new T.Line(new T.BufferGeometry(), new T.LineBasicMaterial({ color: V.draw.col, depthTest: false }));
+    line.renderOrder = 5;
+    scene.add(line);
+    V.draw.cur = { host, pts: [drawLift(h)], line };
+  }
+  function drawMove(e) {
+    if (!V.draw || !V.draw.on) return;
+    e.stopImmediatePropagation();
+    const C = V.draw.cur;
+    if (!C) return;
+    const h = drawHit(e);
+    if (!h) return;
+    const q = drawLift(h);
+    if (q.distanceTo(C.pts[C.pts.length - 1]) < V.radius * 0.004) return;
+    C.pts.push(q);
+    C.line.geometry.dispose();
+    C.line.geometry = new T.BufferGeometry().setFromPoints(C.pts);
+    need();
+  }
+  function drawUp(e) {
+    if (!V.draw || !V.draw.on) return;
+    e.stopImmediatePropagation();
+    const C = V.draw.cur;
+    V.draw.cur = null;
+    if (!C) return;
+    scene.remove(C.line);
+    C.line.geometry.dispose();
+    C.line.material.dispose();
+    if (C.pts.length < 2) C.pts.push(C.pts[0].clone().add(new T.Vector3(V.radius * 0.003, 0, 0)));
+    const inv = C.host.matrixWorld.clone().invert(),
+      loc = C.pts.map((v) => v.clone().applyMatrix4(inv)),
+      ws = C.host.getWorldScale(new T.Vector3()).x,
+      g = new T.TubeGeometry(new T.CatmullRomCurve3(loc), Math.min(400, loc.length * 3), (V.radius * 0.0035 * V.draw.w) / ws, 6, false),
+      m = new T.Mesh(g, new T.MeshBasicMaterial({ color: V.draw.col }));
+    C.host.add(m);
+    V.draw.strokes.push(m);
+    need();
+  }
+  canvas.addEventListener("pointerdown", drawDown, true);
+  canvas.addEventListener("pointermove", drawMove, true);
+  canvas.addEventListener("pointerup", drawUp, true);
+  function drawUndo(all) {
+    const S = V.draw ? V.draw.strokes : [];
+    while (S.length) {
+      const m = S.pop();
+      m.parent && m.parent.remove(m);
+      m.geometry.dispose();
+      m.material.dispose();
+      if (!all) break;
+    }
+    need();
+  }
+  function drawPaint(box) {
+    drawSet(true);
+    box.innerHTML =
+      '<p class="atlbl2">Dessine directement sur les structures : les traits restent collés au modèle quand il tourne. Ferme ce panneau pour tourner le modèle.</p>' +
+      '<div class="atdrc">' + DRAW_COL.map((c) => '<button data-c="' + c + '" style="--c:' + c + '"' + (V.draw.col == c ? ' class="on"' : "") + ' aria-label="Couleur"></button>').join("") + "</div>" +
+      '<div class="atseg" id="atdrw">' + [[0.6, "Fin"], [1, "Moyen"], [2, "Épais"]].map((q) => '<button data-w="' + q[0] + '"' + (V.draw.w == q[0] ? ' class="on"' : "") + ">" + q[1] + "</button>").join("") + "</div>" +
+      '<div class="atpb"><button class="b" id="atdru">Annuler le dernier trait</button><button class="b" id="atdrx">Tout effacer</button><button class="b p" id="atdrs">' + icn("image") + " Enregistrer l’image</button></div>";
+    box.querySelectorAll(".atdrc button").forEach((b) => (b.onclick = () => ((V.draw.col = b.dataset.c), drawPaint(box))));
+    box.querySelectorAll("#atdrw button").forEach((b) => (b.onclick = () => ((V.draw.w = +b.dataset.w), drawPaint(box))));
+    $("atdru").onclick = () => drawUndo(false);
+    $("atdrx").onclick = () => drawUndo(true);
+    $("atdrs").onclick = () => {
+      draw();
+      const a = document.createElement("a");
+      a.href = canvas.toDataURL("image/png");
+      a.download = "atlas-" + V.id + "-dessin.png";
+      a.click();
+    };
+  }
+
+  // ---------- pathologies : version modifiée de l'atlas ----------
+  const pmFind = (n) => {
+    if (n && n.re) {
+      const re = new RegExp(n.re);
+      return V.parts.filter((p) => re.test(p.meta.fr));
+    }
+    const ns = [].concat(n);
+    return V.parts.filter((p) => ns.includes(p.meta.fiche) || ns.includes(p.meta.fr));
+  };
+  const CM = 0.01;
+  function pmVerts(p, max) {
+    const a = p.mesh.geometry.attributes.position,
+      st = Math.max(1, Math.floor(a.count / (max || 1e9))),
+      out = [];
+    p.mesh.updateWorldMatrix(true, false);
+    for (let i = 0; i < a.count; i += st) out.push(new T.Vector3().fromBufferAttribute(a, i).applyMatrix4(p.mesh.matrixWorld));
+    return out;
+  }
+  function pmPoint(m) {
+    const p = pmFind(m.on)[0];
+    if (!p) return null;
+    const vs = pmVerts(p, 5000);
+    let tg;
+    if (m.to) {
+      const q = pmFind(m.to)[0];
+      if (!q) return null;
+      tg = new T.Box3().setFromObject(q.mesh).getCenter(new T.Vector3());
+    } else {
+      const b = new T.Box3().setFromPoints(vs),
+        f = m.frac || [0.5, 0.5, 0.5];
+      tg = new T.Vector3(b.min.x + (b.max.x - b.min.x) * f[0], b.min.y + (b.max.y - b.min.y) * f[1], b.min.z + (b.max.z - b.min.z) * f[2]);
+    }
+    let best = vs[0],
+      bd = Infinity;
+    for (const v of vs) {
+      const d = v.distanceToSquared(tg);
+      if (d < bd) (bd = d), (best = v);
+    }
+    const w = best.clone();
+    if (m.off) w.add(new T.Vector3(...m.off).multiplyScalar(CM));
+    return { p, w };
+  }
+  // petite masse organique (caillot, hernie, œuf…) accrochée à une structure
+  function pmBlob(m) {
+    const at = pmPoint(m);
+    if (!at) return;
+    const g = new T.SphereGeometry(1, 28, 20),
+      a = g.attributes.position,
+      v = new T.Vector3(),
+      sq = m.sq || [1, 1, 1];
+    for (let i = 0; i < a.count; i++) {
+      v.fromBufferAttribute(a, i);
+      const n = 1 + 0.09 * Math.sin(v.x * 5.1 + 1) * Math.cos(v.y * 4.3) + 0.05 * Math.sin(v.z * 7.7 + v.x * 3);
+      a.setXYZ(i, v.x * n * sq[0], v.y * n * sq[1], v.z * n * sq[2]);
+    }
+    g.computeVertexNormals();
+    const o = new T.Mesh(g, new T.MeshStandardMaterial({ color: m.col || "#2a0509", roughness: 0.45, metalness: 0 })),
+      ws = at.p.mesh.getWorldScale(new T.Vector3());
+    o.position.copy(at.p.mesh.worldToLocal(at.w.clone()));
+    o.scale.set((m.r * CM) / ws.x, (m.r * CM) / ws.y, (m.r * CM) / ws.z);
+    at.p.mesh.add(o);
+    V.pm.undo.push(() => (at.p.mesh.remove(o), g.dispose(), o.material.dispose()));
+    if (m.fr) V.pm.marks.push({ o, t: m.fr });
+  }
+  // zone de tissu atteint : les triangles proches d'une structure (artère bouchée…), du plus sombre au plus clair
+  function pmPatch(m) {
+    const near = [].concat(...pmFind(m.near).map((q) => pmVerts(q, 700)));
+    if (!near.length) return;
+    const R = m.r * CM,
+      c1 = new T.Color(m.col || "#3d0d22"),
+      c2 = new T.Color(m.col2 || m.col || "#a04a5e"),
+      A = new T.Vector3(),
+      B = new T.Vector3(),
+      C = new T.Vector3(),
+      G = new T.Vector3();
+    let first = null;
+    for (const p of pmFind(m.on)) {
+      const g0 = p.mesh.geometry,
+        pa = g0.attributes.position,
+        na = g0.attributes.normal,
+        ix = g0.index,
+        nt = ix ? ix.count / 3 : pa.count / 3,
+        M = p.mesh.matrixWorld,
+        pos = [],
+        col = [],
+        ws = p.mesh.getWorldScale(new T.Vector3()),
+        eps = (0.25 * CM) / ws.x;
+      const dmin = (w) => {
+        let d = Infinity;
+        for (const q of near) {
+          const e = q.distanceToSquared(w);
+          if (e < d) d = e;
+        }
+        return Math.sqrt(d);
+      };
+      for (let t = 0; t < nt; t++) {
+        const i0 = ix ? ix.getX(3 * t) : 3 * t,
+          i1 = ix ? ix.getX(3 * t + 1) : 3 * t + 1,
+          i2 = ix ? ix.getX(3 * t + 2) : 3 * t + 2;
+        A.fromBufferAttribute(pa, i0);
+        B.fromBufferAttribute(pa, i1);
+        C.fromBufferAttribute(pa, i2);
+        G.copy(A).add(B).add(C).divideScalar(3).applyMatrix4(M);
+        const d = dmin(G);
+        if (d > R) continue;
+        const k = Math.min(1, Math.max(0, (d / R - 0.6) / 0.4)),
+          cc = c1.clone().lerp(c2, k);
+        for (const i of [i0, i1, i2]) {
+          const nx = na ? na.getX(i) : 0,
+            ny = na ? na.getY(i) : 0,
+            nz = na ? na.getZ(i) : 0;
+          pos.push(pa.getX(i) + nx * eps, pa.getY(i) + ny * eps, pa.getZ(i) + nz * eps);
+          col.push(cc.r, cc.g, cc.b);
+        }
+      }
+      if (!pos.length) continue;
+      const g = new T.BufferGeometry();
+      g.setAttribute("position", new T.Float32BufferAttribute(pos, 3));
+      g.setAttribute("color", new T.Float32BufferAttribute(col, 3));
+      g.computeVertexNormals();
+      const o = new T.Mesh(g, new T.MeshStandardMaterial({ vertexColors: true, roughness: 0.7, metalness: 0, side: T.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+      o.material.clippingPlanes = p.mesh.material.clippingPlanes;
+      p.mesh.add(o);
+      first = first || o;
+      V.pm.undo.push(() => (p.mesh.remove(o), g.dispose(), o.material.dispose()));
+    }
+    if (first && m.fr) {
+      first.geometry.computeBoundingBox();
+      const c = new T.Object3D();
+      first.geometry.boundingBox.getCenter(c.position);
+      first.parent.add(c);
+      V.pm.undo.push(() => c.parent && c.parent.remove(c));
+      V.pm.marks.push({ o: c, t: m.fr });
+    }
+  }
+  // gonflement : la géométrie grossit autour de son centre
+  function pmScale(m) {
+    for (const p of pmFind(m.f)) {
+      const g = p.mesh.geometry,
+        old = g.attributes.position.array.slice();
+      g.computeBoundingBox();
+      const c = g.boundingBox.getCenter(new T.Vector3());
+      g.translate(-c.x, -c.y, -c.z).scale(m.s, m.s, m.s).translate(c.x, c.y, c.z);
+      g.computeBoundingSphere();
+      if (g.computeBoundsTree) g.computeBoundsTree();
+      V.pm.undo.push(() => {
+        g.attributes.position.array.set(old);
+        g.attributes.position.needsUpdate = true;
+        g.computeBoundingBox();
+        g.computeBoundingSphere();
+        if (g.computeBoundsTree) g.computeBoundsTree();
+      });
+      if (m.fr) {
+        const o = new T.Object3D();
+        o.position.copy(c);
+        p.mesh.add(o);
+        V.pm.undo.push(() => p.mesh.remove(o));
+        V.pm.marks.push({ o, t: m.fr });
+        m = { ...m, fr: "" };
+      }
+    }
+  }
+  // rupture ou fracture : la structure est coupée en deux morceaux déplacés
+  function pmTear(m) {
+    for (const p of pmFind(m.f)) {
+      const g0 = p.mesh.geometry,
+        g = g0.index ? g0.toNonIndexed() : g0.clone(),
+        pa = g.attributes.position,
+        M = p.mesh.matrixWorld.clone(),
+        Mi = M.clone().invert(),
+        bb = new T.Box3().setFromObject(p.mesh),
+        yc = m.ytop != null ? bb.max.y - m.ytop * CM : bb.min.y + (bb.max.y - bb.min.y) * m.y,
+        piv = new T.Vector3((bb.min.x + bb.max.x) / 2, yc, (bb.min.z + bb.max.z) / 2),
+        up = new T.Vector3(...(m.up || [0, 0, 0])).multiplyScalar(CM),
+        dn = new T.Vector3(...(m.down || [0, 0, 0])).multiplyScalar(CM),
+        q = new T.Quaternion().setFromAxisAngle(new T.Vector3(0, 0, 1), T.MathUtils.degToRad(m.tilt || 0)),
+        P = [[], []],
+        N = [[], []],
+        na = g.attributes.normal,
+        v = new T.Vector3();
+      for (let t = 0; t < pa.count; t += 3) {
+        let cy = 0;
+        for (let j = 0; j < 3; j++) cy += v.fromBufferAttribute(pa, t + j).applyMatrix4(M).y;
+        const lo = cy / 3 < yc ? 1 : 0;
+        for (let j = 0; j < 3; j++) {
+          v.fromBufferAttribute(pa, t + j).applyMatrix4(M);
+          if (lo) v.sub(piv).applyQuaternion(q).add(piv).add(dn);
+          else v.add(up);
+          v.applyMatrix4(Mi);
+          P[lo].push(v.x, v.y, v.z);
+          if (na) N[lo].push(na.getX(t + j), na.getY(t + j), na.getZ(t + j));
+        }
+      }
+      g.dispose();
+      const mk = (k) => {
+        const h = new T.BufferGeometry();
+        h.setAttribute("position", new T.Float32BufferAttribute(P[k], 3));
+        if (na) h.setAttribute("normal", new T.Float32BufferAttribute(N[k], 3));
+        else h.computeVertexNormals();
+        if (h.computeBoundsTree) h.computeBoundsTree();
+        return h;
+      };
+      const gTop = mk(0),
+        lowM = new T.Mesh(mk(1), p.mesh.material);
+      p.mesh.geometry = gTop;
+      p.mesh.add(lowM);
+      V.pm.undo.push(() => {
+        p.mesh.geometry = g0;
+        p.mesh.remove(lowM);
+        gTop.dispose();
+        lowM.geometry.dispose();
+      });
+      if (m.col) V.pTint.set(p, parseInt(m.col.slice(1), 16));
+      if (m.fr) {
+        const o = new T.Object3D();
+        o.position.copy(p.mesh.worldToLocal(piv.clone()));
+        p.mesh.add(o);
+        V.pm.undo.push(() => p.mesh.remove(o));
+        V.pm.marks.push({ o, t: m.fr });
+        m = { ...m, fr: "" };
+      }
+    }
+  }
+  function pmApply() {
+    const P = V.pm.P;
+    V.pm.undo = [];
+    V.pm.marks = [];
+    V.pTint = new Map();
+    V.pHide = new Set();
+    for (const m of ATL_PMODS[P.id] || [])
+      try {
+        if (m.k == "blob") pmBlob(m);
+        else if (m.k == "patch") pmPatch(m);
+        else if (m.k == "scale") pmScale(m);
+        else if (m.k == "tear") pmTear(m);
+        else if (m.k == "tint") pmFind(m.f).forEach((p) => V.pTint.set(p, parseInt(m.col.slice(1), 16)));
+        else if (m.k == "hide") pmFind(m.f).forEach((p) => V.pHide.add(p));
+      } catch (e) {
+        console.warn("pathologie", P.id, m.k, e);
+      }
+    V.pm.on = true;
+    pmMarks();
+    vis();
+    materials(true);
+  }
+  function pmClear() {
+    if (!V.pm) return;
+    (V.pm.undo || []).reverse().forEach((f) => f());
+    V.pm.undo = [];
+    V.pm.marks = [];
+    V.pm.on = false;
+    V.pTint = null;
+    V.pHide = null;
+    pmMarks();
+    vis();
+    materials(true);
+  }
+  function pmMarks() {
+    let box = $("atpml");
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "atpml";
+      canvas.parentNode.insertBefore(box, $("atlbl"));
+    }
+    box.innerHTML = (V.pm && V.pm.marks ? V.pm.marks : []).map((k, i) => '<div class="atpmk" data-i="' + i + '"><i></i><span>' + esc(k.t) + "</span></div>").join("");
+  }
+  function pmLabels(w, h) {
+    const box = $("atpml");
+    if (!box) return;
+    box.querySelectorAll(".atpmk").forEach((el) => {
+      const k = V.pm.marks[+el.dataset.i];
+      if (!k) return;
+      let vis2 = k.o.parent && k.o.parent.visible;
+      for (let o = k.o.parent; o && vis2; o = o.parent) vis2 = o.visible !== false;
+      k.o.getWorldPosition(wp);
+      const xy = vis2 && (!V.clip.axis || V.clip.plane.distanceToPoint(wp) >= 0) ? proj(wp, w, h) : null;
+      el.style.display = xy ? "" : "none";
+      if (xy) el.style.transform = "translate(" + xy[0] + "px," + xy[1] + "px)";
+    });
+  }
+  function pmTitle() {
+    const b = document.querySelector("#atmsw b");
+    if (b) b.textContent = V.pm ? (ATL.models.find((m) => m.id == V.id) || {}).titre + " · " + V.pm.P.titre : (ATL.models.find((m) => m.id == V.id) || {}).titre;
+  }
+  V.pathoOpen = (P) => {
+    if (V.tour) tourStop();
+    if (V.pm) pmStop();
+    pmStart(P);
+    tourStart({ id: "p-" + P.id, n: P.titre, steps: P.steps });
+  };
+  function pmStart(P) {
+    V.pm = { P, on: false };
+    pmApply();
+    pmTitle();
+  }
+  function pmStop() {
+    pmClear();
+    if (V.pm.fade) V.pm.fade.forEach((op, p) => (p.meta.op = op));
+    V.pm = null;
+    V.hSys = new Set();
+    V.hOne = new Set();
+    materials();
+    vis();
+    pmTitle();
+    bar("");
+    const box = $("atpml");
+    if (box) box.remove();
+  }
+  function pmScene() {
+    const S = ATL_PSCENE[V.pm.P.id];
+    if (!S) return;
+    V.hSys = new Set((S.hide || []).filter((y) => V.parts.some((p) => p.meta.systeme == y)));
+    V.layer = 0;
+    V.hOne = new Set(S.hideF ? pmFind(S.hideF) : []);
+    for (const p of S.fade ? pmFind(S.fade) : []) {
+      if (!V.pm.fade) V.pm.fade = new Map();
+      if (!V.pm.fade.has(p)) V.pm.fade.set(p, p.meta.op);
+      p.meta.op = 0.3;
+    }
+    vis();
+    materials();
+    const fr = S.frame ? pmFind(S.frame).filter((p) => visible(p)) : [];
+    V.view = S.view || V.view;
+    frameParts(fr.length ? fr : V.parts.filter((p) => visible(p)), fr.length ? 1.9 : 1.05, new T.Vector3(...VIEWS[S.view || "front"]), 1100);
+  }
+  function pmBar() {
+    const P = V.pm.P;
+    pmScene();
+    bar(
+      '<div class="attour"><small>Atlas modifié · pathologie</small><b>' + esc(P.titre) + "</b><p>" + esc(P.sous) + "</p></div>" +
+        '<div class="atanb"><button id="atpmn">' + (V.pm.on ? "Voir le normal" : "Voir la pathologie") + '</button><button id="atpmt" class="p">Parcours</button><button id="atpmq">Revenir à l’atlas normal</button></div>',
+    ).classList.add("tour");
+    $("atpmn").onclick = () => {
+      V.pm.on ? pmClear() : pmApply();
+      pmBar();
+    };
+    $("atpmt").onclick = () => {
+      if (!V.pm.on) pmApply();
+      tourStart({ id: "p-" + P.id, n: P.titre, steps: P.steps });
+    };
+    $("atpmq").onclick = () => pmStop();
+  }
 
   // ---------- caméra : perspective ou orthographique, vues, zoom, historique ----------
   const VIEWS = { front: [0, 0, 1], back: [0, 0, -1], side: [1, 0, 0], left: [1, 0, 0], right: [-1, 0, 0], q34: [0.8, 0.35, 0.9], persp: [0.55, 1, 0.75], top: [0, 1, 0.0001], bottom: [0, -1, 0.0001] };
@@ -1250,7 +2121,7 @@ function atlasView(L, buf, model, focusName) {
   // ---------- visibilité : systèmes, structures masquées, isolement, couches ----------
   // structures « en retrait » : transparentes, ou masquées si l'appareil est lent (moins de calcul)
   const visible = (p) =>
-    !V.hSys.has(p.meta.systeme) && !V.hOne.has(p) && (!V.iso || V.iso.has(p)) && p.layer >= V.layer && !(V.ghost && V.q.lvl >= 1 && !V.ghost.has(p));
+    !V.hSys.has(p.meta.systeme) && !V.hOne.has(p) && !(V.pHide && V.pHide.has(p)) && (!V.iso || V.iso.has(p)) && p.layer >= V.layer && !(V.ghost && V.q.lvl >= 1 && !V.ghost.has(p));
   const vis = () => {
     for (const p of V.parts) p.mesh.visible = visible(p);
     capObjs.forEach((o) => o.userData.sys && (o.visible = !V.hSys.has(o.userData.sys)));
@@ -1786,6 +2657,7 @@ function atlasView(L, buf, model, focusName) {
     quiz: () => quizMenu(),
     help: () => helpToggle(),
     schema: () => schemaSheet(),
+    dessin: () => toolPanel("dessin"),
     ar: () => arOpen(),
   };
   document.querySelectorAll("#atdock button").forEach((b) => (b.onclick = () => ((V.moreHover = false), DOCK[b.dataset.k] && DOCK[b.dataset.k]())));
@@ -1888,7 +2760,7 @@ function atlasView(L, buf, model, focusName) {
   // ---------- fenêtres d'outils (une seule ouverte, repliable avec la flèche) ----------
   const sw = (id, label, on, hint) =>
     '<label class="atsw"><input type="checkbox" id="' + id + '"' + (on ? " checked" : "") + "><span>" + label + (hint ? "<small>" + hint + "</small>" : "") + "</span></label>";
-  const TITLES = { schema: "Schéma à compléter", anim: "Animations", tour: "Parcours guidés", vues: "Vues enregistrées", struct: "Structures", disp: "Affichage", ex: "Écarter les structures", cut: "Coupe", lay: "Couches", tr: "Transparence", more: "Plus d’outils" };
+  const TITLES = { dessin: "Dessiner sur le modèle", schema: "Schéma à compléter", anim: "Animations", tour: "Parcours guidés", vues: "Vues enregistrées", struct: "Structures", disp: "Affichage", ex: "Écarter les structures", cut: "Coupe", lay: "Couches", tr: "Transparence", more: "Plus d’outils" };
   const sheet = $("atsheet");
   function sheetMin(m) {
     sheet.classList.toggle("min", m);
@@ -1911,6 +2783,8 @@ function atlasView(L, buf, model, focusName) {
     dockState();
     if (V.tool == "struct") return treePaint();
     if (V.tool == "vues") return viewsPaint(box);
+    if (V.tool == "dessin") return drawPaint(box);
+    if (V.draw && V.draw.on) drawSet(false);
     if (V.tool == "schema") return schemaPaint(box);
     if (V.tool == "anim") return animPaint(box);
     if (V.tool == "tour") return toursPaint(box);
@@ -1949,6 +2823,9 @@ function atlasView(L, buf, model, focusName) {
         "</div></div>" +
         '<div class="atsws">' +
         sw("atsrel", "Relief des tissus", V.relief, "avec les couleurs réalistes") +
+        sw("atsstu", "Rendu studio", V.studio, "reflets humides et éclairage d’ambiance, avec les couleurs réalistes") +
+        sw("atslig", "Fond clair", V.light, "comme une planche d’atlas") +
+        (ATL_CLIN[V.id] ? sw("atsclin", "Repères cliniques", !!V.clin, "foyers d’auscultation, pouls, points douloureux") : "") +
         sw("atsao", "Ombres de contact", V.ao, "plus réaliste, mais gourmand : à éviter sur un appareil modeste") +
         sw("atsout", "Contour de la sélection", V.outline) +
         sw("atsfoc", "Mode focus", V.focus, "le reste devient translucide") +
@@ -1999,6 +2876,9 @@ function atlasView(L, buf, model, focusName) {
       );
       const on = (id, fn) => ($(id).onchange = (e) => (fn(e.target.checked), prefSave()));
       on("atsrel", (v) => ((V.relief = v), materials(true)));
+      on("atsstu", (v) => ((V.studio = v), envApply(), materials(true)));
+      on("atslig", (v) => ((V.light = v), bgPaint(), need()));
+      if ($("atsclin")) $("atsclin").onchange = (e) => clinToggle(e.target.checked);
       on("atsao", (v) => ((V.ao = v), fxBuild()));
       on("atsout", (v) => ((V.outline = v), fxBuild()));
       on("atsfoc", (v) => ((V.focus = v), materials()));
@@ -2807,7 +3687,7 @@ function atlasView(L, buf, model, focusName) {
         })
         .join("") +
       '<div class="atpb atpa"><button class="b" id="atiso1">Isoler' + (V.sels.size > 1 ? " la sélection" : "") +
-      '</button><button class="b" id="atrap">Rapports</button><button class="b" id="atnei">Voir les voisines</button><button class="b" id="atmul">' + (V.multi ? "✓ Sélection multiple" : "＋ Sélectionner d’autres") +
+      "</button>" + (/^(nerf|artere|veine)$/.test(p.meta.systeme) ? '<button class="b" id="atterr">Territoire</button>' : "") + '<button class="b" id="atrap">Rapports</button><button class="b" id="atnei">Voir les voisines</button><button class="b" id="atmul">' + (V.multi ? "✓ Sélection multiple" : "＋ Sélectionner d’autres") +
       '</button><button class="b" id="atorb">Tourner autour</button>' +
       (V.sels.size > 1 ? '<button class="b p" id="atcmp">' + atIco("cmp") + " Comparer</button>" : "") +
       "</div>" +
@@ -2844,6 +3724,7 @@ function atlasView(L, buf, model, focusName) {
     $("atorb").onclick = () => orbitOn(p);
     pan.querySelectorAll(".atdet").forEach((b) => (b.onclick = () => (V.overlay ? atlasOpen(b.dataset.m, b.dataset.f, true) : atlasGo(b.dataset.m, b.dataset.f))));
     $("atrap").onclick = () => rapports(p);
+    if ($("atterr")) $("atterr").onclick = () => territory(p);
     // voisines : on isole la sélection puis on ajoute les structures à son contact
     $("atnei").onclick = () => {
       isolate(V.sels);
@@ -3538,6 +4419,18 @@ function atlasView(L, buf, model, focusName) {
         }),
     );
     box.querySelectorAll("[data-p]").forEach((b) => (b.onclick = () => pathStart(pathsOf()[+b.dataset.p])));
+    if (dsSteps().length) {
+      const d = document.createElement("div");
+      d.innerHTML =
+        '<p class="atlbl2" style="margin:14px 0 6px">Dissection</p><div class="atprel"><button data-ds="1"' + (V.ds ? ' class="on"' : "") + "><b>" + (V.ds ? "■ " : "▶ ") +
+        "Dissection progressive</b><small>Les plans s’enlèvent un à un, du superficiel au profond.</small></button></div>";
+      box.appendChild(d);
+      d.querySelector("[data-ds]").onclick = () => {
+        V.ds ? dsStop() : dsStart();
+        if (matchMedia("(max-width: 760px), (orientation: landscape) and (max-height: 500px)").matches) toolPanel("anim");
+        else animPaint(box);
+      };
+    }
     if (movesOf().length) {
       const d = document.createElement("div");
       d.innerHTML =
@@ -5005,7 +5898,8 @@ function atlasView(L, buf, model, focusName) {
     if (!Tr) return;
     V.tour = null;
     V.ghost = null;
-    bar("");    if (V.lesion) {
+    bar("");
+    if (V.pm) setTimeout(() => ATL.v === V && V.pm && !V.tour && pmBar(), 0);    if (V.lesion) {
       V.lesion = null;
       V.lesKey = "";
       materials(true);
@@ -5359,6 +6253,8 @@ function atlasView(L, buf, model, focusName) {
   function overlays() {
     const w = canvas.clientWidth,
       h = canvas.clientHeight;
+    if (V.pm) pmLabels(w, h);
+    if (V.clin) clinLabels(w, h);
     w0 = w;
     h0 = h;
     if (V.showLbl && !V.quiz) {
