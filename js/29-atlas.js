@@ -151,12 +151,111 @@ async function atlasFilesLoad() {
   }
 }
 const atlasHas = (id) => !ATL.files || ATL.files.some((f) => f.name == id + ".glb" || f.name == id + "-hd.glb");
+// ---------- pathologies : un atlas existant ouvert sur un parcours, les zones atteintes teintées (« les ») ----------
+const ATL_PATHO = [
+  {
+    id: "idm", base: "coeur", titre: "Infarctus du myocarde", sous: "Occlusion d’une artère coronaire et territoire du ventricule gauche privé de sang",
+    steps: [
+      { t: "Les artères coronaires", x: "Le cœur est nourri par deux coronaires nées de l’aorte : la droite et la gauche, qui se divise en interventriculaire antérieure (IVA) et circonflexe.", view: "front", sel: ["right coronary artery", "left coronary artery", "anterior interventricular artery", "circumflex artery"] },
+      { t: "L’occlusion de l’IVA", x: "Une plaque d’athérome se rompt, un caillot bouche l’artère : c’est l’IVA qui est le plus souvent en cause.", view: "front", sel: ["anterior interventricular artery"] },
+      { t: "Le territoire atteint", x: "Sans sang, le myocarde meurt en quelques heures : ici la paroi antérieure du ventricule gauche, la pointe et les deux tiers antérieurs du septum (infarctus antérieur étendu).", view: "front", sel: ["anterior interventricular artery"], les: ["left ventricle"] },
+      { t: "Les signes", x: "Douleur thoracique constrictive, irradiant au bras gauche et à la mâchoire, plus de 20 minutes, résistante à la trinitrine. ECG : sus-décalage du segment ST en V1 à V4. Troponine élevée.", view: "q34", sel: ["anterior interventricular artery"], les: ["left ventricle"] },
+      { t: "Et si c’est la coronaire droite ?", x: "Infarctus inférieur (sus-décalage en DII, DIII, aVF), parfois avec troubles de conduction car elle vascularise souvent le nœud atrio-ventriculaire.", view: "back", sel: ["right coronary artery"], les: ["right ventricle"] },
+    ],
+  },
+  {
+    id: "avc", base: "encephale", titre: "AVC sylvien gauche", sous: "Occlusion de l’artère cérébrale moyenne : hémiplégie droite et aphasie",
+    steps: [
+      { t: "L’artère cérébrale moyenne", x: "Branche terminale de la carotide interne, elle vascularise la face latérale de l’hémisphère, l’insula et les noyaux gris.", view: "side", sel: ["Artère cérébrale moyenne gauche"] },
+      { t: "Le territoire privé de sang", x: "Cortex moteur et somesthésique de la face et du membre supérieur, aires du langage, insula.", view: "side", sel: ["Artère cérébrale moyenne gauche"], les: ["Gyrus précentral (cortex moteur) gauche", "Gyrus postcentral (cortex somesthésique) gauche", "Gyrus frontal inférieur, parties operculaire et triangulaire (aire de Broca à gauche) gauche", "Insula gauche", "Gyrus temporal supérieur gauche", "Gyrus supramarginal gauche", "Gyrus angulaire gauche"] },
+      { t: "Les signes", x: "Hémiplégie et hémianesthésie droites à prédominance brachio-faciale, aphasie (hémisphère dominant), hémianopsie latérale homonyme droite, déviation du regard vers la lésion.", view: "side", les: ["Gyrus précentral (cortex moteur) gauche", "Gyrus postcentral (cortex somesthésique) gauche", "Gyrus frontal inférieur, parties operculaire et triangulaire (aire de Broca à gauche) gauche", "Insula gauche", "Gyrus temporal supérieur gauche", "Gyrus supramarginal gauche", "Gyrus angulaire gauche"] },
+      { t: "Pourquoi le membre inférieur est épargné", x: "Il est représenté sur la face médiale (lobule paracentral), territoire de l’artère cérébrale antérieure.", view: "back", sel: ["Lobule paracentral gauche"] },
+      { t: "Urgence", x: "« Le temps, c’est du cerveau » : thrombolyse dans les 4 h 30 ou thrombectomie, après une imagerie qui élimine une hémorragie.", view: "side", les: ["Gyrus précentral (cortex moteur) gauche", "Insula gauche"] },
+    ],
+  },
+  {
+    id: "hernie", base: "rachis", titre: "Hernie discale L4-L5", sous: "Le disque comprime la racine L5 : sciatique",
+    steps: [
+      { t: "Le disque L4-L5", x: "Le noyau pulpeux est entouré de l’anneau fibreux ; les disques lombaires bas supportent le plus de contraintes.", view: "side", sel: ["Disques intervertébraux lombaires"], iso: ["lumbar vertebra", "sacrum", "intervertebral disk", "spinal nerves", "cauda equina"] },
+      { t: "La hernie", x: "L’anneau se fissure, le noyau sort en arrière et sur le côté (le ligament longitudinal postérieur le dévie latéralement).", view: "back", sel: ["Disques intervertébraux lombaires"], les: ["Disques intervertébraux lombaires"], iso: ["lumbar vertebra", "sacrum", "intervertebral disk", "spinal nerves", "cauda equina"] },
+      { t: "La racine comprimée", x: "À l’étage L4-L5, c’est la racine L5 qui est touchée : douleur de la fesse au dos du pied jusqu’au gros orteil, déficit du releveur de l’hallux.", view: "back", sel: ["Racines des nerfs spinaux droits"], les: ["Racines des nerfs spinaux droits"], iso: ["lumbar vertebra", "sacrum", "intervertebral disk", "spinal nerves", "cauda equina"] },
+      { t: "Le signe d’alarme", x: "Anesthésie en selle et troubles sphinctériens : syndrome de la queue de cheval, urgence chirurgicale.", view: "back", sel: ["Queue de cheval"], iso: ["lumbar vertebra", "sacrum", "intervertebral disk", "spinal nerves", "cauda equina"] },
+    ],
+  },
+  {
+    id: "appendicite", base: "abdomen", titre: "Appendicite aiguë", sous: "Inflammation de l’appendice, douleur en fosse iliaque droite",
+    steps: [
+      { t: "L’appendice", x: "Diverticule du cæcum, à la jonction des trois bandelettes du côlon, dans la fosse iliaque droite.", view: "front", sel: ["Appendice vermiforme"], iso: ["appendix", "ascending colon", "hip bone", "colic arteries"] },
+      { t: "L’inflammation", x: "Obstruction de la lumière (stercolithe, ganglions) puis infection : l’appendice gonfle.", view: "front", sel: ["Appendice vermiforme"], les: ["Appendice vermiforme"], iso: ["appendix", "ascending colon", "hip bone", "colic arteries"] },
+      { t: "Le point de McBurney", x: "Au tiers externe de la ligne entre l’ombilic et l’épine iliaque antéro-supérieure droite : douleur provoquée maximale.", view: "front", les: ["Appendice vermiforme"], iso: ["appendix", "ascending colon", "hip bone"] },
+      { t: "Le risque", x: "Perforation puis péritonite : l’artère appendiculaire est terminale, la gangrène s’installe vite. Traitement : appendicectomie.", view: "q34", sel: ["Artère appendiculaire"], les: ["Appendice vermiforme"], iso: ["appendix", "ascending colon", "colic arteries"] },
+    ],
+  },
+  {
+    id: "carpien", base: "main", titre: "Syndrome du canal carpien", sous: "Compression du nerf médian sous le rétinaculum des fléchisseurs",
+    steps: [
+      { t: "Le canal carpien", x: "Tunnel inextensible entre les os du carpe et le rétinaculum des fléchisseurs : 9 tendons et le nerf médian.", view: "front", sel: ["Rétinaculum des fléchisseurs", "Nerf médian"] },
+      { t: "La compression", x: "Tout ce qui réduit la place (ténosynovite, grossesse, hypothyroïdie, travail répétitif) écrase le nerf médian.", view: "front", sel: ["Nerf médian"], les: ["Nerf médian"] },
+      { t: "Les signes", x: "Fourmillements nocturnes du pouce, de l’index, du majeur et de la moitié de l’annulaire ; signes de Tinel et de Phalen.", view: "front", sel: ["Nerf médian"], les: ["Nerf médian"] },
+      { t: "À un stade avancé", x: "Faiblesse et fonte de l’éminence thénar (court abducteur, opposant du pouce).", view: "front", sel: ["thenar"], les: ["thenar"] },
+    ],
+  },
+  {
+    id: "lca", base: "genou", titre: "Rupture du ligament croisé antérieur", sous: "Entorse grave du genou, souvent au sport",
+    steps: [
+      { t: "Le LCA", x: "Il empêche le tibia de partir en avant sous le fémur et contrôle la rotation.", view: "q34", layer: 3, sel: ["Ligament croisé antérieur"] },
+      { t: "Le mécanisme", x: "Pied bloqué au sol, genou en valgus et rotation externe (changement d’appui, réception de saut).", view: "front", layer: 3, sel: ["Ligament croisé antérieur"], les: ["Ligament croisé antérieur"] },
+      { t: "Les signes", x: "Craquement, gonflement rapide (hémarthrose), instabilité ; tiroir antérieur et test de Lachman positifs.", view: "side", layer: 3, les: ["Ligament croisé antérieur"] },
+      { t: "La triade malheureuse", x: "Associée à une lésion du ligament collatéral tibial et du ménisque médial.", view: "front", layer: 3, les: ["Ligament croisé antérieur", "Ligament collatéral tibial (médial)", "Ménisque médial"] },
+    ],
+  },
+  {
+    id: "colhum", base: "epaule", titre: "Fracture du col chirurgical de l’humérus", sous: "Fracture fréquente chez la personne âgée, risque pour le nerf axillaire",
+    steps: [
+      { t: "Le col chirurgical", x: "Partie rétrécie sous les tubercules de l’humérus, zone fragile chez la personne âgée (ostéoporose).", view: "front", sel: ["Humérus"] },
+      { t: "Le nerf axillaire", x: "Il contourne le col chirurgical en arrière avec les artères circonflexes humérales.", view: "back", layer: 1, sel: ["Nerf axillaire", "Artères circonflexes humérales"] },
+      { t: "La complication", x: "Lésion du nerf axillaire : paralysie du deltoïde (abduction impossible au-delà de quelques degrés) et anesthésie du moignon de l’épaule.", view: "side", sel: ["Nerf axillaire"], les: ["Muscle deltoïde"] },
+    ],
+  },
+  {
+    id: "geu", base: "bassin-f", titre: "Grossesse extra-utérine", sous: "L’œuf s’implante hors de l’utérus, le plus souvent dans la trompe",
+    steps: [
+      { t: "Le trajet normal", x: "La fécondation a lieu dans l’ampoule de la trompe ; l’œuf rejoint ensuite la cavité utérine en quelques jours.", view: "front", layer: 1, sel: ["Trompe utérine droite (isthme, ampoule, infundibulum, franges)", "Ovaire droit"] },
+      { t: "L’implantation ectopique", x: "Si la trompe est abîmée (infection, chirurgie, endométriose), l’œuf s’y implante, surtout dans l’ampoule.", view: "front", layer: 1, les: ["Trompe utérine droite (isthme, ampoule, infundibulum, franges)"] },
+      { t: "Le danger", x: "Douleur pelvienne et saignements avec un test de grossesse positif ; risque de rupture et d’hémorragie interne. Échographie et dosage des hCG.", view: "q34", layer: 1, les: ["Trompe utérine droite (isthme, ampoule, infundibulum, franges)"] },
+    ],
+  },
+];
+function atlasPatho(id) {
+  const P = ATL_PATHO.find((x) => x.id == id);
+  if (!P) return;
+  if (!atlasHas(P.base)) return toast("L’atlas « " + ((ATL.models.find((m) => m.id == P.base) || {}).titre || P.base) + " » n’est pas encore en ligne.");
+  ATL.auto = "patho:" + id;
+  atlasGo(P.base);
+}
+function atlasPathoCards() {
+  return (
+    '<h3 class="atgh">Pathologies <small>' + ATL_PATHO.length + "</small></h3>" +
+    '<div class="atgg">' +
+    ATL_PATHO.map((P) => {
+      const ok = atlasHas(P.base),
+        b = ATL.models.find((m) => m.id == P.base) || { titre: P.base };
+      return (
+        '<button class="atgc atpg' + (ok ? "" : " off") + '" onclick="atlasPatho(\'' + P.id + "')\">" +
+        '<span class="atgi atpgi">' + atlasIco(P.base) + '</span><span class="atgt"><b>' + esc(P.titre) + "</b><small>" + esc(P.sous) + "</small>" +
+        "<em>Atlas « " + esc(b.titre) + " » · " + P.steps.length + " étapes</em></span>" + icn("chev") + "</button>"
+      );
+    }).join("") +
+    "</div>"
+  );
+}
+
 // atlas rangés par rubrique (corps entier, régions, organes, microscopique)
 const atlasByCat = () => ATL.cats.map(([k, t]) => [k, t, ATL.models.filter((m) => (m.cat || "region") == k)]).filter((c) => c[2].length);
 function atlasGallery() {
   return atlasByCat()
     .map(([k, t, ms]) => '<h3 class="atgh">' + esc(t) + ' <small>' + ms.length + "</small></h3>" + '<div class="atgg">' + atlasGalleryCards(ms) + "</div>")
-    .join("");
+    .join("") + atlasPathoCards();
 }
 function atlasGalleryCards(ms) {
   return ms
@@ -729,6 +828,7 @@ function atlasView(L, buf, model, focusName) {
   }
   function colorOf(p) {
     if (p.meta.systeme == "zone") return ATL.zoneCol[p.meta.fiche] || ATL.colors.zone;
+    if (V.lesion && V.lesion.has(p)) return 0x5c1330; // zone atteinte (pathologie)
     if (V.grp) return V.grp.of.get(p) ?? 0x3a3f47; // colorer par innervation / vascularisation
     if (p.meta.col) return parseInt(String(p.meta.col).replace("#", ""), 16); // couleur propre (sclère, iris, cellules…)
     if (!V.real) return ATL.colors[p.meta.systeme] || 0xcccccc;
@@ -920,8 +1020,11 @@ function atlasView(L, buf, model, focusName) {
       if (focusName) V.focusBy(focusName);
       // révision du jour : quiz lancé tout seul sur les structures à retravailler
       if (ATL.auto) {
+        const a = ATL.auto;
         ATL.auto = null;
-        setTimeout(() => ATL.v === V && quizStart("nom"), 700);
+        const P = /^patho:/.test(a) && ATL_PATHO.find((x) => "patho:" + x.id == a);
+        if (P) setTimeout(() => ATL.v === V && tourStart({ id: "p-" + P.id, n: P.titre, steps: P.steps }), 700);
+        else setTimeout(() => ATL.v === V && quizStart("nom"), 700);
       }
     },
     (e) => {
@@ -4768,7 +4871,11 @@ function atlasView(L, buf, model, focusName) {
     const { error } = await SY.sb.storage.from("atlas").upload("parcours.json", blob, { upsert: true, contentType: "model/gltf-binary", cacheControl: "60" });
     toast(error ? esc(syTr(error.message)) : "Parcours publiés : tous les membres qui ont l’atlas les voient ✔");
   }
-  const toursOf = () => [...(TOURS[model.id] || []), ...(ATL.custom || []).filter((t) => t.model == model.id)];
+  const toursOf = () => [
+    ...(TOURS[model.id] || []),
+    ...ATL_PATHO.filter((P) => P.base == model.id).map((P) => ({ id: "p-" + P.id, n: "Pathologie : " + P.titre, steps: P.steps })),
+    ...(ATL.custom || []).filter((t) => t.model == model.id),
+  ];
   function toursPaint(box) {
     const L = toursOf(),
       ed = V.tourEd;
@@ -4856,6 +4963,16 @@ function atlasView(L, buf, model, focusName) {
       // les structures hors sujet passent en retrait (transparentes) au lieu de disparaître d'un coup
       const keep = st.iso ? [...byF(st.iso), ...sel] : null;
       V.ghost = keep ? new Set(keep) : null;
+      // zones atteintes (pathologies) : teinte sombre « lésion »
+      const les = st.les ? byF(st.les) : [];
+      les.forEach((p) => V.hOne.delete(p));
+      if (keep) les.forEach((p) => V.ghost.add(p));
+      const lesKey = les.map((p) => V.parts.indexOf(p)).join(",");
+      if (lesKey != (V.lesKey || "")) {
+        V.lesion = les.length ? new Set(les) : null;
+        V.lesKey = lesKey;
+        materials(true);
+      }
       V.sels = new Set(sel);
       V.sel = sel[0] || null;
       fadeTo(750);
@@ -4888,7 +5005,12 @@ function atlasView(L, buf, model, focusName) {
     if (!Tr) return;
     V.tour = null;
     V.ghost = null;
-    bar("");
+    bar("");    if (V.lesion) {
+      V.lesion = null;
+      V.lesKey = "";
+      materials(true);
+    }
+
     V.layer = Tr.prev.layer;
     V.hOne = Tr.prev.hOne;
     V.hSys = Tr.prev.hSys;

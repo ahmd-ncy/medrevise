@@ -4789,3 +4789,7 @@ html.atlon #md { z-index: 80; }
 
 /* schéma à compléter */
 .atschi { width: 100%; border-radius: 10px; border: 1px solid var(--gb); background: #fff; margin-bottom: 8px; }
+
+/* pathologies */
+.atpg .atpgi { background: color-mix(in srgb, #e5484d 18%, transparent); color: #ff8a8f; }
+.atpg em { font-style: normal; color: #ff8a8f; font-size: 11.5px; font-weight: 600; }
