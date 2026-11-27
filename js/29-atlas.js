@@ -6,23 +6,28 @@
 const ATL = {
   // modèles : « detail » relie les fiches d'un modèle à un modèle plus détaillé (bouton « Voir en détail »)
   models: [
-    { id: "thorax", titre: "Thorax", sous: "Os, muscles, organes, vaisseaux, nerfs et médiastin" },
-    { id: "coeur", titre: "Cœur", sous: "Cavités, valves, piliers, coronaires et veines du cœur" },
-    { id: "poumons", titre: "Poumons et arbre bronchique", sous: "Lobes, bronches jusqu’aux segments, plèvre et vaisseaux" },
-    { id: "abdomen", titre: "Abdomen", sous: "Viscères, segments du foie, vaisseaux, paroi, plexus lombal" },
-    { id: "membre-inf", titre: "Membre inférieur", sous: "Os de la hanche au pied, muscles par loges, nerfs fémoral et ischiatique, vaisseaux" },
-    { id: "membre-sup", titre: "Membre supérieur", sous: "Os de l’épaule à la main, muscles par loges, plexus brachial, nerfs, vaisseaux" },
-    { id: "tete-cou", titre: "Tête et cou", sous: "Crâne, face, muscles masticateurs et du cou, larynx, thyroïde, carotides, jugulaires" },
-    { id: "encephale", titre: "Encéphale", sous: "Lobes et gyri, noyaux gris, ventricules, tronc cérébral, cervelet, nerfs crâniens, polygone de Willis" },
-    { id: "rachis", titre: "Rachis et dos", sous: "Vertèbres une à une, disques, ligaments, moelle spinale, muscles du dos par couches" },
-    { id: "bassin", titre: "Bassin et périnée", sous: "Os coxaux, sacrum, plancher pelvien, vessie, prostate, organes génitaux masculins, vaisseaux iliaques" },
-    { id: "oeil", titre: "Œil et orbite", sous: "Globe oculaire, muscles oculomoteurs, appareil lacrymal, nerfs et vaisseaux de l’orbite" },
-    { id: "oreille", titre: "Oreille", sous: "Tympan, osselets, trompe auditive, cochlée, vestibule et nerfs VII et VIII" },
+    { id: "thorax", cat: "region", titre: "Thorax", sous: "Os, muscles, organes, vaisseaux, nerfs et médiastin" },
+    { id: "coeur", cat: "organe", titre: "Cœur", sous: "Cavités, valves, piliers, coronaires et veines du cœur" },
+    { id: "poumons", cat: "organe", titre: "Poumons et arbre bronchique", sous: "Lobes, bronches jusqu’aux segments, plèvre et vaisseaux" },
+    { id: "abdomen", cat: "region", titre: "Abdomen", sous: "Viscères, segments du foie, vaisseaux, paroi, plexus lombal" },
+    { id: "membre-inf", cat: "region", titre: "Membre inférieur", sous: "Os de la hanche au pied, muscles par loges, nerfs fémoral et ischiatique, vaisseaux" },
+    { id: "membre-sup", cat: "region", titre: "Membre supérieur", sous: "Os de l’épaule à la main, muscles par loges, plexus brachial, nerfs, vaisseaux" },
+    { id: "tete-cou", cat: "region", titre: "Tête et cou", sous: "Crâne, face, muscles masticateurs et du cou, larynx, thyroïde, carotides, jugulaires" },
+    { id: "encephale", cat: "organe", titre: "Encéphale", sous: "Lobes et gyri, noyaux gris, ventricules, tronc cérébral, cervelet, nerfs crâniens, polygone de Willis" },
+    { id: "rachis", cat: "region", titre: "Rachis et dos", sous: "Vertèbres une à une, disques, ligaments, moelle spinale, muscles du dos par couches" },
+    { id: "bassin", cat: "region", titre: "Bassin et périnée", sous: "Os coxaux, sacrum, plancher pelvien, vessie, prostate, organes génitaux masculins, vaisseaux iliaques" },
+    { id: "oeil", cat: "organe", titre: "Œil et orbite", sous: "Globe oculaire, muscles oculomoteurs, appareil lacrymal, nerfs et vaisseaux de l’orbite" },
+    { id: "oreille", cat: "organe", titre: "Oreille", sous: "Tympan, osselets, trompe auditive, cochlée, vestibule et nerfs VII et VIII" },
+    { id: "bouche", cat: "region", titre: "Cavité buccale et dents", sous: "Les 32 dents (numérotation FDI), gencive, langue, voile du palais, amygdales, glandes salivaires, pharynx" },
+    { id: "nez", cat: "region", titre: "Cavité nasale et sinus", sous: "Cloison, cornets, sinus frontal, sphénoïdal, maxillaire et cellules ethmoïdales, vaisseaux du nez" },
+    { id: "endocrine", cat: "corps", titre: "Glandes endocrines", sous: "Hypophyse, pinéale, thyroïde, parathyroïdes, thymus, surrénales, pancréas, gonades" },
+    { id: "lymphe", cat: "corps", titre: "Système lymphatique", sous: "Nœuds lymphatiques par région, rate, thymus, amygdales" },
   ],
   detail: {
     coeur: ["right atrium", "left atrium", "right ventricle", "left ventricle", "ascending aorta", "pulmonary trunk", "superior vena cava", "inferior vena cava"],
     poumons: ["rul", "rml", "rll", "lul", "lll", "right lung", "left lung", "main bronchus", "trachea", "pleura", "pulmonary artery", "pulmonary veins"],
   },
+  cats: [["corps", "Corps entier"], ["region", "Régions"], ["organe", "Organes et articulations"], ["micro", "Microscopique : cellules et tissus"]],
   cache: "mr-atlas",
   colors: { os: 0xe8dcc4, cartilage: 0xaacddc, muscle: 0xc4483c, organe: 0xe2a0a8, valve: 0xf3e6c4, artere: 0xe8342a, veine: 0x3c6edc, nerf: 0xf2c94c, zone: 0x9b8cff },
   sysFr: { os: "Os", cartilage: "Cartilage", muscle: "Muscle", organe: "Organe", valve: "Valve", artere: "Artère", veine: "Veine", nerf: "Nerf", zone: "Zone" },
@@ -45,6 +50,10 @@ const ATL_ICO = {
   bassin: '<path d="M4 6c0 5 2 8 5 9l1 4h4l1-4c3-1 5-4 5-9-2 1-4 1-6-.5-1 .8-1.5 1.5-2 3-.5-1.5-1-2.2-2-3C8 7 6 7 4 6z"/><circle cx="8" cy="15" r="1.6"/><circle cx="16" cy="15" r="1.6"/>',
   oeil: '<path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z"/><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="1" fill="currentColor"/>',
   oreille: '<path d="M8 17c0 2 1.5 3.5 3.5 3.5S15 19 15 17c0-2 3-3.5 3-8A6 6 0 0 0 6 9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 2-2.5 2.5-2.5 4.5"/>',
+  "bouche": '<path d="M4 10c2-3 5-4 8-4s6 1 8 4c-1 5-4 8-8 8s-7-3-8-8z"/><path d="M7 10.5h10M9 10.5v2M12 10.5v2.2M15 10.5v2"/>',
+  "nez": '<path d="M12 4c-.5 4-2 7-4.5 10.5C6.5 16 7.5 18 9.5 18c1 0 1.7-.6 2.5-.6s1.5.6 2.5.6c2 0 3-2 2-3.5C14 11 12.5 8 12 4z"/><path d="M10 15.5h.01M14 15.5h.01"/>',
+  "endocrine": '<path d="M12 3.5v3M9 9c0-1.5 1.3-2.5 3-2.5s3 1 3 2.5-1.3 2-3 2-3-.5-3-2z"/><path d="M8 14h8M7 18c1.5 1 3 1.5 5 1.5s3.5-.5 5-1.5"/>',
+  "lymphe": '<path d="M12 3v18M12 7l-5 4M12 7l5 4M12 13l-4 5M12 13l4 5"/><circle cx="7" cy="11" r="1.4"/><circle cx="17" cy="11" r="1.4"/><circle cx="8" cy="18" r="1.4"/><circle cx="16" cy="18" r="1.4"/>',
   abdomen: '<path d="M7 4c-2 3-3 6-3 9a8 8 0 0 0 16 0c0-3-1-6-3-9"/><path d="M9 10c1.5 1 4.5 1 6 0M8.5 14c2 1.5 5 1.5 7 0"/><circle cx="12" cy="17.5" r=".8"/>',
   poumons: '<path d="M12 3v8M12 11c-1.5 0-2.5 1-3.5 2M12 11c1.5 0 2.5 1 3.5 2"/><path d="M9 7c-3 1-5 5-5 10 0 2 1.5 3 3 3s2-1 2-3zM15 7c3 1 5 5 5 10 0 2-1.5 3-3 3s-2-1-2-3z"/>',
 };
@@ -93,8 +102,15 @@ async function atlasFilesLoad() {
   }
 }
 const atlasHas = (id) => !ATL.files || ATL.files.some((f) => f.name == id + ".glb" || f.name == id + "-hd.glb");
+// atlas rangés par rubrique (corps entier, régions, organes, microscopique)
+const atlasByCat = () => ATL.cats.map(([k, t]) => [k, t, ATL.models.filter((m) => (m.cat || "region") == k)]).filter((c) => c[2].length);
 function atlasGallery() {
-  return ATL.models
+  return atlasByCat()
+    .map(([k, t, ms]) => '<h3 class="atgh">' + esc(t) + ' <small>' + ms.length + "</small></h3>" + '<div class="atgg">' + atlasGalleryCards(ms) + "</div>")
+    .join("");
+}
+function atlasGalleryCards(ms) {
+  return ms
     .map((m) => {
       const ok = atlasHas(m.id);
       return (
@@ -310,8 +326,8 @@ async function atlasOpen(id, focusName, overlay) {
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>' +
     '<div class="atmsw"><button id="atmsw" aria-haspopup="listbox" aria-expanded="false"><b>' + esc(m.titre) + '</b><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button>' +
     '<div id="atmlist" role="listbox" hidden>' +
-    ATL.models
-      .map((x) => '<button role="option" data-m="' + x.id + '"' + (x.id == id ? ' class="on" aria-selected="true"' : "") + "><b>" + esc(x.titre) + "</b><small>" + esc(x.sous) + "</small></button>")
+    atlasByCat()
+      .map(([k, t, ms]) => '<p class="atmh">' + esc(t) + "</p>" + ms.map((x) => '<button role="option" data-m="' + x.id + '"' + (x.id == id ? ' class="on" aria-selected="true"' : "") + "><b>" + esc(x.titre) + "</b><small>" + esc(x.sous) + "</small></button>").join(""))
       .join("") +
     "</div></div>" +
     '<div class="ats"><input id="atq" type="search" placeholder="Rechercher…" autocomplete="off" aria-label="Rechercher une structure"><div id="atsug" role="listbox"></div></div>' +
@@ -662,6 +678,7 @@ function atlasView(L, buf, model, focusName) {
   }
   function colorOf(p) {
     if (p.meta.systeme == "zone") return ATL.zoneCol[p.meta.fiche] || ATL.colors.zone;
+    if (p.meta.col) return parseInt(String(p.meta.col).replace("#", ""), 16); // couleur propre (sclère, iris, cellules…)
     if (!V.real) return ATL.colors[p.meta.systeme] || 0xcccccc;
     const base = ATL_REAL.fiche[p.meta.fiche] ?? ATL_REAL.sys[p.meta.systeme] ?? 0xcccccc,
       c = new T.Color(base);
@@ -675,6 +692,7 @@ function atlasView(L, buf, model, focusName) {
     let op = 1;
     if (sys == "zone") op = 0.3;
     else if (sys == "organe" && p.meta.fiche == "pleura") op = 0.35;
+    if (p.meta.op != null) op = Math.min(op, p.meta.op); // structure transparente par nature (cornée, membrane…)
     if (V.xray) op = Math.min(op, 0.28);
     if (sys == V.opSys) op = Math.min(op, V.opac);
     if (V.focus && V.sels.size && !V.sels.has(p)) op = Math.min(op, 0.1);
@@ -3182,6 +3200,226 @@ function atlasView(L, buf, model, focusName) {
           { t: "L’équilibre", x: "Vestibule et canaux semi-circulaires renseignent sur la position et les rotations de la tête.", view: "side", layer: 1, sel: ["vestibule"] },
         ],
       },
+    ],
+    "bouche": [
+      {
+        "id": "dents",
+        "n": "La denture",
+        "steps": [
+          {
+            "t": "32 dents",
+            "x": "Par hémi-arcade : 2 incisives, 1 canine, 2 prémolaires, 3 molaires. Numérotation FDI : quadrant puis rang.",
+            "view": "front",
+            "layer": 3,
+            "all": 1
+          },
+          {
+            "t": "Les incisives",
+            "x": "Elles coupent ; une seule racine.",
+            "view": "front",
+            "layer": 3,
+            "sel": [
+              "incisors"
+            ]
+          },
+          {
+            "t": "Canine et prémolaires",
+            "x": "La canine déchire ; les prémolaires écrasent avec leurs deux cuspides.",
+            "view": "q34",
+            "layer": 3,
+            "sel": [
+              "canines",
+              "premolars"
+            ]
+          },
+          {
+            "t": "Molaires",
+            "x": "Elles broient ; la 1re molaire définitive sort vers 6 ans.",
+            "view": "q34",
+            "layer": 3,
+            "sel": [
+              "molars"
+            ]
+          },
+          {
+            "t": "Dents de sagesse",
+            "x": "Les 3es molaires sortent tard, souvent mal faute de place.",
+            "view": "side",
+            "layer": 3,
+            "sel": [
+              "wisdom teeth"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "saliv",
+        "n": "Glandes salivaires",
+        "steps": [
+          {
+            "t": "Parotide",
+            "x": "La plus grosse, devant l’oreille ; son conduit s’ouvre en face de la 2e molaire supérieure.",
+            "view": "side",
+            "sel": [
+              "Glande parotide droite",
+              "Conduit parotidien droit"
+            ]
+          },
+          {
+            "t": "Submandibulaire",
+            "x": "Sous la mandibule ; son conduit s’ouvre sous la langue.",
+            "view": "q34",
+            "sel": [
+              "Glande submandibulaire droite",
+              "Conduit submandibulaire droit"
+            ]
+          },
+          {
+            "t": "Sublinguale",
+            "x": "Sous la muqueuse du plancher de la bouche.",
+            "view": "front",
+            "layer": 1,
+            "sel": [
+              "Glande sublinguale droite",
+              "Glande sublinguale gauche"
+            ]
+          }
+        ]
+      }
+    ],
+    "nez": [
+      {
+        "id": "sinus",
+        "n": "Les sinus de la face",
+        "steps": [
+          {
+            "t": "Quatre paires de sinus",
+            "x": "Frontaux, maxillaires, ethmoïdaux et sphénoïdaux, autour des fosses nasales.",
+            "view": "front",
+            "sel": [
+              "paranasal sinuses"
+            ]
+          },
+          {
+            "t": "Sinus maxillaire",
+            "x": "Le plus grand ; ses racines dentaires voisines expliquent les sinusites d’origine dentaire.",
+            "view": "q34",
+            "sel": [
+              "maxillary sinus"
+            ]
+          },
+          {
+            "t": "La cloison",
+            "x": "Cartilage septal, lame perpendiculaire de l’ethmoïde et vomer.",
+            "view": "side",
+            "layer": 1,
+            "sel": [
+              "nasal septum"
+            ]
+          },
+          {
+            "t": "Vascularisation",
+            "x": "Sphéno-palatine surtout, et ethmoïdales : elles se rejoignent sur la tache vasculaire de la cloison.",
+            "view": "side",
+            "layer": 2,
+            "sel": [
+              "nasal arteries"
+            ]
+          }
+        ]
+      }
+    ],
+    "endocrine": [
+      {
+        "id": "glandes",
+        "n": "Les glandes endocrines",
+        "steps": [
+          {
+            "t": "Hypophyse",
+            "x": "Sous l’hypothalamus, dans la selle turcique : elle commande la plupart des autres glandes.",
+            "view": "side",
+            "sel": [
+              "pituitary"
+            ]
+          },
+          {
+            "t": "Thyroïde et parathyroïdes",
+            "x": "Thyroïde : métabolisme (T3, T4) ; parathyroïdes : calcium (PTH).",
+            "view": "front",
+            "sel": [
+              "thyroid gland",
+              "parathyroid"
+            ]
+          },
+          {
+            "t": "Surrénales",
+            "x": "Cortisol, aldostérone, androgènes et adrénaline.",
+            "view": "back",
+            "sel": [
+              "suprarenal gland"
+            ]
+          },
+          {
+            "t": "Pancréas",
+            "x": "Les îlots de Langerhans sécrètent l’insuline et le glucagon.",
+            "view": "front",
+            "sel": [
+              "pancreas"
+            ]
+          }
+        ]
+      }
+    ],
+    "lymphe": [
+      {
+        "id": "lym",
+        "n": "Les grands groupes de nœuds",
+        "steps": [
+          {
+            "t": "Tête et cou",
+            "x": "Cercle péri-cervical puis chaîne jugulaire interne.",
+            "view": "front",
+            "sel": [
+              "head neck nodes"
+            ]
+          },
+          {
+            "t": "Aisselle",
+            "x": "Membre supérieur, paroi thoracique et la plus grande partie du sein.",
+            "view": "front",
+            "sel": [
+              "axillary nodes"
+            ]
+          },
+          {
+            "t": "Abdomen et bassin",
+            "x": "Nœuds le long de l’aorte et des artères des viscères, puis iliaques.",
+            "view": "front",
+            "sel": [
+              "abdominal nodes",
+              "pelvic nodes"
+            ]
+          },
+          {
+            "t": "Aine",
+            "x": "Membre inférieur, périnée et paroi sous l’ombilic.",
+            "view": "front",
+            "sel": [
+              "inguinal nodes"
+            ]
+          },
+          {
+            "t": "Organes lymphoïdes",
+            "x": "Rate, thymus et amygdales.",
+            "view": "q34",
+            "sel": [
+              "spleen",
+              "thymus",
+              "tonsils"
+            ]
+          }
+        ]
+      }
     ],
     poumons: [
       {
