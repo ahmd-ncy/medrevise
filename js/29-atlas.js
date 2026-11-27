@@ -22,8 +22,24 @@ const ATL = {
     { id: "nez", cat: "region", titre: "Cavité nasale et sinus", sous: "Cloison, cornets, sinus frontal, sphénoïdal, maxillaire et cellules ethmoïdales, vaisseaux du nez" },
     { id: "endocrine", cat: "corps", titre: "Glandes endocrines", sous: "Hypophyse, pinéale, thyroïde, parathyroïdes, thymus, surrénales, pancréas, gonades" },
     { id: "lymphe", cat: "corps", titre: "Système lymphatique", sous: "Nœuds lymphatiques par région, rate, thymus, amygdales" },
+    { id: "bassin-f", cat: "region", titre: "Bassin féminin", sous: "Utérus, col, vagin, trompes, ovaires et ligaments, vessie, rectum, vaisseaux utérins (Visible Human)" },
+    { id: "foie", cat: "organe", titre: "Foie et voies biliaires", sous: "Les 8 segments de Couinaud, pédicule hépatique, veines hépatiques, vésicule et voies biliaires" },
+    { id: "rein", cat: "organe", titre: "Rein", sous: "Cortex, pyramides, papilles, colonnes, calices, bassinet, hile et vaisseaux" },
+    { id: "larynx", cat: "organe", titre: "Larynx", sous: "Cartilages, membranes, muscles intrinsèques et extrinsèques, thyroïde" },
+    { id: "sein", cat: "organe", titre: "Sein", sous: "Lobes de la glande mammaire, conduits et sinus lactifères, mamelon et aréole" },
+    { id: "epaule", cat: "organe", titre: "Épaule", sous: "Articulations gléno-humérale, acromio- et sterno-claviculaire, coiffe des rotateurs, bourses" },
+    { id: "main", cat: "organe", titre: "Main et poignet", sous: "Os du carpe, ligaments du poignet, gaines des tendons, muscles thénariens et hypothénariens, arcades" },
+    { id: "genou", cat: "organe", titre: "Genou", sous: "Ménisques, ligaments croisés et collatéraux, capsule, bourses, muscles et vaisseaux poplités" },
   ],
   detail: {
+    foie: ["liver", "liver segments", "gallbladder", "portal vein", "proper hepatic artery", "bile duct"],
+    rein: ["kidney", "renal pelvis", "renal artery", "renal vein"],
+    larynx: ["larynx", "thyroid cartilage", "laryngeal cartilages"],
+    epaule: ["glenohumeral joint", "supraspinatus", "infraspinatus", "teres minor", "subscapularis"],
+    main: ["carpal bones", "metacarpals", "thenar", "hypothenar", "flexor retinaculum"],
+    genou: ["patella", "menisci", "cruciate ligaments"],
+    oeil: ["eyeball", "retina", "cornea"],
+    bouche: ["tongue", "salivary glands", "mandible"],
     coeur: ["right atrium", "left atrium", "right ventricle", "left ventricle", "ascending aorta", "pulmonary trunk", "superior vena cava", "inferior vena cava"],
     poumons: ["rul", "rml", "rll", "lul", "lll", "right lung", "left lung", "main bronchus", "trachea", "pleura", "pulmonary artery", "pulmonary veins"],
   },
@@ -54,6 +70,14 @@ const ATL_ICO = {
   "nez": '<path d="M12 4c-.5 4-2 7-4.5 10.5C6.5 16 7.5 18 9.5 18c1 0 1.7-.6 2.5-.6s1.5.6 2.5.6c2 0 3-2 2-3.5C14 11 12.5 8 12 4z"/><path d="M10 15.5h.01M14 15.5h.01"/>',
   "endocrine": '<path d="M12 3.5v3M9 9c0-1.5 1.3-2.5 3-2.5s3 1 3 2.5-1.3 2-3 2-3-.5-3-2z"/><path d="M8 14h8M7 18c1.5 1 3 1.5 5 1.5s3.5-.5 5-1.5"/>',
   "lymphe": '<path d="M12 3v18M12 7l-5 4M12 7l5 4M12 13l-4 5M12 13l4 5"/><circle cx="7" cy="11" r="1.4"/><circle cx="17" cy="11" r="1.4"/><circle cx="8" cy="18" r="1.4"/><circle cx="16" cy="18" r="1.4"/>',
+  "bassin-f": '<path d="M12 6c-2 0-3.5 1.5-3.5 4 0 2 1 3.5 2.2 4.5V19h2.6v-4.5c1.2-1 2.2-2.5 2.2-4.5 0-2.5-1.5-4-3.5-4z"/><path d="M8.5 8.5C7 7 5 6.5 4 8M15.5 8.5C17 7 19 6.5 20 8"/><circle cx="4.5" cy="9.5" r="1.3"/><circle cx="19.5" cy="9.5" r="1.3"/>',
+  "foie": '<path d="M3.5 9c0-2 2-3.5 6-3.5 4.5 0 11 1 11 3.5 0 3-4 7-9 8.5-3.5 1-8-3-8-8.5z"/><path d="M10 6v9"/>',
+  "rein": '<path d="M14 4c-4-1-8 2-8 8s4 9 8 8c2-.5 2.5-2.5 1-4-1-1-1-3 0-4 1.5-1.5 1-3.5-1-4-1.5-.5-1-3.5 0-4z"/><path d="M14 12h4v6"/>',
+  "larynx": '<path d="M8 4h8M9 4l-1 6h8l-1-6M8 10l1 4h6l1-4M9.5 14v6M14.5 14v6M9.5 17h5"/>',
+  "sein": '<path d="M4 9c1 6 5 10 9 10 4 0 7-3 7-7"/><circle cx="13" cy="13" r="2"/>',
+  "epaule": '<circle cx="9" cy="9" r="3.5"/><path d="M4 5c3-2 9-2 15 0M9 12.5V21M12.5 9l7 2"/>',
+  "main": '<path d="M8 21v-4l-3-5c-.5-1 .5-2 1.5-1.5L8 12V4.5a1.2 1.2 0 0 1 2.4 0V10V3.5a1.2 1.2 0 0 1 2.4 0V10V4.5a1.2 1.2 0 0 1 2.4 0V11V7a1.2 1.2 0 0 1 2.4 0v7c0 3-1.5 5-3 7"/>',
+  "genou": '<path d="M9 3v7c0 1.5-1 2-1 3.5S9 16 9 17v4M15 3v7c0 1.5 1 2 1 3.5S15 16 15 17v4"/><circle cx="12" cy="11.5" r="2.2"/>',
   abdomen: '<path d="M7 4c-2 3-3 6-3 9a8 8 0 0 0 16 0c0-3-1-6-3-9"/><path d="M9 10c1.5 1 4.5 1 6 0M8.5 14c2 1.5 5 1.5 7 0"/><circle cx="12" cy="17.5" r=".8"/>',
   poumons: '<path d="M12 3v8M12 11c-1.5 0-2.5 1-3.5 2M12 11c1.5 0 2.5 1 3.5 2"/><path d="M9 7c-3 1-5 5-5 10 0 2 1.5 3 3 3s2-1 2-3zM15 7c3 1 5 5 5 10 0 2-1.5 3-3 3s-2-1-2-3z"/>',
 };
@@ -3416,6 +3440,346 @@ function atlasView(L, buf, model, focusName) {
               "spleen",
               "thymus",
               "tonsils"
+            ]
+          }
+        ]
+      }
+    ],
+    "bassin-f": [
+      {
+        "id": "genital-f",
+        "n": "L’appareil génital féminin",
+        "steps": [
+          {
+            "t": "L’utérus",
+            "x": "Organe musculaire creux, antéversé et antéfléchi, entre la vessie et le rectum.",
+            "view": "side", "layer": 1,
+            "sel": [
+              "uterus"
+            ]
+          },
+          {
+            "t": "Le col",
+            "x": "Partie basse de l’utérus, en partie dans le vagin ; l’uretère passe tout près.",
+            "view": "side", "layer": 1,
+            "sel": [
+              "cervix",
+              "vagina"
+            ]
+          },
+          {
+            "t": "Trompes et ovaires",
+            "x": "L’ampoule de la trompe est le lieu de la fécondation.",
+            "view": "front",
+            "layer": 1,
+            "sel": [
+              "uterine tube",
+              "ovary"
+            ]
+          },
+          {
+            "t": "Les ligaments",
+            "x": "Cardinaux et utéro-sacraux soutiennent le col ; les ronds maintiennent l’antéversion.",
+            "view": "persp",
+            "layer": 1,
+            "sel": [
+              "uterine ligaments"
+            ]
+          },
+          {
+            "t": "Vascularisation",
+            "x": "L’artère utérine passe au-dessus de l’uretère près du col.",
+            "view": "front",
+            "layer": 1,
+            "sel": [
+              "uterine artery",
+              "ureter"
+            ]
+          }
+        ]
+      }
+    ],
+    "foie": [
+      {
+        "id": "couinaud",
+        "n": "Les segments du foie",
+        "steps": [
+          {
+            "t": "Huit segments",
+            "x": "Segmentation de Couinaud : chaque segment a son pédicule portal et biliaire.",
+            "view": "front",
+            "sel": [
+              "liver segments"
+            ]
+          },
+          {
+            "t": "Foie gauche",
+            "x": "Segments II, III et IV, à gauche de la ligne vésicule – veine cave.",
+            "view": "front",
+            "sel": [
+              "Foie : segment II",
+              "Foie : segment III",
+              "Foie : segment IVa",
+              "Foie : segment IVb (lobe carré)"
+            ]
+          },
+          {
+            "t": "Foie droit",
+            "x": "Segments V à VIII.",
+            "view": "q34",
+            "sel": [
+              "Foie : segment V",
+              "Foie : segment VI",
+              "Foie : segment VII",
+              "Foie : segment VIII"
+            ]
+          },
+          {
+            "t": "Le pédicule hépatique",
+            "x": "Veine porte en arrière, artère hépatique en avant et à gauche, cholédoque en avant et à droite.",
+            "view": "front",
+            "layer": 1,
+            "sel": [
+              "portal vein",
+              "proper hepatic artery",
+              "bile duct"
+            ]
+          },
+          {
+            "t": "Les veines hépatiques",
+            "x": "Trois veines qui séparent les secteurs et se jettent dans la veine cave inférieure.",
+            "view": "back",
+            "layer": 1,
+            "sel": [
+              "hepatic veins"
+            ]
+          }
+        ]
+      }
+    ],
+    "rein": [
+      {
+        "id": "rein-int",
+        "n": "L’intérieur du rein",
+        "steps": [
+          {
+            "t": "Le cortex",
+            "x": "Zone périphérique avec les glomérules.",
+            "view": "front",
+            "sel": [
+              "renal cortex"
+            ]
+          },
+          {
+            "t": "Les pyramides",
+            "x": "La médullaire : base vers le cortex, sommet (papille) vers les calices.",
+            "view": "front",
+            "layer": 2,
+            "sel": [
+              "renal medulla"
+            ]
+          },
+          {
+            "t": "Les calices",
+            "x": "Les petits calices reçoivent les papilles et se réunissent en grands calices.",
+            "view": "front",
+            "layer": 3,
+            "sel": [
+              "calyces"
+            ]
+          },
+          {
+            "t": "Le bassinet",
+            "x": "Il collecte l’urine et se continue par l’uretère.",
+            "view": "q34",
+            "layer": 3,
+            "sel": [
+              "renal pelvis",
+              "ureter"
+            ]
+          }
+        ]
+      }
+    ],
+    "larynx": [
+      {
+        "id": "glotte",
+        "n": "Les cordes vocales et leurs muscles",
+        "steps": [
+          {
+            "t": "Les cartilages",
+            "x": "Thyroïde, cricoïde, aryténoïdes et épiglotte.",
+            "view": "q34",
+            "layer": 3,
+            "sel": [
+              "laryngeal cartilages",
+              "epiglottis"
+            ]
+          },
+          {
+            "t": "Ouvrir la glotte",
+            "x": "Le crico-aryténoïdien postérieur est le seul muscle qui écarte les cordes vocales.",
+            "view": "back",
+            "layer": 2,
+            "sel": [
+              "posterior cricoarytenoid"
+            ]
+          },
+          {
+            "t": "Fermer la glotte",
+            "x": "Crico-aryténoïdiens latéraux et aryténoïdiens.",
+            "view": "q34",
+            "layer": 2,
+            "sel": [
+              "intrinsic larynx"
+            ]
+          },
+          {
+            "t": "Tendre les cordes",
+            "x": "Le crico-thyroïdien, innervé par le laryngé supérieur ; tous les autres par le récurrent.",
+            "view": "side",
+            "layer": 2,
+            "sel": [
+              "cricothyroid"
+            ]
+          }
+        ]
+      }
+    ],
+    "epaule": [
+      {
+        "id": "stab",
+        "n": "La stabilité de l’épaule",
+        "steps": [
+          {
+            "t": "Une articulation peu emboîtée",
+            "x": "Grosse tête humérale, petite glène creusée par le bourrelet.",
+            "view": "q34",
+            "layer": 3,
+            "sel": [
+              "glenohumeral joint"
+            ]
+          },
+          {
+            "t": "La coiffe des rotateurs",
+            "x": "Supra-épineux, infra-épineux, petit rond et subscapulaire plaquent la tête dans la glène.",
+            "view": "back",
+            "layer": 1,
+            "sel": [
+              "supraspinatus",
+              "infraspinatus",
+              "teres minor",
+              "subscapularis"
+            ]
+          },
+          {
+            "t": "La voûte",
+            "x": "Acromion et ligament coraco-acromial au-dessus du supra-épineux.",
+            "view": "side",
+            "layer": 1,
+            "sel": [
+              "shoulder ligaments",
+              "supraspinatus"
+            ]
+          },
+          {
+            "t": "Le nerf axillaire",
+            "x": "Il contourne le col chirurgical : à vérifier après une luxation.",
+            "view": "back",
+            "layer": 2,
+            "sel": [
+              "axillary nerve"
+            ]
+          }
+        ]
+      }
+    ],
+    "main": [
+      {
+        "id": "carpe",
+        "n": "Le poignet et le canal carpien",
+        "steps": [
+          {
+            "t": "Huit os du carpe",
+            "x": "Rangée proximale : scaphoïde, lunatum, triquetrum, pisiforme ; distale : trapèze, trapézoïde, capitatum, hamatum.",
+            "view": "front",
+            "layer": 3,
+            "sel": [
+              "carpal bones"
+            ]
+          },
+          {
+            "t": "Le canal carpien",
+            "x": "Sous le rétinaculum des fléchisseurs : 9 tendons fléchisseurs et le nerf médian.",
+            "view": "front",
+            "layer": 1,
+            "sel": [
+              "flexor retinaculum",
+              "median nerve"
+            ]
+          },
+          {
+            "t": "Éminence thénar",
+            "x": "Court abducteur, court fléchisseur et opposant du pouce, surtout par le nerf médian.",
+            "view": "front",
+            "sel": [
+              "thenar"
+            ]
+          },
+          {
+            "t": "Les muscles profonds",
+            "x": "Interosseux et adducteur du pouce, innervés par le nerf ulnaire.",
+            "view": "front",
+            "layer": 2,
+            "sel": [
+              "interossei",
+              "adductor pollicis",
+              "ulnar nerve"
+            ]
+          }
+        ]
+      }
+    ],
+    "genou": [
+      {
+        "id": "pivot",
+        "n": "Le pivot central et les ménisques",
+        "steps": [
+          {
+            "t": "Les ménisques",
+            "x": "Médial en C, latéral en O, entre fémur et tibia.",
+            "view": "q34",
+            "layer": 3,
+            "sel": [
+              "menisci"
+            ]
+          },
+          {
+            "t": "Les ligaments croisés",
+            "x": "Le LCA empêche le tibia d’avancer, le LCP de reculer.",
+            "view": "q34",
+            "layer": 3,
+            "sel": [
+              "cruciate ligaments"
+            ]
+          },
+          {
+            "t": "Les collatéraux",
+            "x": "Tibial (médial) contre le valgus, fibulaire (latéral) contre le varus.",
+            "view": "front",
+            "layer": 3,
+            "sel": [
+              "collateral ligaments"
+            ]
+          },
+          {
+            "t": "Le creux poplité",
+            "x": "Artère poplitée en profondeur, nerf tibial en surface.",
+            "view": "back",
+            "layer": 1,
+            "sel": [
+              "popliteal artery",
+              "tibial nerve"
             ]
           }
         ]
