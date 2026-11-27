@@ -31,6 +31,15 @@ const ATL = {
     { id: "main", cat: "organe", titre: "Main et poignet", sous: "Os du carpe, ligaments du poignet, gaines des tendons, muscles thénariens et hypothénariens, arcades" },
     { id: "genou", cat: "organe", titre: "Genou", sous: "Ménisques, ligaments croisés et collatéraux, capsule, bourses, muscles et vaisseaux poplités" },
     { id: "corps", cat: "corps", titre: "Corps entier", sous: "Squelette, muscles, organes, vaisseaux et nerfs du corps entier (plus de 1 000 structures)" },
+    { id: "cellule", cat: "micro", titre: "Cellule animale", sous: "Membrane, noyau et nucléole, réticulums, Golgi, mitochondries, lysosomes, centrosome, cytosquelette" },
+    { id: "mitochondrie", cat: "micro", titre: "Mitochondrie", sous: "Membranes externe et interne, crêtes, ATP synthases, matrice, ADN mitochondrial" },
+    { id: "neurone", cat: "micro", titre: "Neurone", sous: "Corps cellulaire, corps de Nissl, dendrites, cône d’implantation, axone myélinisé, nœuds de Ranvier, boutons" },
+    { id: "sarcomere", cat: "micro", titre: "Sarcomère et myofibrille", sous: "Actine, myosine, titine, stries Z, ligne M, bandes A et I, réticulum sarcoplasmique, tubules T" },
+    { id: "nephron", cat: "micro", titre: "Néphron", sous: "Glomérule, capsule de Bowman, tubes proximal et distal, anse de Henlé, tube collecteur, macula densa" },
+    { id: "alveole", cat: "micro", titre: "Alvéoles pulmonaires", sous: "Bronchioles, sacs alvéolaires, pneumocytes, capillaires, macrophage" },
+    { id: "villosite", cat: "micro", titre: "Villosités intestinales", sous: "Entérocytes, cellules caliciformes, capillaires, chylifère, cryptes de Lieberkühn" },
+    { id: "peau", cat: "micro", titre: "Peau en coupe", sous: "Épiderme, derme, hypoderme, poil, glandes sébacée et sudoripare, récepteurs, vaisseaux" },
+    { id: "dent", cat: "micro", titre: "Dent en coupe", sous: "Émail, dentine, pulpe, cément, ligament alvéolo-dentaire, os alvéolaire, gencive" },
   ],
   detail: {
     foie: ["liver", "liver segments", "gallbladder", "portal vein", "proper hepatic artery", "bile duct"],
@@ -80,9 +89,23 @@ const ATL_ICO = {
   "main": '<path d="M8 21v-4l-3-5c-.5-1 .5-2 1.5-1.5L8 12V4.5a1.2 1.2 0 0 1 2.4 0V10V3.5a1.2 1.2 0 0 1 2.4 0V10V4.5a1.2 1.2 0 0 1 2.4 0V11V7a1.2 1.2 0 0 1 2.4 0v7c0 3-1.5 5-3 7"/>',
   "genou": '<path d="M9 3v7c0 1.5-1 2-1 3.5S9 16 9 17v4M15 3v7c0 1.5 1 2 1 3.5S15 16 15 17v4"/><circle cx="12" cy="11.5" r="2.2"/>',
   "corps": '<circle cx="12" cy="4.5" r="2"/><path d="M12 7v7M8 9.5l4 1.5 4-1.5M12 14l-3 7M12 14l3 7"/>',
+  "cellule": '<ellipse cx="12" cy="12" rx="9" ry="7.5"/><circle cx="11" cy="11.5" r="3"/><circle cx="11.6" cy="11" r="1"/><path d="M16.5 15.5c1 .3 1.8-.2 2-1"/>',
+  "mitochondrie": '<rect x="3" y="7" width="18" height="10" rx="5"/><path d="M7 9v4M10 15v-4M13 9v4M16 15v-4"/>',
+  "neurone": '<circle cx="7" cy="10" r="2.5"/><path d="M5 8 3 5M5 12l-2 3M8.5 7.8 9 4M9.5 10H20M14 10v0M13 10l0 0M20 10l1.5-2M20 10l1.5 2"/><path d="M12 9h2M15.5 9h2" stroke-width="3"/>',
+  "sarcomere": '<path d="M4 5v14M20 5v14M12 6v12M4 9h6M4 15h6M14 9h6M14 15h6M8 12h8"/>',
+  "nephron": '<circle cx="7" cy="6" r="2.5"/><path d="M9 7c3 0 3 3 0 4s0 3 3 3v6h3V8c0-2 2-3 3-3"/>',
+  "alveole": '<path d="M3 12h6"/><circle cx="12" cy="8" r="2.6"/><circle cx="16.5" cy="11" r="2.6"/><circle cx="12" cy="14.5" r="2.6"/><circle cx="17" cy="16.5" r="2.2"/>',
+  "villosite": '<path d="M3 20h18M5 20V11a2 2 0 0 1 4 0v9M10 20V8a2 2 0 0 1 4 0v12M15 20v-8a2 2 0 0 1 4 0v8"/>',
+  "peau": '<path d="M3 7c3-1.5 6 1.5 9 0s6-1.5 9 0M3 7v12h18V7M3 11h18M3 15h18M9 4v11"/>',
+  "dent": '<path d="M6 4c2-1 4 0 6 0s4-1 6 0c2 2 1 6 0 8l-1.5 8c-.3 1.5-2 1.5-2.3 0L13 14h-2l-1.2 6c-.3 1.5-2 1.5-2.3 0L6 12C5 10 4 6 6 4z"/>',
   abdomen: '<path d="M7 4c-2 3-3 6-3 9a8 8 0 0 0 16 0c0-3-1-6-3-9"/><path d="M9 10c1.5 1 4.5 1 6 0M8.5 14c2 1.5 5 1.5 7 0"/><circle cx="12" cy="17.5" r=".8"/>',
   poumons: '<path d="M12 3v8M12 11c-1.5 0-2.5 1-3.5 2M12 11c1.5 0 2.5 1 3.5 2"/><path d="M9 7c-3 1-5 5-5 10 0 2 1.5 3 3 3s2-1 2-3zM15 7c3 1 5 5 5 10 0 2-1.5 3-3 3s-2-1-2-3z"/>',
 };
+// longueur réelle (en mètres) écrite dans l'unité qui convient : nm, µm, mm ou cm
+function atlasLen(m) {
+  const f = (v, u) => String(v < 10 ? Math.round(v * 10) / 10 : Math.round(v)).replace(".", ",") + " " + u;
+  return m < 1e-6 ? f(m * 1e9, "nm") : m < 1e-3 ? f(m * 1e6, "µm") : m < 0.01 ? f(m * 1e3, "mm") : f(m * 100, "cm");
+}
 // couleur d'accent de l'atlas = couleur du thème de l'utilisateur, éclaircie si besoin pour rester lisible sur le fond sombre
 function atlasAccent() {
   let hex = "#5fd4c8";
@@ -813,6 +836,8 @@ function atlasView(L, buf, model, focusName) {
       // couches propres au modèle (ex. paroi abdominale), sinon celles du thorax
       V.LC = (g.asset && g.asset.extras && g.asset.extras.couches) || null;
       V.LN = V.LC ? V.LC.names : ATL_LAYERS;
+      // échelle réelle : 1 m du modèle = « echelle » m réels (cellules et tissus agrandis)
+      V.k = (g.asset && g.asset.extras && g.asset.extras.echelle) || 1;
       if (g.asset && g.asset.extras && g.asset.extras.source)
         {
           const src = g.asset.extras.source || "",
@@ -3856,6 +3881,423 @@ function atlasView(L, buf, model, focusName) {
         ]
       }
     ],
+    "cellule": [
+      {
+        "id": "organites",
+        "n": "Le trajet d’une protéine sécrétée",
+        "steps": [
+          {
+            "t": "Le noyau",
+            "x": "L’ADN est transcrit en ARN messager, qui sort par les pores nucléaires.",
+            "view": "front",
+            "layer": 1,
+            "sel": [
+              "nucleus",
+              "nuclear envelope"
+            ]
+          },
+          {
+            "t": "Le RE rugueux",
+            "x": "Les ribosomes fixés au RE traduisent l’ARNm : la protéine entre dans le réticulum.",
+            "view": "q34",
+            "layer": 1,
+            "sel": [
+              "rough er"
+            ]
+          },
+          {
+            "t": "L’appareil de Golgi",
+            "x": "La protéine y est modifiée (glycosylation) puis triée.",
+            "view": "q34",
+            "layer": 1,
+            "sel": [
+              "golgi"
+            ]
+          },
+          {
+            "t": "Les vésicules",
+            "x": "Elles transportent la protéine jusqu’à la membrane : exocytose.",
+            "view": "q34",
+            "layer": 1,
+            "sel": [
+              "vesicles"
+            ]
+          },
+          {
+            "t": "L’énergie",
+            "x": "Les mitochondries fournissent l’ATP nécessaire.",
+            "view": "front",
+            "layer": 1,
+            "sel": [
+              "mitochondria"
+            ]
+          }
+        ]
+      }
+    ],
+    "mitochondrie": [
+      {
+        "id": "atp",
+        "n": "La production d’ATP",
+        "steps": [
+          {
+            "t": "Deux membranes",
+            "x": "Externe perméable, interne très imperméable et repliée en crêtes.",
+            "view": "front",
+            "sel": [
+              "outer membrane",
+              "inner membrane"
+            ]
+          },
+          {
+            "t": "La matrice",
+            "x": "Cycle de Krebs : il produit le NADH et le FADH2.",
+            "view": "front",
+            "layer": 1,
+            "sel": [
+              "matrix"
+            ]
+          },
+          {
+            "t": "Les crêtes",
+            "x": "La chaîne respiratoire pompe les protons dans l’espace intermembranaire.",
+            "view": "front",
+            "layer": 1,
+            "sel": [
+              "cristae"
+            ]
+          },
+          {
+            "t": "L’ATP synthase",
+            "x": "Les protons redescendent par l’ATP synthase, qui fabrique l’ATP.",
+            "view": "front",
+            "layer": 1,
+            "sel": [
+              "atp synthase"
+            ]
+          }
+        ]
+      }
+    ],
+    "neurone": [
+      {
+        "id": "influx",
+        "n": "Le trajet de l’influx nerveux",
+        "steps": [
+          {
+            "t": "Les dendrites",
+            "x": "Elles reçoivent les messages d’autres neurones, surtout sur les épines.",
+            "view": "front",
+            "sel": [
+              "dendrites"
+            ]
+          },
+          {
+            "t": "Le corps cellulaire",
+            "x": "Il intègre les signaux reçus.",
+            "view": "front",
+            "sel": [
+              "soma"
+            ]
+          },
+          {
+            "t": "Le cône d’implantation",
+            "x": "Le potentiel d’action y naît s’il atteint le seuil.",
+            "view": "front",
+            "sel": [
+              "axon hillock"
+            ]
+          },
+          {
+            "t": "Conduction saltatoire",
+            "x": "Il saute de nœud de Ranvier en nœud de Ranvier, sous la myéline.",
+            "view": "front",
+            "sel": [
+              "ranvier",
+              "myelin"
+            ]
+          },
+          {
+            "t": "Les boutons synaptiques",
+            "x": "Libération du neurotransmetteur vers la cellule suivante.",
+            "view": "front",
+            "sel": [
+              "terminal"
+            ]
+          }
+        ]
+      }
+    ],
+    "sarcomere": [
+      {
+        "id": "contraction",
+        "n": "La contraction",
+        "steps": [
+          {
+            "t": "Le sarcomère",
+            "x": "Unité contractile entre deux stries Z.",
+            "view": "side",
+            "sel": [
+              "z disc"
+            ]
+          },
+          {
+            "t": "Actine et myosine",
+            "x": "Filaments fins accrochés aux stries Z, filaments épais au centre.",
+            "view": "q34",
+            "layer": 1,
+            "sel": [
+              "actin",
+              "myosin"
+            ]
+          },
+          {
+            "t": "Le calcium",
+            "x": "Le potentiel d’action descend par les tubules T ; le réticulum libère le calcium.",
+            "view": "q34",
+            "sel": [
+              "t tubule",
+              "sarcoplasmic reticulum"
+            ]
+          },
+          {
+            "t": "Le glissement",
+            "x": "Les têtes de myosine tirent l’actine vers la ligne M : les bandes I et la zone H raccourcissent.",
+            "view": "side",
+            "layer": 1,
+            "sel": [
+              "sarcomere bands"
+            ]
+          }
+        ]
+      }
+    ],
+    "nephron": [
+      {
+        "id": "urine",
+        "n": "La formation de l’urine",
+        "steps": [
+          {
+            "t": "La filtration",
+            "x": "Le glomérule filtre le plasma dans la capsule de Bowman.",
+            "view": "front",
+            "sel": [
+              "glomerulus",
+              "bowman"
+            ]
+          },
+          {
+            "t": "Le tube proximal",
+            "x": "Il réabsorbe les deux tiers de l’eau et du sel, tout le glucose.",
+            "view": "front",
+            "sel": [
+              "pct"
+            ]
+          },
+          {
+            "t": "L’anse de Henlé",
+            "x": "Elle crée le gradient qui permet de concentrer l’urine.",
+            "view": "front",
+            "sel": [
+              "loop of henle",
+              "thick ascending"
+            ]
+          },
+          {
+            "t": "Le tube distal",
+            "x": "Réglages fins ; la macula densa contrôle le débit de filtration.",
+            "view": "front",
+            "sel": [
+              "dct",
+              "juxtaglomerular"
+            ]
+          },
+          {
+            "t": "Le tube collecteur",
+            "x": "L’ADH y règle la réabsorption d’eau.",
+            "view": "front",
+            "sel": [
+              "collecting duct"
+            ]
+          }
+        ]
+      }
+    ],
+    "alveole": [
+      {
+        "id": "hematose",
+        "n": "Les échanges gazeux",
+        "steps": [
+          {
+            "t": "Les voies",
+            "x": "Bronchiole terminale, bronchiole respiratoire, puis sacs alvéolaires.",
+            "view": "front",
+            "sel": [
+              "terminal bronchiole",
+              "respiratory bronchiole"
+            ]
+          },
+          {
+            "t": "Les alvéoles",
+            "x": "Une paroi très fine : les gaz diffusent en moins d’une seconde.",
+            "view": "q34",
+            "sel": [
+              "alveoli"
+            ]
+          },
+          {
+            "t": "Le sang",
+            "x": "Il arrive pauvre en O2 par l’artériole pulmonaire et repart oxygéné par la veinule.",
+            "view": "q34",
+            "sel": [
+              "pulmonary arteriole",
+              "pulmonary venule",
+              "alveolar capillaries"
+            ]
+          },
+          {
+            "t": "Le surfactant",
+            "x": "Fabriqué par les pneumocytes de type II.",
+            "view": "q34",
+            "sel": [
+              "type 2 pneumocytes"
+            ]
+          }
+        ]
+      }
+    ],
+    "villosite": [
+      {
+        "id": "absorption",
+        "n": "L’absorption",
+        "steps": [
+          {
+            "t": "L’épithélium",
+            "x": "Les entérocytes absorbent les nutriments.",
+            "view": "front",
+            "sel": [
+              "villus epithelium"
+            ]
+          },
+          {
+            "t": "Les capillaires",
+            "x": "Glucides et acides aminés partent vers la veine porte.",
+            "view": "front",
+            "layer": 1,
+            "sel": [
+              "villus capillaries"
+            ]
+          },
+          {
+            "t": "Le chylifère",
+            "x": "Les lipides partent dans la lymphe.",
+            "view": "front",
+            "layer": 1,
+            "sel": [
+              "lacteal"
+            ]
+          },
+          {
+            "t": "Les cryptes",
+            "x": "Elles renouvellent l’épithélium en quelques jours.",
+            "view": "front",
+            "layer": 1,
+            "sel": [
+              "crypts"
+            ]
+          }
+        ]
+      }
+    ],
+    "peau": [
+      {
+        "id": "couches",
+        "n": "Les couches de la peau",
+        "steps": [
+          {
+            "t": "L’épiderme",
+            "x": "Épithélium stratifié kératinisé, sans vaisseaux.",
+            "view": "q34",
+            "sel": [
+              "epidermis",
+              "stratum corneum"
+            ]
+          },
+          {
+            "t": "Le derme",
+            "x": "Conjonctif avec vaisseaux, nerfs et annexes.",
+            "view": "q34",
+            "sel": [
+              "dermis"
+            ]
+          },
+          {
+            "t": "L’hypoderme",
+            "x": "Tissu adipeux.",
+            "view": "q34",
+            "sel": [
+              "hypodermis"
+            ]
+          },
+          {
+            "t": "Les annexes",
+            "x": "Poil, glande sébacée, muscle arrecteur, glande sudoripare.",
+            "view": "q34",
+            "layer": 1,
+            "sel": [
+              "hair",
+              "sebaceous",
+              "sweat gland",
+              "arrector"
+            ]
+          }
+        ]
+      }
+    ],
+    "dent": [
+      {
+        "id": "tissus",
+        "n": "Les tissus de la dent",
+        "steps": [
+          {
+            "t": "L’émail",
+            "x": "Il couvre la couronne ; il ne se répare pas.",
+            "view": "front",
+            "sel": [
+              "enamel"
+            ]
+          },
+          {
+            "t": "La dentine",
+            "x": "La masse de la dent, parcourue de tubuli.",
+            "view": "front",
+            "sel": [
+              "dentin"
+            ]
+          },
+          {
+            "t": "La pulpe",
+            "x": "Tissu vivant avec vaisseaux et nerfs, ouvert à l’apex.",
+            "view": "front",
+            "layer": 2,
+            "sel": [
+              "pulp"
+            ]
+          },
+          {
+            "t": "Le parodonte",
+            "x": "Cément, ligament alvéolo-dentaire, os alvéolaire et gencive tiennent la dent.",
+            "view": "front",
+            "sel": [
+              "cementum",
+              "periodontal ligament",
+              "alveolar bone",
+              "gingiva"
+            ]
+          }
+        ]
+      }
+    ],
     poumons: [
       {
         id: "lob", n: "Lobes et arbre bronchique",
@@ -4158,8 +4600,7 @@ function atlasView(L, buf, model, focusName) {
       l.raycast = () => {};
       scene.add(l);
       measObjs.push(l);
-      const d = V.meas.pts[0].distanceTo(V.meas.pts[1]) * 100;
-      $("atmeas").innerHTML = '<span class="atml">' + String(d < 10 ? d.toFixed(1) : Math.round(d)).replace(".", ",") + " cm</span>";
+      $("atmeas").innerHTML = '<span class="atml">' + atlasLen(V.meas.pts[0].distanceTo(V.meas.pts[1]) * (V.k || 1)) + "</span>";
     } else $("atmeas").innerHTML = "";
     need();
   }
@@ -4406,9 +4847,12 @@ function atlasView(L, buf, model, focusName) {
     // échelle : exacte à la profondeur du point visé
     const d = V.cam.position.distanceTo(controls.target),
       ppm = V.ortho ? h / ((camO.top - camO.bottom) / camO.zoom) : h / (2 * d * Math.tan(T.MathUtils.degToRad(camP.fov / 2))),
-      Lm = [0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2].find((s) => s * ppm >= 50) || 0.2;
+      k = V.k || 1,
+      steps = [1, 2, 5].flatMap((m) => [-9, -8, -7, -6, -5, -4, -3, -2, -1].map((e) => m * 10 ** e)).sort((a, b) => a - b),
+      Lr = steps.find((s) => (s / k) * ppm >= 50) || 0.2,
+      Lm = Lr / k;
     $("atscale").firstChild.style.width = Math.round(Lm * ppm) + "px";
-    $("atscale").lastChild.textContent = Lm < 0.01 ? Math.round(Lm * 1000) + " mm" : Math.round(Lm * 100) + " cm";
+    $("atscale").lastChild.textContent = atlasLen(Lr);
     gizmo();
   }
   // ---------- boussole anatomique : 6 directions qui suivent la caméra, touchables ----------
