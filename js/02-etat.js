@@ -34,8 +34,10 @@ const COL = ["#8c2f39", "#2f5d62", "#6b4e71", "#a0642a", "#4f6f3a", "#355c8a"],
     "#a8671c",
     "#6b6f2a",
   ];
-const M = (id) => S.mat.find((m) => m.id === id) || { nom: "?", couleur: "#888" },
-  CH = (id) => S.chap.find((c) => c.id === id) || { titre: "?" },
+const M = (id) => S.mat.find((m) => m.id === id) || (id === "atlas3d" ? { id: "atlas3d", nom: "Anatomie 3D", couleur: "#2a9d8f" } : { nom: "?", couleur: "#888" }),
+  CH = (id) =>
+    S.chap.find((c) => c.id === id) ||
+    (String(id).startsWith("atl:") ? { id, mid: "atlas3d", titre: "Atlas « " + ((typeof ATL != "undefined" && ATL.models.find((m) => "atl:" + m.id == id)) || { titre: id.slice(4) }).titre + " »" } : { titre: "?" }),
   mof = (x) => M(CH(x.ch).mid);
 const svg =
   "data:image/svg+xml;utf8," +

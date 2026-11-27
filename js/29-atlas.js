@@ -329,6 +329,7 @@ const ATI = {
   tr: '<rect x="4" y="4" width="11" height="11" rx="2"/><rect x="9" y="9" width="11" height="11" rx="2" stroke-dasharray="2 2"/>',
   mes: '<path d="m4 16 12-12 4 4L8 20z"/><path d="m8 12 2 2M11 9l2 2M14 6l2 2"/>',
   med: '<path d="M12 4c-3 0-5 2-5 5v6c0 3 2 5 5 5s5-2 5-5V9c0-3-2-5-5-5z"/><path d="M7 12h10M12 4v16" stroke-dasharray="2 2"/>',
+  schema: '<rect x="3" y="4" width="12" height="16" rx="2"/><circle cx="8" cy="9" r="1.6"/><circle cx="10" cy="15" r="1.6"/><path d="M18 8h3M18 12h3M18 16h3"/>',
   anim: '<path d="M3 12h3l2-5 4 10 3-7 2 2h4"/>',
   tour: '<path d="M5 20V5M5 5h11l-2 3 2 3H5"/><circle cx="17" cy="18" r="2"/>',
   hb: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/><path d="M7 12h2l1.5-2 2 4 1.5-2h3"/>',
@@ -397,6 +398,7 @@ async function atlasOpen(id, focusName, overlay) {
     dock("vues", "Vues", ' data-x="1"') +
     dock("lab", "Étiquettes", ' data-y="1" class="on"') +
     dock("pres", "Présentation", ' data-y="1"') +
+    dock("schema", "Schéma", ' data-x="1"') +
     dock("quiz", "Quiz") +
     dock("more", "Plus") +
     "</div>" +
@@ -616,7 +618,7 @@ function atlasView(L, buf, model, focusName) {
   }
   function draw() {
     if (outline) outline.selectedObjects = [...V.sels].map((p) => p.mesh);
-    const busy = V.moving || V.anim || FADE || V.breath.on || V.hb.on || V.path || V.pres || V.keys.size;
+    const busy = V.moving || V.mv || V.anim || FADE || V.breath.on || V.hb.on || V.path || V.pres || V.keys.size;
     const useFx = composer && !busy && !V.fxFail && (V.ao || (outline && V.sels.size));
     if (useFx) {
       try {
@@ -654,7 +656,7 @@ function atlasView(L, buf, model, focusName) {
   function perfTick(t0, dt) {
     if (V.qMode != "auto" || V.q.lvl >= 3) return;
     // on mesure seulement pendant un mouvement continu (rotation, animation)
-    if (!(V.moving || V.anim || V.breath.on || V.hb.on || V.path || V.pres || FADE)) return;
+    if (!(V.moving || V.mv || V.anim || V.breath.on || V.hb.on || V.path || V.pres || FADE)) return;
     V.q.ema = V.q.ema * 0.9 + dt * 1000 * 0.1;
     if (++V.q.n > 20 && V.q.ema > 34) {
       V.q.n = 0;
@@ -727,6 +729,7 @@ function atlasView(L, buf, model, focusName) {
   }
   function colorOf(p) {
     if (p.meta.systeme == "zone") return ATL.zoneCol[p.meta.fiche] || ATL.colors.zone;
+    if (V.grp) return V.grp.of.get(p) ?? 0x3a3f47; // colorer par innervation / vascularisation
     if (p.meta.col) return parseInt(String(p.meta.col).replace("#", ""), 16); // couleur propre (sclère, iris, cellules…)
     if (!V.real) return ATL.colors[p.meta.systeme] || 0xcccccc;
     const base = ATL_REAL.fiche[p.meta.fiche] ?? ATL_REAL.sys[p.meta.systeme] ?? 0xcccccc,
@@ -891,11 +894,12 @@ function atlasView(L, buf, model, focusName) {
       V.present = present;
       dk("med").hidden = !present.has("zone");
       // la respiration n'a de sens que s'il y a des côtes à animer
-      dk("anim").hidden = !(breathKind() || hbOk() || pathsOf().length);
+      dk("anim").hidden = !(breathKind() || hbOk() || pathsOf().length || movesOf().length);
       toursLoad();
       if (V.tool) toolPanel(V.tool, true);
       if (!present.has("muscle")) V.opSys = "organe";
       atlasIndexSave(model.id, V.parts, V.fiches);
+      atlasFicheSave(model.id, V.fiches);
       pinsBuild();
       vis();
       grid();
@@ -1039,6 +1043,12 @@ function atlasView(L, buf, model, focusName) {
       m.position.copy(p.base);
       m.quaternion.copy(p.q0);
       m.scale.copy(p.s0);
+      if (V.mv && V.mv.set.has(p)) {
+        const o = V.mv.loc.get(p);
+        m.position.sub(o.P).applyQuaternion(o.q).add(o.P);
+        m.quaternion.premultiply(o.q);
+        continue;
+      }
       if (V.hb.on && p.hb) {
         const k = p.hb.g == "a" ? V.hb.ka : 1 - (1 - V.hb.kv) * p.hb.w;
         m.position.sub(p.hb.C).multiplyScalar(k).add(p.hb.C);
@@ -1236,6 +1246,380 @@ function atlasView(L, buf, model, focusName) {
     toast(add.length ? add.length + " structure" + (add.length > 1 ? "s" : "") + " voisine" + (add.length > 1 ? "s" : "") + " ajoutée" + (add.length > 1 ? "s" : "") : "Aucune autre structure au contact");
     vis();
   }
+  // rapports anatomiques : structures au contact, rangées par direction (avant, arrière, haut, bas, dedans, dehors)
+  function contacts(p) {
+    const cell = Math.min(0.006, Math.max(0.0012, (V.radius || 0.4) * 0.009)),
+      key = (x, y, z) => x + "," + y + "," + z,
+      grid = new Set();
+    for (const v of samplePts(p, 2500)) {
+      const cx = Math.floor(v.x / cell), cy = Math.floor(v.y / cell), cz = Math.floor(v.z / cell);
+      for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (let k = -1; k <= 1; k++) grid.add(key(cx + i, cy + j, cz + k));
+    }
+    const box = new T.Box3().setFromObject(p.mesh).expandByScalar(cell * 2);
+    return V.parts.filter(
+      (q) => q !== p && q.meta.systeme != "zone" && box.intersectsBox(new T.Box3().setFromObject(q.mesh)) &&
+        samplePts(q, 900).some((v) => grid.has(key(Math.floor(v.x / cell), Math.floor(v.y / cell), Math.floor(v.z / cell)))),
+    );
+  }
+  function rapports(p) {
+    const el = $("atrapb");
+    if (!el) return;
+    if (el.innerHTML) return (el.innerHTML = "");
+    el.innerHTML = '<p class="atrapw">Recherche des structures au contact…</p>';
+    setTimeout(() => {
+      const qs = contacts(p),
+        G = { "En avant": [], "En arrière": [], "Au-dessus": [], "Au-dessous": [], "En dedans": [], "En dehors": [] },
+        side = Math.abs(p.c.x) > (V.ext ? V.ext.x * 0.06 : 0.01);
+      for (const q of qs) {
+        const d = q.c.clone().sub(p.c),
+          ax = Math.abs(d.x) / (p.size.x + q.size.x || 1),
+          ay = Math.abs(d.y) / (p.size.y + q.size.y || 1),
+          az = Math.abs(d.z) / (p.size.z + q.size.z || 1);
+        let g;
+        if (ay >= ax && ay >= az) g = d.y > 0 ? "Au-dessus" : "Au-dessous";
+        else if (az >= ax) g = d.z > 0 ? "En avant" : "En arrière";
+        else if (side) g = Math.abs(q.c.x) < Math.abs(p.c.x) ? "En dedans" : "En dehors";
+        else g = "En dehors";
+        G[g].push(q);
+      }
+      const rows = Object.entries(G).filter(([, l]) => l.length);
+      el.innerHTML = rows.length
+        ? '<div class="atrap"><b>Rapports</b><small>Structures au contact dans le modèle 3D (à confronter à ton cours).</small>' +
+          rows.map(([g, l]) => "<div><span>" + g + "</span><p>" + l.map((q) => '<button data-i="' + V.parts.indexOf(q) + '">' + esc(q.meta.fr) + "</button>").join("") + "</p></div>").join("") +
+          "</div>"
+        : '<p class="atrapw">Aucune structure au contact dans ce modèle.</p>';
+      el.querySelectorAll("button[data-i]").forEach((b) => (b.onclick = () => focusPart(V.parts[+b.dataset.i])));
+    }, 30);
+  }
+  // ---------- colorer par innervation ou par vascularisation (d'après les fiches) ----------
+  const GRP_PAL = [0xf94144, 0xf3722c, 0xf9c74f, 0x90be6d, 0x43aa8b, 0x4d908e, 0x577590, 0x277da1, 0x9b5de5, 0xf15bb5, 0x00bbf9, 0x00f5d4, 0xfee440, 0xb5838d, 0x6d6875, 0xe5989b];
+  const grpNorm = (t) =>
+    t.toLowerCase().replace(/\s*\(.*?\)\s*/g, " ").replace(/\b(droite?s?|gauches?)\b/g, "").replace(/\s+/g, " ").replace(/^(le|la|les|l') /, "").trim();
+  function grpKey(p, mode) {
+    const sy = p.meta.systeme;
+    if (mode == "nerf" && sy == "nerf") return grpNorm(p.meta.fr);
+    if (mode == "art" && sy == "artere") return grpNorm(p.meta.fr);
+    const f = V.fiches[p.meta.fiche];
+    if (!f) return null;
+    const re = mode == "nerf" ? /innerv/i : /vascular|irrigation|artère|artères/i;
+    const row = f.rows.find((r) => re.test(r[0]));
+    if (!row) return null;
+    const m = mode == "nerf" ? row[1].match(/\b(nerfs?|rameaux?|branches?|plexus)\b[^,;.:()]*/i) : row[1].match(/\b(art[èe]res?|tronc|branches?)\b[^,;.:()]*/i);
+    return m ? grpNorm(m[0]).replace(/^nerfs /, "nerf ").replace(/^artères /, "artère ") : null;
+  }
+  function grpBuild() {
+    if (!V.colBy) return (V.grp = null);
+    const g = new Map();
+    for (const p of V.parts) {
+      const k = grpKey(p, V.colBy);
+      if (!k) continue;
+      if (!g.has(k)) g.set(k, []);
+      g.get(k).push(p);
+    }
+    const list = [...g.entries()].sort((a, b) => b[1].length - a[1].length),
+      of = new Map();
+    list.forEach(([k, ps], i) => ps.forEach((p) => of.set(p, GRP_PAL[i % GRP_PAL.length])));
+    V.grp = { list, of };
+  }
+  function grpLegend() {
+    if (!V.grp) return "";
+    if (!V.grp.list.length) return '<p class="atgrn">Aucune fiche de ce modèle ne précise ' + (V.colBy == "nerf" ? "l’innervation" : "la vascularisation") + ".</p>";
+    return (
+      '<div class="atgrl">' +
+      V.grp.list
+        .slice(0, 24)
+        .map(([k, ps], i) => '<button data-g="' + i + '"><i style="background:#' + GRP_PAL[i % GRP_PAL.length].toString(16).padStart(6, "0") + '"></i>' + esc(k[0].toUpperCase() + k.slice(1)) + " <small>" + ps.length + "</small></button>")
+        .join("") +
+      '</div><p class="atgrn">Les structures sans information restent grises. Touche un groupe pour le sélectionner.</p>'
+    );
+  }
+  // ---------- mouvements articulaires animés : le segment distal tourne autour de l'articulation, les muscles moteurs sont surlignés ----------
+  // déclarations de fonctions : utilisables pendant le chargement du modèle (avant la fin de l'initialisation)
+  function movesData() {
+    return {
+    "membre-sup": [
+      { n: "Flexion du coude", d: "Muscles brachial, biceps et brachio-radial (nerfs musculo-cutané et radial).", f: "humerus", at: "min", ax: "x", deg: -125, agon: ["brachialis", "biceps brachii", "brachioradialis"] },
+      { n: "Abduction de l’épaule", d: "Deltoïde (nerf axillaire) et supra-épineux (nerf suprascapulaire).", f: "humerus", at: "max", ax: "z", deg: 85, lat: 1, agon: ["deltoid", "supraspinatus"] },
+      { n: "Flexion du poignet", d: "Fléchisseurs radial et ulnaire du carpe, long palmaire.", f: "radius", at: "min", ax: "x", deg: -65, agon: ["flexor carpi radialis", "flexor carpi ulnaris", "palmaris longus"] },
+    ],
+    main: [{ n: "Flexion du poignet", d: "Fléchisseurs radial et ulnaire du carpe, long palmaire.", f: "radius", at: "min", ax: "x", deg: -65, agon: ["flexor carpi radialis", "flexor carpi ulnaris", "palmaris longus"] }],
+    epaule: [{ n: "Abduction de l’épaule", d: "Deltoïde (nerf axillaire) et supra-épineux (nerf suprascapulaire).", f: "humerus", at: "max", ax: "z", deg: 85, lat: 1, agon: ["deltoid", "supraspinatus"] }],
+    "membre-inf": [
+      { n: "Flexion de la hanche", d: "Ilio-psoas (plexus lombal, nerf fémoral), droit fémoral, sartorius.", f: "femur", at: "max", ax: "x", deg: -80, gap: 0.05, agon: ["iliacus", "psoas major", "quadriceps", "sartorius"] },
+      { n: "Flexion du genou", d: "Ischio-jambiers (nerf ischiatique), gastrocnémien.", f: "femur", at: "min", ax: "x", deg: 110, agon: ["hamstrings", "triceps surae"] },
+      { n: "Flexion plantaire", d: "Triceps sural (nerf tibial).", f: "tibia", at: "min", ax: "x", deg: 35, agon: ["triceps surae"] },
+    ],
+    genou: [{ n: "Flexion du genou", d: "Ischio-jambiers (nerf ischiatique), gastrocnémien, poplité.", f: "femur", at: "min", ax: "x", deg: 110, agon: ["hamstrings", "triceps surae", "deep posterior leg"] }],
+    bouche: [{ n: "Ouverture de la bouche", d: "Muscles sus-hyoïdiens et ptérygoïdiens latéraux ; la mandibule tourne puis glisse en avant.", f: "tmj", at: "mid", ax: "x", deg: 22, jaw: 1, agon: ["suprahyoid"] }],
+  };
+  }
+  function movesOf() {
+    return movesData()[model.id] || [];
+  }
+  function mvStart(M) {
+    mvStop(true);
+    V.breath.on && breathStop();
+    V.hb.on && hbStop();
+    V.path && pathStop(true);
+    pose();
+    // tout se calcule dans l'espace du monde (le modèle peut être tourné), puis dans le repère de chaque structure
+    const wb = (p) => new T.Box3().setFromObject(p.mesh),
+      ref = V.parts.filter((p) => p.meta.fiche == M.f);
+    if (!ref.length) return toast("Structure de référence absente de ce modèle.");
+    const bx = new T.Box3();
+    ref.forEach((p) => bx.union(wb(p)));
+    const P = bx.getCenter(new T.Vector3()),
+      H = bx.max.y - bx.min.y;
+    if (M.at == "min") P.y = bx.min.y + H * 0.03;
+    if (M.at == "max") P.y = bx.max.y - H * 0.04;
+    const side = Math.sign(P.x) || 1,
+      lowY = P.y - (M.gap || 0.004) * (V.radius || 1),
+      ctr = (p) => wb(p).getCenter(new T.Vector3());
+    let moving;
+    if (M.jaw) moving = V.parts.filter((p) => p.meta.fiche == "mandible" || (/inférieure/.test(p.meta.fr) && /incisive|canine|molaire/i.test(p.meta.fr)) || (p.meta.fiche == "dental nerves" && /inférieur/.test(p.meta.fr)));
+    else
+      moving = V.parts.filter((p) => {
+        const c = ctr(p);
+        return c.y < lowY && (!M.lat || Math.abs(c.x) > Math.abs(P.x) * 0.92);
+      });
+    if (!moving.length) return;
+    const axis = new T.Vector3(M.ax == "x" ? 1 : 0, M.ax == "y" ? 1 : 0, M.ax == "z" ? 1 : 0),
+      ang = T.MathUtils.degToRad(M.deg) * (M.lat ? side : 1),
+      loc = new Map(),
+      iq = new T.Quaternion();
+    for (const p of moving) {
+      const par = p.mesh.parent;
+      par.updateWorldMatrix(true, false);
+      par.getWorldQuaternion(iq);
+      loc.set(p, { P: par.worldToLocal(P.clone()), a: axis.clone().applyQuaternion(iq.clone().invert()).normalize(), q: new T.Quaternion() });
+    }
+    V.mv = { M, ang, loc, set: new Set(moving), t0: performance.now() };
+    const ag = V.parts.filter((p) => M.agon.includes(p.meta.fiche));
+    V.sels = new Set(ag);
+    V.sel = null;
+    materials();
+    mvBar();
+    dockState();
+  }
+  function mvTick(now) {
+    const m = V.mv,
+      s = (1 - Math.cos(((now - m.t0) / 3200) * Math.PI * 2)) / 2;
+    for (const o of m.loc.values()) o.q.setFromAxisAngle(o.a, m.ang * s);
+    pose();
+  }
+  function mvStop(quiet) {
+    if (!V.mv) return;
+    V.mv = null;
+    pose();
+    need();
+    bar(null);
+    dockState();
+    if (!quiet && V.tool == "anim") toolPanel("anim", true);
+  }
+  function mvBar() {
+    bar(
+      '<div class="attour"><small>Mouvement</small><b>' + esc(V.mv.M.n) + "</b><p>" + esc(V.mv.M.d) + " Les muscles moteurs sont surlignés.</p></div>" +
+        '<div class="atanb"><button id="atmvx">Arrêter</button></div>',
+    );
+    $("atmvx").onclick = () => mvStop();
+  }
+  // ---------- défilement des coupes comme au scanner : la liste des structures coupées suit le curseur ----------
+  function cutList() {
+    const el = $("atcutl");
+    if (!el) return;
+    const a = V.clip.axis;
+    if (!a) return (el.innerHTML = "");
+    const lvl = V.clip.plane.constant,
+      bb = new T.Box3(),
+      hit = V.parts.filter((p) => p.mesh.visible && p.meta.systeme != "zone" && (bb.setFromObject(p.mesh), bb.min[a] <= lvl && bb.max[a] >= lvl));
+    const lab = { y: "Niveau", z: "Plan frontal", x: "Plan sagittal" }[a];
+    el.innerHTML =
+      '<p class="atlbl2" style="margin:10px 0 6px">' + lab + " : " + hit.length + " structure" + (hit.length > 1 ? "s" : "") + " coupée" + (hit.length > 1 ? "s" : "") + "</p>" +
+      '<div class="atcutc">' +
+      hit
+        .sort((x, y) => Object.keys(ATL.sysFr).indexOf(x.meta.systeme) - Object.keys(ATL.sysFr).indexOf(y.meta.systeme))
+        .slice(0, 40)
+        .map((p) => '<button data-i="' + V.parts.indexOf(p) + '"><i style="background:#' + colorOf(p).toString(16).padStart(6, "0") + '"></i>' + esc(p.meta.fr) + "</button>")
+        .join("") +
+      (hit.length > 40 ? "<small>… et " + (hit.length - 40) + " autres</small>" : "") +
+      "</div>";
+    el.querySelectorAll("button[data-i]").forEach((b) => (b.onclick = () => (scanStop(), focusPart(V.parts[+b.dataset.i]))));
+  }
+  let scanT = 0;
+  function scanStop() {
+    if (!V.scan) return;
+    cancelAnimationFrame(V.scan.raf);
+    V.scan = null;
+    const b = $("atscan");
+    if (b) b.textContent = "▶ Défiler";
+  }
+  function scanStart() {
+    if (!V.clip.axis) {
+      V.clip.axis = "y";
+      V.clip.pos = 100;
+      toolPanel("cut", true);
+    }
+    const t0 = performance.now(),
+      from = V.clip.pos > -90 ? V.clip.pos : 100,
+      dur = ((from + 100) / 200) * 14000;
+    V.scan = { raf: 0 };
+    const b = $("atscan");
+    if (b) b.textContent = "■ Arrêter";
+    const step = (now) => {
+      if (!V.scan || !V.alive) return;
+      const u = Math.min(1, (now - t0) / Math.max(dur, 1));
+      V.clip.pos = Math.round(from - u * (from + 100));
+      if ($("atcp")) $("atcp").value = V.clip.pos;
+      clip();
+      need();
+      if (now - scanT > 260) ((scanT = now), cutList());
+      if (u < 1) V.scan.raf = requestAnimationFrame(step);
+      else scanStop();
+    };
+    V.scan.raf = requestAnimationFrame(step);
+  }
+  // ---------- schéma à compléter : la vue actuelle avec des numéros, à imprimer ou à garder, et son corrigé ----------
+  function schemaParts() {
+    if (V.sels.size >= 2) return [...V.sels];
+    const cw = canvas.clientWidth,
+      ch = canvas.clientHeight,
+      seen = new Set(),
+      out = [];
+    const cand = V.parts
+      .filter((p) => p.mesh.visible && !p.zone && p.mesh.material.opacity > 0.3)
+      .map((p) => {
+        const b = new T.Box3().setFromObject(p.mesh),
+          xy = proj(b.getCenter(new T.Vector3()), cw, ch);
+        return { p, xy, s: p.size.x * p.size.y + p.size.y * p.size.z + p.size.x * p.size.z };
+      })
+      .filter((o) => o.xy && o.xy[0] > 30 && o.xy[0] < cw - 30 && o.xy[1] > 30 && o.xy[1] < ch - 30)
+      .sort((a, b) => b.s - a.s);
+    for (const o of cand) {
+      const k = o.p.meta.fiche || o.p.meta.fr;
+      if (seen.has(k) || out.some((q) => Math.hypot(q.xy[0] - o.xy[0], q.xy[1] - o.xy[1]) < 34)) continue;
+      seen.add(k);
+      out.push(o);
+      if (out.length >= 12) break;
+    }
+    return out.map((o) => o.p);
+  }
+  function schemaSheet() {
+    const list = schemaParts();
+    if (list.length < 2) return toast("Affiche au moins deux structures (ou sélectionnes-en plusieurs).");
+    const keep = V.sels;
+    V.sels = new Set();
+    materials();
+    draw();
+    const W = canvas.width,
+      H = canvas.height,
+      sc = Math.min(1, 1100 / W),
+      iw = Math.round(W * sc),
+      ih = Math.round(H * sc),
+      colW = Math.round(iw * 0.42),
+      pad = 28,
+      mk = (key) => {
+        const c = document.createElement("canvas");
+        c.width = iw + colW + pad * 3;
+        c.height = Math.max(ih, 120 + list.length * 46) + pad * 2 + 40;
+        const g = c.getContext("2d");
+        g.fillStyle = "#ffffff";
+        g.fillRect(0, 0, c.width, c.height);
+        g.fillStyle = "#0e141d";
+        g.fillRect(pad, pad + 40, iw, ih);
+        g.drawImage(canvas, pad, pad + 40, iw, ih);
+        g.fillStyle = "#111";
+        g.font = "700 22px Inter, sans-serif";
+        g.textBaseline = "alphabetic";
+        g.fillText((key ? "Corrigé · " : "Schéma à compléter · ") + model.titre, pad, pad + 22);
+        const cw = canvas.clientWidth,
+          ch = canvas.clientHeight,
+          k = iw / cw,
+          R = Math.max(12, Math.round(iw / 60));
+        list.forEach((p, i) => {
+          const b = new T.Box3().setFromObject(p.mesh),
+            xy = proj(b.getCenter(new T.Vector3()), cw, ch);
+          if (!xy) return;
+          const x = pad + xy[0] * k,
+            y = pad + 40 + xy[1] * k;
+          g.beginPath();
+          g.arc(x, y, R, 0, Math.PI * 2);
+          g.fillStyle = "#ffd33d";
+          g.fill();
+          g.lineWidth = Math.max(2, R / 6);
+          g.strokeStyle = "#111";
+          g.stroke();
+          g.fillStyle = "#111";
+          g.font = "700 " + Math.round(R * 1.1) + "px Inter, sans-serif";
+          g.textAlign = "center";
+          g.textBaseline = "middle";
+          g.fillText(String(i + 1), x, y + 1);
+        });
+        g.textAlign = "left";
+        g.textBaseline = "alphabetic";
+        const x0 = pad * 2 + iw;
+        list.forEach((p, i) => {
+          const y = pad + 80 + i * 46;
+          g.fillStyle = "#111";
+          g.font = "700 17px Inter, sans-serif";
+          g.fillText(i + 1 + ".", x0, y);
+          if (key) {
+            g.font = "500 16px Inter, sans-serif";
+            g.fillStyle = "#1d4ed8";
+            g.fillText(p.meta.fr.length > 46 ? p.meta.fr.slice(0, 45) + "…" : p.meta.fr, x0 + 30, y);
+          } else {
+            g.strokeStyle = "#999";
+            g.lineWidth = 1;
+            g.beginPath();
+            g.moveTo(x0 + 30, y + 4);
+            g.lineTo(x0 + colW, y + 4);
+            g.stroke();
+          }
+        });
+        g.font = "500 12px Inter, sans-serif";
+        g.fillStyle = "#888";
+        g.fillText("MedRevise · atlas 3D", pad, c.height - 14);
+        return c;
+      };
+    const blank = mk(false),
+      corr = mk(true);
+    V.sels = keep;
+    materials();
+    const dl = (c, n) => {
+      const a = document.createElement("a");
+      a.href = c.toDataURL("image/png");
+      a.download = n + ".png";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    };
+    const box = $("attool");
+    V.schema = { blank, corr, list };
+    toolPanel("schema");
+  }
+  function schemaPaint(box) {
+    const S2 = V.schema;
+    if (!S2) return (box.innerHTML = "");
+    box.innerHTML =
+      '<img class="atschi" alt="Schéma à compléter" src="' + S2.blank.toDataURL("image/jpeg", 0.8) + '">' +
+      '<p class="atnote">' + S2.list.length + " structures numérotées. Télécharge le schéma pour l’imprimer ou le compléter, et le corrigé à part.</p>" +
+      '<div class="atpb"><button class="b p" id="atschb">Télécharger le schéma</button><button class="b" id="atschc">Télécharger le corrigé</button><button class="b" id="atschf">' + icn("cards") + " En faire des flashcards</button></div>";
+    const dl = (c, n) => {
+      const a = document.createElement("a");
+      a.href = c.toDataURL("image/png");
+      a.download = n + ".png";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    };
+    const nm = "Schéma " + model.titre;
+    $("atschb").onclick = () => dl(S2.blank, nm);
+    $("atschc").onclick = () => dl(S2.corr, nm + " - corrigé");
+    $("atschf").onclick = () => {
+      V.sels = new Set(S2.list);
+      snapCards();
+      V.sels = new Set();
+    };
+  }
   function isoBar() {
     let b = $("atiso");
     if (!V.iso || V.tour) return b && b.remove();
@@ -1265,7 +1649,7 @@ function atlasView(L, buf, model, focusName) {
       tr: V.tool == "tr" || V.opac < 1,
       mes: V.meas.on,
       med: V.parts.some((p) => p.zone && p.mesh.visible),
-      anim: V.tool == "anim" || V.breath.on || V.hb.on || !!V.path,
+      anim: V.tool == "anim" || V.breath.on || V.hb.on || !!V.path || !!V.mv,
       tour: V.tool == "tour" || !!V.tour,
       lab: V.showLbl,
       quiz: !!V.quiz,
@@ -1298,6 +1682,7 @@ function atlasView(L, buf, model, focusName) {
     mes: () => measToggle(),
     quiz: () => quizMenu(),
     help: () => helpToggle(),
+    schema: () => schemaSheet(),
     ar: () => arOpen(),
   };
   document.querySelectorAll("#atdock button").forEach((b) => (b.onclick = () => ((V.moreHover = false), DOCK[b.dataset.k] && DOCK[b.dataset.k]())));
@@ -1400,7 +1785,7 @@ function atlasView(L, buf, model, focusName) {
   // ---------- fenêtres d'outils (une seule ouverte, repliable avec la flèche) ----------
   const sw = (id, label, on, hint) =>
     '<label class="atsw"><input type="checkbox" id="' + id + '"' + (on ? " checked" : "") + "><span>" + label + (hint ? "<small>" + hint + "</small>" : "") + "</span></label>";
-  const TITLES = { anim: "Animations", tour: "Parcours guidés", vues: "Vues enregistrées", struct: "Structures", disp: "Affichage", ex: "Écarter les structures", cut: "Coupe", lay: "Couches", tr: "Transparence", more: "Plus d’outils" };
+  const TITLES = { schema: "Schéma à compléter", anim: "Animations", tour: "Parcours guidés", vues: "Vues enregistrées", struct: "Structures", disp: "Affichage", ex: "Écarter les structures", cut: "Coupe", lay: "Couches", tr: "Transparence", more: "Plus d’outils" };
   const sheet = $("atsheet");
   function sheetMin(m) {
     sheet.classList.toggle("min", m);
@@ -1423,6 +1808,7 @@ function atlasView(L, buf, model, focusName) {
     dockState();
     if (V.tool == "struct") return treePaint();
     if (V.tool == "vues") return viewsPaint(box);
+    if (V.tool == "schema") return schemaPaint(box);
     if (V.tool == "anim") return animPaint(box);
     if (V.tool == "tour") return toursPaint(box);
     if (V.tool == "more") {
@@ -1452,6 +1838,9 @@ function atlasView(L, buf, model, focusName) {
       box.innerHTML =
         '<div class="atr atwrap"><span class="atlbl2">Couleurs</span><div class="atseg" id="atcol"><button data-c="sys"' + (V.real ? "" : ' class="on"') +
         '>Par système</button><button data-c="real"' + (V.real ? ' class="on"' : "") + ">Réalistes</button></div></div>" +
+        '<div class="atr atwrap"><span class="atlbl2">Colorer par</span><div class="atseg" id="atcby">' +
+        [["", "Rien"], ["nerf", "Innervation"], ["art", "Vascularisation"]].map((q) => '<button data-b="' + q[0] + '"' + ((V.colBy || "") == q[0] ? ' class="on"' : "") + ">" + q[1] + "</button>").join("") +
+        "</div></div>" + grpLegend() +
         '<div class="atr atwrap"><span class="atlbl2">Qualité</span><div class="atseg" id="atqual">' +
         [["auto", "Automatique"], ["high", "Haute"], ["eco", "Économie"]].map((q) => '<button data-q="' + q[0] + '"' + (V.qMode == q[0] ? ' class="on"' : "") + ">" + q[1] + "</button>").join("") +
         "</div></div>" +
@@ -1472,6 +1861,27 @@ function atlasView(L, buf, model, focusName) {
             if (V.qMode == "eco") qualityApply(2, true);
             else if (V.qMode == "high") qualityApply(0, true);
             toolPanel("disp", true);
+          }),
+      );
+      box.querySelectorAll("#atcby button").forEach(
+        (b) =>
+          (b.onclick = () => {
+            V.colBy = b.dataset.b || null;
+            grpBuild();
+            materials(true);
+            toolPanel("disp", true);
+          }),
+      );
+      box.querySelectorAll(".atgrl button").forEach(
+        (b) =>
+          (b.onclick = () => {
+            const ps = V.grp.list[+b.dataset.g][1].filter((p) => visible(p));
+            if (!ps.length) return;
+            V.sels = new Set(ps);
+            V.sel = ps[0];
+            materials();
+            panel();
+            frameParts(ps, 1.6, null, 900);
           }),
       );
       box.querySelectorAll("#atcol button").forEach(
@@ -1513,7 +1923,7 @@ function atlasView(L, buf, model, focusName) {
           .join("") +
         "</div></div>" +
         '<div class="atr" id="atcpr"' + (V.clip.axis ? "" : " hidden") + '><label for="atcp">Position</label><input id="atcp" type="range" min="-100" max="100" value="' +
-        V.clip.pos + '"></div><div class="atsws">' + sw("atcap", "Coupe pleine", V.clip.caps, "remplit la surface coupée") + "</div>" +
+        V.clip.pos + '"></div><div class="atpb"><button class="b" id="atscan">' + (V.scan ? "■ Arrêter" : "▶ Défiler") + '</button><small class="atscn">comme au scanner, de haut en bas</small></div><div id="atcutl"></div><div class="atsws">' + sw("atcap", "Coupe pleine", V.clip.caps, "remplit la surface coupée") + "</div>" +
         (cutPresets().length
           ? '<details class="atpre"' + (V.preOpen ? " open" : "") + '><summary>Coupes de référence</summary><div class="atprel">' +
             cutPresets().map((c, i) => '<button data-i="' + i + '"><b>' + esc(c.n) + "</b>" + (c.d ? "<small>" + esc(c.d) + "</small>" : "") + "</button>").join("") +
@@ -1577,6 +1987,8 @@ function atlasView(L, buf, model, focusName) {
           box.querySelectorAll(".atcax button").forEach((x) => x.classList.toggle("on", x === b));
           $("atcpr").hidden = !V.clip.axis;
           clip();
+          scanStop();
+          cutList();
         }),
     );
     if ($("atcap"))
@@ -1587,8 +1999,14 @@ function atlasView(L, buf, model, focusName) {
     if ($("atcp"))
       $("atcp").oninput = (e) => {
         V.clip.pos = +e.target.value;
+        scanStop();
         clip();
+        clearTimeout(V.cutLT);
+        V.cutLT = setTimeout(cutList, 120);
       };
+    if ($("atscan")) $("atscan").onclick = () => (V.scan ? scanStop() : scanStart());
+    if (V.tool == "cut") cutList();
+
     box.querySelectorAll("#atexd button").forEach(
       (b) =>
         (b.onclick = () => {
@@ -2024,6 +2442,7 @@ function atlasView(L, buf, model, focusName) {
     B.ready = true;
   }
   function breathStart() {
+    V.mv && mvStop(true);
     if (V.hb.on) hbStop();
     if (!V.breath.ready) breathSetup();
     // cage thoracique : on garde nettes les structures qui bougent, le reste devient transparent
@@ -2285,7 +2704,7 @@ function atlasView(L, buf, model, focusName) {
         })
         .join("") +
       '<div class="atpb atpa"><button class="b" id="atiso1">Isoler' + (V.sels.size > 1 ? " la sélection" : "") +
-      '</button><button class="b" id="atnei">Voir les voisines</button><button class="b" id="atmul">' + (V.multi ? "✓ Sélection multiple" : "＋ Sélectionner d’autres") +
+      '</button><button class="b" id="atrap">Rapports</button><button class="b" id="atnei">Voir les voisines</button><button class="b" id="atmul">' + (V.multi ? "✓ Sélection multiple" : "＋ Sélectionner d’autres") +
       '</button><button class="b" id="atorb">Tourner autour</button>' +
       (V.sels.size > 1 ? '<button class="b p" id="atcmp">' + atIco("cmp") + " Comparer</button>" : "") +
       "</div>" +
@@ -2293,6 +2712,7 @@ function atlasView(L, buf, model, focusName) {
         ? '<p class="atpd">' + linkText(f.desc, p) + "</p><dl>" + f.rows.map((r) => "<dt>" + esc(r[0]) + "</dt><dd>" + linkText(r[1], p) + "</dd>").join("") + "</dl>" +
           (f.note ? '<div class="atpn"><b>À retenir</b>' + linkText(f.note, p) + "</div>" : "")
         : '<p class="atpd">Pas encore de fiche pour cette structure.</p>') +
+      '<div id="atrapb"></div>' +
       '<small class="atpe">' + esc(p.meta.en || "") + '</small><div class="atpb">' +
       (f ? '<button class="b p" id="atfc">' + icn("cards") + " Créer des flashcards</button>" : "") +
       '<button class="b" id="atsnap">' + icn("image") + " Flashcard image" + (V.sels.size > 1 ? " (" + V.sels.size + ")" : "") + "</button>" +
@@ -2320,6 +2740,7 @@ function atlasView(L, buf, model, focusName) {
     };
     $("atorb").onclick = () => orbitOn(p);
     pan.querySelectorAll(".atdet").forEach((b) => (b.onclick = () => (V.overlay ? atlasOpen(b.dataset.m, b.dataset.f, true) : atlasGo(b.dataset.m, b.dataset.f))));
+    $("atrap").onclick = () => rapports(p);
     // voisines : on isole la sélection puis on ajoute les structures à son contact
     $("atnei").onclick = () => {
       isolate(V.sels);
@@ -2757,6 +3178,7 @@ function atlasView(L, buf, model, focusName) {
     $("athbx").onclick = hbStop;
   }
   function hbStart() {
+    V.mv && mvStop(true);
     if (V.breath.on) breathStop();
     if (V.path) pathStop();
     if (!V.hb.ready) hbSetup();
@@ -2876,6 +3298,7 @@ function atlasView(L, buf, model, focusName) {
   }
   const wc = (ps) => ps.reduce((v, p) => v.add(new T.Box3().setFromObject(p.mesh).getCenter(new T.Vector3())), new T.Vector3()).multiplyScalar(1 / ps.length);
   function pathStart(P) {
+    V.mv && mvStop(true);
     if (V.breath.on) breathStop();
     if (V.hb.on) hbStop();
     if (V.path) pathStop(true);
@@ -3012,7 +3435,25 @@ function atlasView(L, buf, model, focusName) {
         }),
     );
     box.querySelectorAll("[data-p]").forEach((b) => (b.onclick = () => pathStart(pathsOf()[+b.dataset.p])));
+    if (movesOf().length) {
+      const d = document.createElement("div");
+      d.innerHTML =
+        '<p class="atlbl2" style="margin:14px 0 6px">Mouvements</p><div class="atprel">' +
+        movesOf().map((M, i) => '<button data-m="' + i + '"' + (V.mv && V.mv.M === M ? ' class="on"' : "") + "><b>" + (V.mv && V.mv.M === M ? "■ " : "▶ ") + esc(M.n) + "</b><small>" + esc(M.d) + "</small></button>").join("") +
+        "</div>";
+      box.appendChild(d);
+      box.querySelectorAll("[data-m]").forEach(
+        (b) =>
+          (b.onclick = () => {
+            const M = movesOf()[+b.dataset.m];
+            V.mv && V.mv.M === M ? mvStop() : mvStart(M);
+            if (matchMedia("(max-width: 760px), (orientation: landscape) and (max-height: 500px)").matches) toolPanel("anim");
+            else animPaint(box);
+          }),
+      );
+    }
   }
+
 
   // ---------- parcours guidés : intégrés (rédigés) + créés par l'administrateur (parcours.json, lisible par les membres) ----------
   const TOURS = {
@@ -5006,6 +5447,10 @@ function atlasView(L, buf, model, focusName) {
     }
     if (FADE) fadeTick(now);
     if (V.hb.on) hbTick(now);
+    if (V.mv) {
+      mvTick(now);
+      V.dirty = true;
+    }
     if (V.path) pathTick(now);
     if (V.breath.on) {
       V.breath.s = (1 - Math.cos(((now - V.breath.t0) / 4500) * Math.PI * 2)) / 2;
@@ -5177,6 +5622,85 @@ function atlasChapterForm(cards, kind) {
 // ---------- « Voir en 3D » : liens vers l'atlas dans les livrets et les corrections de QCM ----------
 // La liste des noms est gardée sur l'appareil à chaque ouverture d'un modèle (rien n'est envoyé ailleurs).
 const ATL_PRIO = ["coeur", "poumons", "thorax"];
+
+// ---------- QCM d'anatomie générés à partir des fiches des atlas ouverts (mélangés aux QCM dans Réviser) ----------
+// Les fiches de chaque atlas ouvert sont gardées sur l'appareil (mr_atlas_fic) ; les questions ne touchent pas aux statistiques des UE.
+const ATL_QLAB = [
+  [/^innervation/i, "Innervation"],
+  [/^action/i, "Action"],
+  [/^origine/i, "Origine"],
+  [/^terminaison/i, "Terminaison"],
+  [/^insertions?/i, "Insertions"],
+  [/^vascularisation/i, "Vascularisation"],
+  [/^r[ôo]les?$/i, "Rôle"],
+  [/^fonctions?$/i, "Fonction"],
+  [/^trajet/i, "Trajet"],
+  [/^territoire/i, "Territoire"],
+  [/^branches/i, "Branches"],
+];
+function atlasFicheSave(id, fiches) {
+  try {
+    const all = JSON.parse(localStorage.getItem("mr_atlas_fic") || "{}"),
+      out = {};
+    Object.entries(fiches || {}).forEach(([k, f]) => {
+      const rows = (f.rows || []).filter((r) => ATL_QLAB.some(([re]) => re.test(r[0])) && r[1] && r[1].length < 220);
+      if (rows.length) out[k] = { t: f.titre, r: rows };
+    });
+    all[id] = out;
+    localStorage.setItem("mr_atlas_fic", JSON.stringify(all));
+  } catch (e) {}
+}
+function atlasQcmCount() {
+  try {
+    const all = JSON.parse(localStorage.getItem("mr_atlas_fic") || "{}");
+    return Object.values(all).reduce((n, m) => n + Object.values(m).reduce((k, f) => k + f.r.length, 0), 0);
+  } catch (e) {
+    return 0;
+  }
+}
+function atlasQcmGen(n) {
+  let all = {};
+  try {
+    all = JSON.parse(localStorage.getItem("mr_atlas_fic") || "{}");
+  } catch (e) {}
+  const pool = [],
+    byLab = {};
+  Object.entries(all).forEach(([mid, fs]) =>
+    Object.entries(fs).forEach(([k, f]) =>
+      f.r.forEach((r) => {
+        const L = (ATL_QLAB.find(([re]) => re.test(r[0])) || [, r[0]])[1];
+        const it = { mid, k, t: f.t, L, x: r[1] };
+        pool.push(it);
+        (byLab[L] = byLab[L] || []).push(it);
+      }),
+    ),
+  );
+  const seenF = new Set(),
+    out = [],
+    st = (S.atq && S.atq.g) || {};
+  // les questions ratées reviennent plus souvent
+  const w = (it) => Math.random() + ((st[it.mid + "|" + it.k + "|" + it.L] || 0) > 0 ? 0.8 : 0);
+  for (const it of pool.map((it) => [w(it), it]).sort((a, b) => b[0] - a[0]).map((x) => x[1])) {
+    if (out.length >= n) break;
+    if (seenF.has(it.k)) continue;
+    const others = [...new Set((byLab[it.L] || []).filter((o) => o.k !== it.k && o.x !== it.x).map((o) => o.x))];
+    if (others.length < 3) continue;
+    seenF.add(it.k);
+    const d = others.sort(() => Math.random() - 0.5).slice(0, 3),
+      mt = (ATL.models.find((m) => m.id == it.mid) || { titre: it.mid }).titre;
+    out.push({
+      id: "atl:" + it.mid + ":" + it.k + ":" + it.L,
+      ch: "atl:" + it.mid,
+      gen: 1,
+      gk: it.mid + "|" + it.k + "|" + it.L,
+      enonce: it.t + " : quelle proposition décrit " + ({ Action: "son action", Origine: "son origine", Terminaison: "sa terminaison", Insertions: "ses insertions", Innervation: "son innervation", Vascularisation: "sa vascularisation", Rôle: "son rôle", Fonction: "sa fonction", Trajet: "son trajet", Territoire: "son territoire", Branches: "ses branches" }[it.L] || it.L.toLowerCase()) + " ?",
+      props: [{ t: it.x, ok: true }].concat(d.map((x) => ({ t: x, ok: false }))),
+      expl: it.L + " : " + it.x + " (fiche « " + it.t + " », atlas " + mt + ").",
+    });
+  }
+  return out;
+}
+
 function atlasIndexSave(id, parts, fiches) {
   const terms = {},
     addT = (t, fr) => {

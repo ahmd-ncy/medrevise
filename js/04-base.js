@@ -321,6 +321,11 @@ const PAL = [
     save();
     render();
   },
+  saqm = (x) => {
+    S.atqmix = x != "0";
+    save();
+    render();
+  },
   scf = (x) => {
     R.cf = +x;
     render();
@@ -367,7 +372,7 @@ const PAL = [
     render();
   };
 const lab = (f) =>
-  !f ? "Tout" : f == "err" ? "Carnet d'erreurs" : f == "due" ? "QCM à revoir" : f[0] == "m" ? M(f.slice(2)).nom : CH(f.slice(2)).titre;
+  f == "atl" ? "Anatomie 3D" : !f ? "Tout" : f == "err" ? "Carnet d'erreurs" : f == "due" ? "QCM à revoir" : f[0] == "m" ? M(f.slice(2)).nom : CH(f.slice(2)).titre;
 function scope() {
   const k = tab == "qcm" ? "qcm" : "cards",
     cnt = (f) => {
@@ -410,6 +415,8 @@ function scope() {
     row("", "Tout mélangé") +
     (k == "qcm"
       ? row("due", "À revoir aujourd’hui (répétition espacée)", "var(--wn)") + row("err", "Carnet d’erreurs", "var(--ko)")
+      : "") +    (k == "qcm" && typeof atlasQcmCount == "function" && atlasOk() && atlasQcmCount()
+      ? '<button class="sr' + (cur === "atl" ? " on" : "") + '" style="--sc:#2a9d8f" onclick="sf(\'atl\')"><span class="sd"></span><span style="flex:1">Anatomie 3D (d’après tes atlas)</span><small>' + atlasQcmCount() + "</small></button>"
       : "") +
     S.mat.map((m) => row("m:" + m.id, ICO(m) + " " + esc(m.nom), m.couleur, m.id)).join("") +
     "</div>"

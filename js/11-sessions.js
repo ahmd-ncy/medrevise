@@ -1,5 +1,5 @@
 function intro(k) {
-  const c = pick(k).length,
+  const c = R.f == "atl" && k == "qcm" && typeof atlasQcmCount == "function" ? atlasQcmCount() : pick(k).length,
     q = k == "qcm",
     ex = R.mode == "exam",
     tm = ex ? "t" : R.tm || "n";
@@ -68,7 +68,19 @@ function intro(k) {
         R.cf ? 1 : 0,
         "scf",
       ) +
-      "<small>Tu indiques ta certitude avant de valider : l’application repère les « faux sûrs ».</small>";
+      "<small>Tu indiques ta certitude avant de valider : l’application repère les « faux sûrs ».</small>" +
+      (typeof atlasQcmCount == "function" && atlasOk() && atlasQcmCount()
+        ? '<div class="lb">QCM d’anatomie 3D</div>' +
+          chips(
+            [
+              [1, "Mélangés au sujet « Tout »"],
+              [0, "Non"],
+            ],
+            S.atqmix === false ? 0 : 1,
+            "saqm",
+          ) +
+          "<small>Questions fabriquées à partir des fiches des atlas que tu as ouverts (innervation, action, vascularisation…), environ 1 sur 5.</small>"
+        : "");
     if (!ex)
       h +=
         '<div class="lb">Chronomètre</div>' +
@@ -161,6 +173,11 @@ function start(k, list, o) {
       for (let i = 0; a.length < n && g.some((x) => x[i]); i++)
         g.forEach((x) => x[i] && a.length < n && a.push(x[i]));
     }
+  }
+  // QCM d'anatomie 3D : seuls (sujet « Anatomie 3D ») ou mélangés au sujet « Tout mélangé »
+  if (q && !list && typeof atlasQcmGen == "function" && atlasOk()) {
+    if (R.f == "atl") a = atlasQcmGen(n || 20);
+    else if (!R.f && S.atqmix !== false) a = a.concat(atlasQcmGen(Math.max(1, Math.round((n || a.length) * 0.2))));
   }
   a = shuf(a);
   if (q) a = a.map((x) => ({ ...x, props: shuf(x.props).map((p, i) => ({ ...p, l: "ABCDEFGH"[i] })) }));
@@ -438,6 +455,17 @@ function chk() {
   }
   S.act[day()] = (S.act[day()] || 0) + 1;
   R.ans.push({ q, g: R.g, pt, conf: R.conf, fsu: R.fsu, dt: Date.now() - R.tq });
+  // QCM d'anatomie générés : on retient seulement les erreurs (pour les reproposer), sans toucher aux statistiques des UE
+  if (q.gen) {
+    S.atq = S.atq || {};
+    S.atq.g = S.atq.g || {};
+    S.atq.g[q.gk] = f == 0 ? 0 : (S.atq.g[q.gk] || 0) + 1;
+    R.s += pt || 0;
+    if (R.mode == "exam") return nextQ();
+    R.v = true;
+    save();
+    return render();
+  }
   if (pt !== null) {
     const oq = S.qcm.find((x) => x.id === q.id);
     if (oq) fsRate(oq, qGrade(f, pt, R.conf));
