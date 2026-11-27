@@ -111,7 +111,7 @@ function offBtn(ch) {
 }
 // bibliothèques utiles hors connexion (le service worker les garde)
 function offLibs(atlas) {
-  const L = ["vendor/pdf.min.js", "vendor/pdf.worker.min.js"].concat(atlas ? ["vendor/three-atlas.js"] : []);
+  const L = ["vendor/pdf.min.js", "vendor/pdf.worker.min.js"].concat(atlas ? ["vendor/three-atlas-2.js"] : []);
   return Promise.all(L.map((u) => fetch(u).catch(() => null)));
 }
 async function offChap(ch, quiet) {

@@ -649,7 +649,7 @@ function atlasLib() {
   if (window.ATLAS3D) return Promise.resolve(window.ATLAS3D);
   return new Promise((ok, ko) => {
     const s = document.createElement("script");
-    s.src = "vendor/three-atlas.js";
+    s.src = "vendor/three-atlas-2.js";
     s.onload = () => (window.ATLAS3D ? ok(window.ATLAS3D) : ko(new Error("lib")));
     s.onerror = () => ko(new Error("lib"));
     document.head.appendChild(s);
@@ -891,7 +891,7 @@ function atlasView(L, buf, model, focusName) {
   // éclairage « studio » : une pièce lumineuse floutée sert de reflets (surfaces humides, vernies)
   let envTex = null;
   const envGet = () => {
-    if (envTex) return envTex;
+    if (envTex || !T.PMREMGenerator || !T.EquirectangularReflectionMapping) return envTex;
     // pièce équirectangulaire dessinée : plafonnier, deux boîtes à lumière latérales, sol sombre
     const cv = document.createElement("canvas"),
       g = cv.getContext("2d");
@@ -1199,7 +1199,7 @@ function atlasView(L, buf, model, focusName) {
       let mt = p.mesh.material;
       if (rebuild) {
         const old = mt;
-        const st = V.real && V.studio && STUDIO[sys];
+        const st = V.real && V.studio && T.MeshPhysicalMaterial && STUDIO[sys];
         mt = st
           ? new T.MeshPhysicalMaterial({ roughness: ATL_REAL.rough[sys] ?? 0.6, metalness: 0, clearcoat: st.cc, clearcoatRoughness: st.ccr, sheen: st.sh || 0, sheenRoughness: 0.6, sheenColor: 0xffe3dc, envMapIntensity: 0.5 })
           : new T.MeshStandardMaterial({ roughness: V.real ? ATL_REAL.rough[sys] ?? 0.6 : 0.65, metalness: 0, envMapIntensity: 0.35 });
