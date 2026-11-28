@@ -82,7 +82,7 @@ Object.assign(IC, {
     '<path class="df" d="M18 2H6v7a6 6 0 0 0 12 0z"/><path d="M6 9H4.500a2.500 2.500 0 0 1 0-5H6M18 9h1.500a2.500 2.500 0 0 0 0-5H18M8 22h8M12 15v7"/>',
 });
 const LOGO =
-  '<svg class="lg" viewBox="0 0 48 48" aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path stroke-width="4.200" d="M4 31h7l4.500-15L24 39l8.500-23L37 31h7"/><path stroke-width="3" opacity=".8" d="M39 5v9M34.500 9.500h9"/></svg>';
+  '<svg class="lg" viewBox="0 0 48 48" aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path stroke-width="4.4" d="M9 37V12l9 12.5 3.6-8.5 5.2 19 3.4-10L39 12v25"/></svg>';
 const ill = (n, t) =>
   '<div class="ill"><svg viewBox="0 0 160 110" aria-hidden="true"><circle cx="80" cy="56" r="44" class="i0"/><circle cx="26" cy="30" r="5" class="i1"/><circle cx="138" cy="78" r="7" class="i1"/><path class="i2" d="M132 20l2 6 6 2-6 2-2 6-2-6-6-2 6-2zM22 74l1.500 4.500L28 80l-4.500 1.500L22 86l-1.500-4.500L16 80l4.500-1.500z"/><g class="ic" transform="translate(50 26) scale(2.500)">' +
   (IC[n] || IC.book) +

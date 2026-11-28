@@ -4,6 +4,7 @@ function stats() {
 }
 // ================= Accueil =================
 function home() {
+  if (typeof homeV2 == "function") return homeV2();
   gelTick();
   const fl = flame(),
     d = dd(),
