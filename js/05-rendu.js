@@ -42,6 +42,7 @@ function render() {
     "</span><span>MedRevise<small>" +
     esc(pn) +
     '</small></span></button>' +
+    '<span class="hact">' +
     (typeof syBadge == "function" ? syBadge() : "") +
     '<span class="fch" title="Jours d’affilée">' +
     icn("flame") +
@@ -53,7 +54,7 @@ function render() {
     (tab == "prof" || tab == "data" ? " on" : "") +
     '" onclick="go(\'prof\')" aria-label="Profil">' +
     (S.photo ? avatar(S.name) : S.name ? esc(S.name[0].toUpperCase()) : icn("user")) +
-    '</button></div></div><div class="tabs">' +
+    '</button></span></div></div><div class="tabs">' +
     TB.map(
       (t) =>
         '<button data-t="' +
@@ -96,10 +97,10 @@ function render() {
     add,
     atlas: () => (typeof atlasPage == "function" ? atlasPage() : ""),
   }[tab]();
-  // en-tête en widgets des pages principales (Cours, Flashcards, QCM, Erreurs, Planning)
-  if (typeof pageTop == "function" && !R.run && !R.id && ["cours", "cards", "qcm", "err", "plan"].includes(tab)) {
-    const pt = pageTop(tab);
-    if (pt) $("app").innerHTML = $("app").innerHTML.replace(/(<h2 class="ti"[^>]*>[\s\S]*?<\/h2>)/, '<div class="pgh">$1' + pt.sub + "</div>" + pt.tiles);
+  // en-tête propre à chaque page (paquet de cartes, salle d'examen, carnet, compte à rebours)
+  if (typeof pageHero == "function" && !R.run && !R.id && ["cards", "qcm", "err", "plan"].includes(tab)) {
+    const ph = pageHero(tab);
+    if (ph) $("app").innerHTML = $("app").innerHTML.replace(/<h2 class="ti"[^>]*>[\s\S]*?<\/h2>/, ph);
   }
   if ($("tm")) upd();
   if (tab === "cours" && R.id) pdfInit();

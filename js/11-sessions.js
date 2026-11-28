@@ -35,16 +35,18 @@ function intro(k) {
     );
   if (q) {
     h +=
-      '<div class="lb">Mode</div>' +
-      chips(
-        [
-          ["train", "" + icn("grad") + " Entraînement"],
-          ["exam", "" + icn("exam") + " Examen blanc"],
-          ["vf", "Vrai ou faux"],
-        ],
-        R.mode || "train",
-        "cm",
-      ) +
+      (typeof pageHero == "function"
+        ? ""
+        : '<div class="lb">Mode</div>' +
+          chips(
+            [
+              ["train", "" + icn("grad") + " Entraînement"],
+              ["exam", "" + icn("exam") + " Examen blanc"],
+              ["vf", "Vrai ou faux"],
+            ],
+            R.mode || "train",
+            "cm",
+          )) +
       '<div class="lb">Notation</div>' +
       chips(
         [
