@@ -66,7 +66,7 @@ function chart() {
   CHX = P.map((p) => p[0]);
   return (
     '<div class="cst"><div><small>Dernière note</small><b>' +
-    pf(last.s) +
+    pf(Math.round(last.s * 10) / 10) +
     "<small> /20</small></b></div><div><small>Moyenne</small><b>" +
     pf(f(moy)) +
     "</b></div>" +

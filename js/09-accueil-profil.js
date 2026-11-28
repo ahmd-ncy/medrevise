@@ -287,6 +287,9 @@ function prof() {
       " cartes</small>" +
       (S.photo ? '<br><button class="lnk" onclick="setPhoto(null)">Retirer la photo</button>' : "") +
       "</div></div>";
+  if (!R.ps && typeof profHome == "function") return profHome();
+  if (R.ps == "reglages")
+    return '<button class="b" onclick="go(\'prof\')">← Profil</button><h2 class="ti" style="margin-top:12px">Réglages</h2>' + prSettings();
   if (!R.ps) {
     // ---------- page d'accueil du profil ----------
     const tm = Object.values(S.tm || {}).reduce((a, b) => a + b, 0),
@@ -460,6 +463,7 @@ function prof() {
 
   } else if (sec[0] == "progres")
     body =
+      (typeof progHead == "function" ? progHead() : "") +
       '<h3>Chiffres clés</h3><div class="g">' +
       tl.map((t) => '<div class="k"><b>' + t[0] + "</b><small>" + t[1] + "</small></div>").join("") +
       '</div><h3>Courbe de mes notes</h3><div class="c" id="chbox">' +
