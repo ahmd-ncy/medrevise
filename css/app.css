@@ -4876,3 +4876,9 @@ html.atlon #md { z-index: 80; }
 #atbody .atfd circle { fill: #9db2ca; stroke: none; }
 #atbzn { font-weight: 600; color: #b5c2d0 !important; min-height: 1.3em; text-align: center; }
 @media (max-width: 700px) { #atbody { width: 70px; } }
+/* atlas : mise à jour des fichiers (admin) */
+.atupd, .atupbox { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 14px 16px; border-radius: 14px; margin: 0 0 14px; background: color-mix(in srgb, #e3b341 14%, #121a26); border: 1px solid color-mix(in srgb, #e3b341 45%, transparent); }
+.atupd > div { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 3px; }
+.atupd small, .atupbox small { color: #b5c2d0; font-size: 12.5px; }
+.atupbox { flex-direction: column; align-items: flex-start; }
+.atupd label, .atupbox label { cursor: pointer; }

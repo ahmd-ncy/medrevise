@@ -141,14 +141,73 @@ const atlasIco = (id) => '<svg viewBox="0 0 24 24" aria-hidden="true">' + (ATL_I
 ATL.files = null; // liste des fichiers en ligne (null = pas encore lue)
 async function atlasFilesLoad() {
   if (!SY.sb) return;
-  const r = await SY.sb.storage.from("atlas").list("", { limit: 100 });
+  const r = await SY.sb.storage.from("atlas").list("", { limit: 200 });
   ATL.files = r.error ? [] : r.data || [];
+  // tailles des dernières versions fabriquées : on voit tout de suite ce qui reste à envoyer
+  if (SY.role == "admin" && !ATL.expect)
+    try {
+      ATL.expect = await (await fetch("atlas-tailles.json?v=" + (typeof APPV != "undefined" ? APPV : Date.now()), { cache: "no-store" })).json();
+    } catch (e) {
+      ATL.expect = {};
+    }
   if (tab == "atlas" && !R.atl) {
     const g = $("atgal"),
-      a = $("atadm");
+      a = $("atadm"),
+      u = $("atupd");
     if (g) g.innerHTML = atlasGallery();
     if (a) a.innerHTML = atlasAdminFiles();
+    if (u) u.outerHTML = atlasUpdBar();
   }
+}
+// fichiers dont la version en ligne n'est pas la dernière fabriquée
+function atlasPending() {
+  if (!ATL.files || !ATL.expect) return [];
+  return Object.keys(ATL.expect).filter((n) => {
+    const f = ATL.files.find((x) => x.name == n);
+    return !f || ((f.metadata && f.metadata.size) || 0) != ATL.expect[n];
+  });
+}
+function atlasPendingText(L) {
+  const by = {};
+  L.forEach((n) => {
+    const id = n.replace(/(-hd)?\.glb$/, ""),
+      t = (ATL.models.find((m) => m.id == id) || { titre: id }).titre;
+    (by[t] = by[t] || []).push(/-hd\.glb$/.test(n) ? "ordinateur" : "téléphone");
+  });
+  const E = Object.entries(by).map(([t, v]) => t + " (" + v.join(", ") + ")");
+  return E.length > 6 ? E.slice(0, 5).join(", ") + " et " + (E.length - 5) + " autres atlas" : E.join(", ");
+}
+const ATL_FOLDER_INPUT = '<input type="file" webkitdirectory directory multiple hidden onchange="atlasUploadFolder(this.files)">';
+function atlasUpdBar() {
+  if (SY.role != "admin" || !ATL.expect) return '<div id="atupd"></div>';
+  const L = atlasPending();
+  if (!L.length) return '<div id="atupd"></div>';
+  return (
+    '<div id="atupd" class="atupd"><div><b>' + L.length + " fichier" + (L.length > 1 ? "s" : "") + " d’atlas à mettre à jour</b><small>" + esc(atlasPendingText(L)) + "</small></div>" +
+    '<label class="b p">Mettre à jour…' + ATL_FOLDER_INPUT + "</label></div>"
+  );
+}
+// envoi d'un dossier entier : on garde la version la plus récente de chaque fichier et on n'envoie que ce qui a changé
+async function atlasUploadFolder(files) {
+  const best = {};
+  for (const f of files || []) {
+    if (!/\.glb$/i.test(f.name)) continue;
+    const k = f.name.toLowerCase();
+    if (!best[k] || f.lastModified > best[k].lastModified) best[k] = f;
+  }
+  const todo = Object.values(best).filter((f) => {
+    const on = (ATL.files || []).find((x) => x.name == f.name.toLowerCase());
+    return !on || ((on.metadata && on.metadata.size) || 0) != f.size;
+  });
+  if (!Object.keys(best).length) return toast("Aucun fichier .glb dans ce dossier. Choisis « 1 - Atlas 3D à envoyer dans l’app » sur ton Bureau.");
+  if (!todo.length) return toast("Tout est déjà à jour ✔");
+  let ok = 0;
+  for (let i = 0; i < todo.length; i++) {
+    toast("Mise à jour " + (i + 1) + " / " + todo.length + " : " + esc(todo[i].name) + "…", 1);
+    if (await atlasUpload(null, todo[i], null, true)) ok++;
+  }
+  toast(ok + " fichier" + (ok > 1 ? "s" : "") + " mis à jour" + (ok < todo.length ? " · " + (todo.length - ok) + " en erreur" : "") + " ✔");
+  atlasFilesLoad();
 }
 const atlasHas = (id) => !ATL.files || ATL.files.some((f) => f.name == id + ".glb" || f.name == id + "-hd.glb");
 // ---------- pathologies : un atlas existant ouvert sur un parcours, les zones atteintes teintées (« les ») ----------
@@ -536,7 +595,12 @@ function atlasAdminFiles() {
       sz = ((f.metadata && f.metadata.size) || 0) / 1048576;
     return "<span>" + d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) + " · " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) + "</span><small>" + sz.toFixed(1).replace(".", ",") + " Mo</small>";
   };
+  const pend = atlasPending();
   return (
+    '<div class="atupbox"><b>' + (pend.length ? pend.length + " fichier" + (pend.length > 1 ? "s" : "") + " à mettre à jour" : "Tous les atlas sont à jour ✔") + "</b>" +
+    (pend.length ? "<small>" + esc(atlasPendingText(pend)) + "</small>" : "") +
+    '<label class="b p">Mettre à jour depuis le dossier…' + ATL_FOLDER_INPUT + "</label>" +
+    '<small>Choisis le dossier <b>« 1 - Atlas 3D à envoyer dans l’app »</b> sur ton Bureau (dans MedRevise) : l’app y cherche tous les fichiers, même dans les sous-dossiers, et n’envoie que ceux qui ont changé.</small></div>' +
     '<div class="atft">' +
     ATL.models
       .map((m) => {
@@ -568,6 +632,7 @@ function atlasPage() {
   atlasAccent();
   return (
     '<h2 class="ti">Atlas 3D</h2><p class="m atsub">Explore les structures en 3D : touche une structure pour sa fiche, écarte, coupe, fais un quiz.</p>' +
+    atlasUpdBar() +
     '<div class="atgs"><input id="atgsq" type="search" placeholder="Chercher une structure dans tous les atlas (ex. : nerf médian, mitrale…)" oninput="atlasSearchAll(this.value)" autocomplete="off"><div id="atgsr" hidden></div></div>' +
     '<div class="athub">' + atlasBody() + '<div class="athubm">' + atlasTabs() +
     '<div id="atgal" class="atgal">' + atlasGallery() + "</div></div></div>" +
@@ -6610,8 +6675,9 @@ async function atlasUpload(id, f, variant, quiet) {
   if (f.size > 20 * 1048576) return toast("Fichier trop lourd (20 Mo au plus)"), false;
   // sans variante imposée, le nom du fichier décide du modèle (thorax, coeur, poumons…) ; « hd » = version pour ordinateur
   const base = f.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""),
-    target = variant != null ? id : (ATL.models.find((m) => base.startsWith(m.id)) || {}).id,
-    hd = variant != null ? variant == "-hd" : /hd/i.test(base);
+    stem = base.replace(/\.glb$/, "").replace(/-hd$/, ""),
+    target = variant != null ? id : (ATL.models.find((m) => m.id == stem) || ATL.models.filter((m) => base.startsWith(m.id)).sort((a, b) => b.id.length - a.id.length)[0] || {}).id,
+    hd = variant != null ? variant == "-hd" : /-hd\.glb$/i.test(base);
   if (!target) return toast("« " + esc(f.name) + " » : nom inconnu (commence par thorax, coeur ou poumons)"), false;
   const name = target + (hd ? "-hd" : "") + ".glb",
     titre = (ATL.models.find((m) => m.id == target) || {}).titre || target;
