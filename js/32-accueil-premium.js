@@ -31,7 +31,7 @@ function homeV2() {
           : "Rien d’obligatoire aujourd’hui.") +
     "</p></div>" +
     '<button class="hwfl" onclick="helpShow(\'gel\')" title="Jours d’affilée' + (S.gel && S.gel.has ? " · gel disponible" : "") + '"><span class="hwfi">' + icn("flame") + "</span><b>" + fl + "</b><small>jour" + (fl > 1 ? "s" : "") + "</small>" +
-    (S.gel && S.gel.has ? '<em title="Gel de flamme disponible">❄</em>' : "") + "</button></div>";
+    (S.gel && S.gel.has ? '<em title="Gel de flamme disponible"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7M9 4l3 2 3-2M9 20l3-2 3 2M4 10.5l3.5-.5L6.3 6.6M20 13.5l-3.5.5 1.2 3.4M4 13.5l3.5.5-1.2 3.4M20 10.5l-3.5-.5 1.2-3.4"/></svg></em>' : "") + "</button></div>";
   const acc =
     SY.sb && !SY.user
       ? '<button class="hwacc" onclick="profGo(\'compte\')">' + icn("cloud") + "<span><b>Sauvegarde ton travail</b><small>Connecte-toi pour tout retrouver sur ton iPhone et ton PC.</small></span>" + icn("chev") + "</button>"

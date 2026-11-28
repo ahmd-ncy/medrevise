@@ -3,7 +3,7 @@ function list() {
   return (
     '<h2 class="ti">Cours</h2>' +
     (typeof offBar == "function" ? offBar() : "") +
-    (lc
+    (lc && !(typeof pageTop == "function")
       ? '<button class="rs" style="--sc:' +
         mof(lc).couleur +
         '" onclick="R={id:\'' +

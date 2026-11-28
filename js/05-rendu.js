@@ -96,6 +96,11 @@ function render() {
     add,
     atlas: () => (typeof atlasPage == "function" ? atlasPage() : ""),
   }[tab]();
+  // en-tête en widgets des pages principales (Cours, Flashcards, QCM, Erreurs, Planning)
+  if (typeof pageTop == "function" && !R.run && !R.id && ["cours", "cards", "qcm", "err", "plan"].includes(tab)) {
+    const pt = pageTop(tab);
+    if (pt) $("app").innerHTML = $("app").innerHTML.replace(/(<h2 class="ti"[^>]*>[\s\S]*?<\/h2>)/, '<div class="pgh">$1' + pt.sub + "</div>" + pt.tiles);
+  }
   if ($("tm")) upd();
   if (tab === "cours" && R.id) pdfInit();
   // atlas 3D : noms de structures cliquables dans les livrets et les corrections de QCM
