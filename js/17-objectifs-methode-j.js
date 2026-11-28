@@ -688,26 +688,32 @@ function plan() {
       (wk < 3 ? "" : "disabled ") +
       'onclick="PDay(' +
       (wk + 1) * 7 +
-      ')" aria-label="Semaine suivante">›</button></div><div class="wk7 wkl">' +
+      ')" aria-label="Semaine suivante">›</button></div><p class="wkh">Touche un jour pour voir son programme. Le chiffre = chapitres à travailler, la jauge = temps prévu sur tes ' + fmtM(P.cap) + ' par jour.</p><div class="wk7 wkl wk8">' +
       days
         .map((d, j) => {
           const i = wk * 7 + j,
             dt = new Date(d.d + "T12:00"),
-            n = d.rev.length + d.neu.length;
+            n = d.rev.length + d.neu.length,
+            pc = Math.min(100, (d.min / Math.max(1, P.cap)) * 100);
           return (
             '<button class="wd' +
             (i == pd ? " on" : "") +
+            (i == 0 ? " td" : "") +
             (d.min > P.cap ? " over" : "") +
+            (n ? "" : " off") +
             '" onclick="PDay(' +
             i +
             ')"><small>' +
-            (i ? dt.toLocaleDateString("fr-FR", { weekday: "short" }).replace(".", "") : "auj.") +
+            (i ? dt.toLocaleDateString("fr-FR", { weekday: "short" }).replace(".", "") : "Auj.") +
+            " " + dt.getDate() +
             "</small><b>" +
-            dt.getDate() +
-            '</b><span class="wb"><i style="height:' +
-            Math.min(100, (d.min / mx) * 100) +
-            '%"></i></span><small>' +
-            (n || "–") +
+            (n || "—") +
+            "</b><em>" +
+            (n ? (n > 1 ? "chapitres" : "chapitre") : "libre") +
+            '</em><span class="wg"><i style="width:' +
+            pc +
+            '%"></i></span><small class="wmn">' +
+            (n ? fmtM(d.min) : "") +
             "</small></button>"
           );
         })

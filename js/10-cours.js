@@ -1,22 +1,12 @@
 function list() {
-  const lc = S.courses.find((x) => x.id === S.lc);
   return (
-    '<h2 class="ti">Cours</h2>' +
-    (typeof offBar == "function" ? offBar() : "") +
-    (lc
-      ? '<button class="rs" style="--sc:' +
-        mof(lc).couleur +
-        '" onclick="R={id:\'' +
-        lc.id +
-        "'};render();scrollTo(0,0)\"><span><small>Reprendre la lecture</small><br><b>" +
-        esc(lc.titre) +
-        "</b></span></button>"
-      : "") +
-    '<input type="text" placeholder="Rechercher dans les titres, les textes et les PDF…" aria-label="Rechercher" value="' +
+    (typeof coursHero == "function" ? coursHero() : '<h2 class="ti">Cours</h2>' + (typeof offBar == "function" ? offBar() : "")) +
+    '<div class="libs"><input type="text" placeholder="Rechercher dans les titres, les textes et les PDF…" aria-label="Rechercher" value="' +
     esc(R.sq || "") +
-    '" oninput="R.sq=this.value;$(\'lst\').innerHTML=lst();pdfSearchSoon()"><div id="lst">' +
+    '" oninput="R.sq=this.value;$(\'lst\').innerHTML=lst();pdfSearchSoon()"></div><div id="lst">' +
     lst() +
-    '</div><div id="pdfhits"></div>'
+    '</div><div id="pdfhits"></div>' +
+    (typeof coursShelf == "function" && !R.sq ? coursShelf() : "")
   );
 }
 const OP = {};
@@ -73,9 +63,7 @@ function lst() {
               (q || OP[m.id] ? "open " : "") +
               "ontoggle=\"OP['" +
               m.id +
-              '\']=this.open"><summary class="uh"><span class="pm"></span><span style="flex:1"><span class="un">UE ' +
-              (i + 1) +
-              "</span><h3>" +
+              '\']=this.open"><summary class="uh"><span class="pm"></span><span style="flex:1"><span class="un">' + (typeof ueProg == "function" ? ueProg(m.id, cc) : "") + "</span><h3>" +
               ICO(m) +
               " " +
               esc(m.nom) +
@@ -158,6 +146,7 @@ function course() {
       .filter((l) => l.startsWith("# "))
       .map((l) => l.slice(2));
   S.lc = c.id;
+  S.lcs = [c.id].concat((S.lcs || []).filter((x) => x != c.id)).slice(0, 10);
   bump("read", 1);
   jStart(c.ch);
   save();

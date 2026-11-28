@@ -154,9 +154,11 @@ function offBar() {
   if (!OFFK) offKeys().then(() => tab == "cours" && !R.id && $("lst") && ($("lst").innerHTML = lst(), $("offbar") && ($("offbar").outerHTML = offBar())));
   const chs = S.chap.filter((c) => offItems(c.id).length),
     ok = OFFK ? chs.filter((c) => offState(c.id) == "ok").length : 0;
+  const all = OFFK && ok == chs.length;
   return (
-    '<div id="offbar" class="offbar"><span><b>Hors connexion</b><small>' + (OFFK ? ok + " / " + chs.length + " chapitres disponibles sans internet" : "…") +
-    '</small></span><button class="b" onclick="offAll()">Tout télécharger</button></div>'
+    '<div id="offbar" class="offbar' + (all ? " ok" : "") + '"><span>' + icn(all ? "check" : "cloud") + "<b>" + (all ? "Disponible hors connexion" : "Hors connexion") + "</b><small>" +
+    (OFFK ? (all ? chs.length + " chapitres enregistrés sur cet appareil" : ok + " / " + chs.length + " chapitres enregistrés") : "…") +
+    "</small></span>" + (all ? "" : '<button class="b" onclick="offAll()">Tout télécharger</button>') + "</div>"
   );
 }
 // atlas : les modèles sont gardés dans le cache de l'appareil

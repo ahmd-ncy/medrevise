@@ -1,4 +1,5 @@
 function intro(k) {
+  if (typeof intro2 == "function") return intro2(k);
   const c = R.f == "atl" && k == "qcm" && typeof atlasQcmCount == "function" ? atlasQcmCount() : pick(k).length,
     q = k == "qcm",
     ex = R.mode == "exam",

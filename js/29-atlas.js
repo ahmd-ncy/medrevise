@@ -638,9 +638,8 @@ function atlasPage() {
   setTimeout(() => typeof atlasOffPaint == "function" && atlasOffPaint(), 0);
   atlasAccent();
   return (
-    '<h2 class="ti">Atlas 3D</h2><p class="m atsub">Explore les structures en 3D : touche une structure pour sa fiche, écarte, coupe, fais un quiz.</p>' +
+    atlasHero() +
     atlasUpdBar() +
-    '<div class="atgs"><input id="atgsq" type="search" placeholder="Chercher une structure dans tous les atlas (ex. : nerf médian, mitrale…)" oninput="atlasSearchAll(this.value)" autocomplete="off"><div id="atgsr" hidden></div></div>' +
     '<div class="athub">' + atlasBody() + '<div class="athubm">' + atlasTabs() +
     '<div id="atgal" class="atgal">' + atlasGallery() + "</div></div></div>" +
     '<div id="atoff" class="offbar"></div>' +
