@@ -1102,9 +1102,30 @@ function atlasView(L, buf, model, focusName) {
     composer.setSize(w, h);
     need();
   }
+  // pendant qu'on tourne ou qu'une animation joue : résolution un peu plus basse et, sur un appareil qui peine, sans le relief fin ;
+  // tout revient dès que le modèle s'arrête
+  let dynLo = false;
+  function motionLod(busy) {
+    ATLO.value = busy && (!fine || V.q.lvl >= 1 || V.qMode == "eco") ? 1 : 0;
+    const want = !!busy && V.qMode != "high";
+    if (want === dynLo) return;
+    dynLo = want;
+    const base = Math.min(DPR, [fine ? 1.75 : 1.5, 1.25, 1, 0.8][V.q.lvl]);
+    const pr = want ? Math.max(0.75, base * 0.72) : base,
+      w = canvas.clientWidth || 1,
+      h = canvas.clientHeight || 1;
+    renderer.setPixelRatio(pr);
+    renderer.setSize(w, h, false);
+    if (composer && !want)
+      try {
+        composer.setPixelRatio(pr);
+        composer.setSize(w, h);
+      } catch (e) {}
+  }
   function draw() {
     if (outline) outline.selectedObjects = [...V.sels].map((p) => p.mesh);
     const busy = V.moving || V.mv || V.anim || FADE || V.breath.on || V.hb.on || V.path || V.pres || V.keys.size;
+    motionLod(busy);
     const useFx = composer && !busy && !V.fxFail && (V.ao || (outline && V.sels.size));
     if (useFx) {
       try {
@@ -1119,7 +1140,8 @@ function atlasView(L, buf, model, focusName) {
   }
   // ---------- qualité automatique : si l'appareil peine, on allège l'affichage par paliers ----------
   // 0 complet · 1 résolution réduite, sans ombres de contact · 2 sans relief ni contour · 3 résolution basse
-  const DPR = devicePixelRatio || 1;
+  const DPR = devicePixelRatio || 1,
+    ATLO = { value: 0 };
   V.q = { lvl: 0, ema: 16, n: 0, warned: false };
   function qualityApply(l, quiet) {
     V.q.lvl = l;
@@ -1221,6 +1243,7 @@ function atlasView(L, buf, model, focusName) {
   function reliefPatch(mt, kind, fiber) {
     mt.onBeforeCompile = (sh) => {
       sh.uniforms.atFib = { value: fiber };
+      sh.uniforms.atLo = ATLO;
       const M = V.myo || { ax: fiber, c: new T.Vector3(), b1: new T.Vector3(1, 0, 0), b2: new T.Vector3(0, 0, 1) };
       sh.uniforms.atAx = { value: M.ax };
       sh.uniforms.atC = { value: M.c };
@@ -1232,13 +1255,13 @@ function atlasView(L, buf, model, focusName) {
       sh.fragmentShader = sh.fragmentShader
         .replace(
           "#include <common>",
-          "#include <common>\nvarying vec3 vAtW;\nuniform vec3 atFib;\nuniform vec3 atAx;\nuniform vec3 atC;\nuniform vec3 atB1;\nuniform vec3 atB2;" + NOISE +
+          "#include <common>\nvarying vec3 vAtW;\nuniform vec3 atFib;\nuniform float atLo;\nuniform vec3 atAx;\nuniform vec3 atC;\nuniform vec3 atB1;\nuniform vec3 atB2;" + NOISE +
             "\nvec3 atG(vec3 p){ float n = atN(p); return vec3(atN(p+vec3(0.31,0,0)), atN(p+vec3(0,0.31,0)), atN(p+vec3(0,0,0.31))) - n; }" +
             "\n#define atBump(g, k) normal = normalize(normal + (k) * (viewMatrix * vec4((g), 0.0)).xyz)",
         )
-        .replace("#include <normal_fragment_maps>", "#include <normal_fragment_maps>\n{" + RELIEF[kind] + "}");
+        .replace("#include <normal_fragment_maps>", "#include <normal_fragment_maps>\nif (atLo < 0.5) {" + RELIEF[kind] + "}");
     };
-    mt.customProgramCacheKey = () => "atrelief3-" + kind;
+    mt.customProgramCacheKey = () => "atrelief4-" + kind;
   }
   function hashStr(s) {
     let h = 7;
@@ -1309,6 +1332,14 @@ function atlasView(L, buf, model, focusName) {
     }
     V.dirty = true;
   }
+  function matsAsync() {
+    materials(true);
+    if (!renderer.compileAsync) return;
+    V.hold = true;
+    const done = () => V.hold && ((V.hold = false), need());
+    setTimeout(done, 2500);
+    renderer.compileAsync(scene, V.cam).then(done, done);
+  }
   function envApply() {
     scene.environment = V.real && V.studio ? envGet() : null;
   }
@@ -1321,7 +1352,7 @@ function atlasView(L, buf, model, focusName) {
         const old = mt;
         const st = V.real && V.studio && T.MeshPhysicalMaterial && STUDIO[sys];
         mt = st
-          ? new T.MeshPhysicalMaterial({ roughness: ATL_REAL.rough[sys] ?? 0.6, metalness: 0, clearcoat: st.cc, clearcoatRoughness: st.ccr, sheen: st.sh || 0, sheenRoughness: 0.6, sheenColor: 0xffe3dc, envMapIntensity: 0.5 })
+          ? new T.MeshPhysicalMaterial({ roughness: ATL_REAL.rough[sys] ?? 0.6, metalness: 0, clearcoat: st.cc, clearcoatRoughness: st.ccr, envMapIntensity: 0.5 })
           : new T.MeshStandardMaterial({ roughness: V.real ? ATL_REAL.rough[sys] ?? 0.6 : 0.65, metalness: 0, envMapIntensity: 0.35 });
         const rk = V.real && V.relief ? reliefKind(p) : "";
         if (rk) reliefPatch(mt, rk, p.fib);
@@ -2993,13 +3024,13 @@ function atlasView(L, buf, model, focusName) {
             V.real = b.dataset.c == "real";
             box.querySelectorAll("#atcol button").forEach((x) => x.classList.toggle("on", x === b));
             prefSave();
-            materials(true);
+            matsAsync();
             caps();
           }),
       );
       const on = (id, fn) => ($(id).onchange = (e) => (fn(e.target.checked), prefSave()));
-      on("atsrel", (v) => ((V.relief = v), materials(true)));
-      on("atsstu", (v) => ((V.studio = v), envApply(), materials(true)));
+      on("atsrel", (v) => ((V.relief = v), matsAsync()));
+      on("atsstu", (v) => ((V.studio = v), matsAsync()));
       on("atslig", (v) => ((V.light = v), bgPaint(), need()));
       if ($("atsclin")) $("atsclin").onchange = (e) => clinToggle(e.target.checked);
       on("atsao", (v) => ((V.ao = v), fxBuild()));
@@ -6600,7 +6631,7 @@ function atlasView(L, buf, model, focusName) {
       pose();
     }
     if (controls.update() && V.pres) V.dirty = true;
-    if (!V.dirty) return;
+    if (!V.dirty || V.hold) return;
     V.dirty = false;
     const tf = performance.now();
     draw();
