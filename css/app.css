@@ -4882,3 +4882,249 @@ html.atlon #md { z-index: 80; }
 .atupd small, .atupbox small { color: #b5c2d0; font-size: 12.5px; }
 .atupbox { flex-direction: column; align-items: flex-start; }
 .atupd label, .atupbox label { cursor: pointer; }
+
+/* =====================================================================
+   Look « Premium » (style Apple) : thème par défaut
+   police système (San Francisco sur Apple), grands titres serrés, surfaces sobres,
+   en-tête et barre d'onglets en verre dépoli, coins arrondis, une seule couleur d'accent
+   ===================================================================== */
+html[data-look="premium"] {
+  --sf: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", Inter, "Segoe UI Variable", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --pa: #007aff;          /* accent système */
+  --pfill: rgba(120, 120, 128, 0.12);
+  --pfill2: rgba(120, 120, 128, 0.2);
+  --psep: rgba(60, 60, 67, 0.14);
+  --pglass: rgba(249, 249, 251, 0.74);
+  --pshadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+html[data-look="premium"][data-theme="dark"],
+html[data-look="premium"].pdark {
+  --pa: #0a84ff;
+  --pfill: rgba(120, 120, 128, 0.24);
+  --pfill2: rgba(120, 120, 128, 0.32);
+  --psep: rgba(84, 84, 88, 0.55);
+  --pglass: rgba(22, 22, 24, 0.72);
+  --pshadow: none;
+}
+html[data-look="premium"] body {
+  font-family: var(--sf);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.011em;
+  --tc: var(--pa);
+  --ac: var(--pa);
+  --on: #fff;
+  background: var(--bg);
+}
+/* tous les titres et chiffres en police système (fini la police à empattements) */
+html[data-look="premium"] :is(h1, h2, h3, h4, .logo, .k b, .ring, .fl, .no, .fq, .ti, .flm b) {
+  font-family: var(--sf) !important;
+  text-shadow: none !important;
+}
+html[data-look="premium"] body :is(button, input, select, textarea, .chip, .b, .big, .lb, small, .m) {
+  font-family: var(--sf);
+}
+html[data-look="premium"] .ti {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.12;
+  margin: 6px 0 14px;
+}
+html[data-look="premium"] h2 { letter-spacing: -0.02em; }
+html[data-look="premium"] h3 { letter-spacing: -0.015em; }
+html[data-look="premium"] :is(main > h3, .lb) {
+  font: 600 13px var(--sf);
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: var(--mut);
+}
+/* ---------- en-tête : verre dépoli, filet fin ---------- */
+html[data-look="premium"] header {
+  background: var(--pglass) !important;
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 0.5px solid var(--psep);
+  box-shadow: none;
+}
+html[data-look="premium"] .bn0 {
+  background: transparent !important;
+  color: var(--fg);
+}
+html[data-look="premium"] .hd { padding: 10px 16px 8px; max-width: 1100px; margin: 0 auto; }
+html[data-look="premium"] .logo { color: var(--fg); font-size: 19px; font-weight: 700; letter-spacing: -0.02em; }
+html[data-look="premium"] .logo small { color: var(--mut); font: 600 11px var(--sf); letter-spacing: 0.04em; }
+html[data-look="premium"] .lm {
+  width: 34px; height: 34px; border-radius: 9px; border: 0;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--pa) 88%, #fff), var(--pa));
+  color: #fff;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--pa) 35%, transparent);
+}
+html[data-look="premium"] :is(.fch, .hadd, .av, .sybd, .syb) {
+  background: var(--pfill) !important;
+  border: 0 !important;
+  color: var(--fg) !important;
+}
+html[data-look="premium"] .hadd:hover { background: var(--pfill2) !important; }
+html[data-look="premium"] :is(.hadd.on, .av.on) { background: var(--pa) !important; color: #fff !important; }
+/* ---------- onglets : contrôle segmenté sur ordinateur ---------- */
+html[data-look="premium"] .tabs {
+  background: transparent !important;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  max-width: 620px;
+  margin: 2px auto 10px;
+  padding: 3px;
+  gap: 2px;
+  border-radius: 12px;
+  background-color: var(--pfill) !important;
+  border: 0;
+}
+html[data-look="premium"] .tabs button {
+  color: var(--fg) !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 9px !important;
+  font: 600 13px var(--sf);
+  padding: 6px 4px;
+  margin: 0;
+  box-shadow: none;
+  transition: background 0.2s, color 0.2s, transform 0.15s;
+}
+html[data-look="premium"] .tabs button .ic { opacity: 0.75; }
+html[data-look="premium"] .tabs button.on {
+  background: var(--card) !important;
+  color: var(--fg) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 1px rgba(0, 0, 0, 0.04) !important;
+}
+html[data-look="premium"].pdark .tabs button.on { background: #636366 !important; }
+html[data-look="premium"] .tabs button.on .ic { opacity: 1; color: var(--pa); }
+html[data-look="premium"] .subtabs { padding: 0 16px 10px; max-width: 560px; }
+html[data-look="premium"] .subtabs button {
+  background: transparent; border: 0; color: var(--mut); font: 600 13px var(--sf); border-radius: 999px;
+}
+html[data-look="premium"] .subtabs button.on { background: var(--pa); color: #fff; border: 0; }
+/* téléphone : barre d'onglets en bas, en verre, comme une app iOS */
+@media (max-width: 760px) {
+  html[data-look="premium"] .tabs {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 30;
+    max-width: none;
+    margin: 0;
+    border-radius: 0;
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+    background: var(--pglass) !important;
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    backdrop-filter: saturate(180%) blur(20px);
+    border-top: 0.5px solid var(--psep);
+  }
+  html[data-look="premium"] .tabs button {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    font: 600 10.5px var(--sf); color: var(--mut) !important; padding: 4px 0;
+  }
+  html[data-look="premium"] .tabs button .ic { width: 25px; height: 25px; opacity: 1; }
+  html[data-look="premium"] .tabs button.on { background: transparent !important; box-shadow: none !important; color: var(--pa) !important; }
+  html[data-look="premium"].pdark .tabs button.on { background: transparent !important; }
+  html[data-look="premium"] main { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+  html[data-look="premium"] #toast { bottom: calc(90px + env(safe-area-inset-bottom, 0px)); }
+}
+/* ---------- surfaces : cartes sobres, coins généreux ---------- */
+html[data-look="premium"] :is(.c, .k, .hero, .hero2, .tl, .wd, details.sec, details.ue, .pmenu, .sl, .fc, .rs, .mb, .tcd, .thp, .pf, .thc, .adm, .seg, .bn) {
+  background: var(--card) !important;
+  border: 0 !important;
+  border-radius: 18px !important;
+  box-shadow: var(--pshadow) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+html[data-look="premium"] .hero { border-left: 0 !important; }
+html[data-look="premium"] details.c { border-left: 0 !important; }
+html[data-look="premium"] .k { padding: 14px 16px; }
+html[data-look="premium"] .k b { font-weight: 700; letter-spacing: -0.02em; }
+/* ---------- boutons ---------- */
+html[data-look="premium"] :is(.big, .b.p):not(.ko2):not(.ok2):not(.wn2):not(.ez2):not([style*="background"]) {
+  background: var(--pa) !important;
+  border-color: transparent !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+html[data-look="premium"] .big {
+  border-radius: 14px !important;
+  font: 600 17px var(--sf);
+  letter-spacing: -0.01em;
+  padding: 14px;
+}
+html[data-look="premium"] .b {
+  border-radius: 10px !important;
+  border: 0;
+  background: var(--pfill);
+  color: var(--fg);
+  font: 600 14px var(--sf);
+  padding: 8px 14px;
+}
+html[data-look="premium"] .b:hover { background: var(--pfill2); }
+html[data-look="premium"] :is(.b, .big, .chip, .tabs button, .subtabs button, .hadd, .av):active { transform: scale(0.97); }
+html[data-look="premium"] :is(.b, .big, .chip) { transition: background 0.2s, transform 0.12s, opacity 0.2s; }
+/* ---------- puces (filtres) ---------- */
+html[data-look="premium"] .chip {
+  border-radius: 999px !important;
+  border: 0;
+  background: var(--pfill);
+  color: var(--fg);
+  font: 600 13px var(--sf);
+  padding: 7px 14px;
+}
+html[data-look="premium"] .chip.on { background: var(--fg); color: var(--bg); }
+/* ---------- champs ---------- */
+html[data-look="premium"] :is(select, textarea, input[type="text"], input[type="date"], input[type="number"], input[type="search"], input[type="email"], input[type="password"]) {
+  border-radius: 12px !important;
+  border: 0 !important;
+  background: var(--pfill) !important;
+  color: var(--fg);
+  font: 500 16px var(--sf);
+  padding: 11px 14px;
+}
+html[data-look="premium"] :focus-visible { outline: 3px solid color-mix(in srgb, var(--pa) 45%, transparent); outline-offset: 1px; }
+html[data-look="premium"] input[type="checkbox"], html[data-look="premium"] input[type="radio"] { accent-color: var(--pa); }
+/* ---------- divers ---------- */
+html[data-look="premium"] #toast {
+  background: color-mix(in srgb, var(--fg) 88%, transparent);
+  color: var(--bg);
+  border-radius: 14px;
+  font: 600 14px var(--sf);
+  padding: 11px 18px;
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+}
+html[data-look="premium"] img { border: 0; border-radius: 12px; }
+html[data-look="premium"] main { max-width: 820px; padding-top: 18px; }
+html[data-look="premium"] ::selection { background: color-mix(in srgb, var(--pa) 30%, transparent); }
+/* page Atlas : cartes et onglets dans le même esprit */
+html[data-look="premium"] .atgc { background: var(--card); border: 0; border-radius: 18px; box-shadow: var(--pshadow); color: var(--fg); }
+html[data-look="premium"] .atgt small { color: var(--mut); }
+html[data-look="premium"] .atgi { background: var(--pfill); color: var(--pa); }
+html[data-look="premium"] .attabs button { background: var(--pfill); border: 0; color: var(--fg); font-family: var(--sf); }
+html[data-look="premium"] .attabs button.on { background: var(--fg); color: var(--bg); }
+html[data-look="premium"] .atgs input { background: var(--pfill) !important; }
+html[data-look="premium"] .atbodyw { background: var(--card); border: 0; box-shadow: var(--pshadow); }
+html[data-look="premium"]:not(.pdark) #atbody path[data-z] { fill: #e5e5ea; stroke: #c7c7cc; }
+html[data-look="premium"]:not(.pdark) #atbody .atfd { stroke: #8e8e93; }
+html[data-look="premium"] .atrec button { background: var(--card); border: 0; box-shadow: var(--pshadow); color: var(--fg); }
+html[data-look="premium"] .atupd { border-radius: 16px; }
+html[data-look="premium"]:not(.pdark) .atupd { background: #fff7e0; border-color: #f3d58a; color: #3a2c00; }
+html[data-look="premium"]:not(.pdark) .atupd small { color: #6b5a2a; }
+html[data-look="premium"]:not(.pdark) #atgsr { background: #fff; border-color: #e5e5ea; }
+html[data-look="premium"]:not(.pdark) #atgsr button { color: var(--fg); }
+html[data-look="premium"]:not(.pdark) #atgsr button:hover { background: #f2f2f7; }
+html[data-look="premium"] { background: var(--bg); }
+html[data-look="premium"] body :not(svg):not(svg *):not(.ic):not(code):not(pre):not(kbd) { font-family: var(--sf) !important; }
+@media (max-width: 760px) {
+  /* le flou de l'en-tête capturerait la barre d'onglets fixée en bas : en-tête simplement opaque sur téléphone */
+  html[data-look="premium"] header {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    background: color-mix(in srgb, var(--bg) 94%, transparent) !important;
+  }
+}

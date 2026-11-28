@@ -21,9 +21,14 @@ function load() {
   S.err = S.err || [];
   fsMigrate();
   // Style « Signature » (celui de l'écran de connexion) appliqué par défaut, une fois
-  if (S.lookV !== 2) {
+  if (S.lookV !== 2 && S.lookV !== 3) {
     Object.assign(S, { mode: "dark", pal: "signature", bg: "w", bgd: "p", fx: "aurora", font: "inter", rad: "r", mono: 0, theme: "signature" });
     S.lookV = 2;
+  }
+  // look « Premium » (style Apple) appliqué par défaut, une fois ; les autres thèmes restent au choix dans Profil → Apparence
+  if (S.lookV !== 3) {
+    Object.assign(S, { mode: "auto", pal: "premium", bg: "p", bgd: "p", fx: "none", font: "inter", rad: "r", mono: 0, theme: "premium", look: "premium" });
+    S.lookV = 3;
   }
   S.jm = S.jm || {};
   S.pal = { sauge: "foret", sable: "aurore", papier: "aurore" }[S.pal] || S.pal;

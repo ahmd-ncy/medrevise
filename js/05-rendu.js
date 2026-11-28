@@ -127,7 +127,7 @@ function resetDlg() {
 }
 function resetAll(demo) {
   const kp = {};
-  ["pal", "mode", "bg", "bgd", "fx", "name", "lname", "fil", "fac", "bio", "photo", "font", "rad", "tsz", "mono", "acc", "anim", "theme", "tuto", "gel"].forEach((k) => {
+  ["pal", "mode", "bg", "bgd", "fx", "name", "lname", "fil", "fac", "bio", "photo", "font", "rad", "tsz", "mono", "acc", "anim", "theme", "look", "lookV", "tuto", "gel"].forEach((k) => {
     if (S[k] !== undefined) kp[k] = S[k];
   });
   S = seed();

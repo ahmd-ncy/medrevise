@@ -1,4 +1,9 @@
 const PALS = {
+  premium: {
+    l: ["#f2f2f7", "#ffffff", "#1d1d1f", "#6e6e73", "#d8d8de"],
+    d: ["#000000", "#1c1c1e", "#f5f5f7", "#98989d", "#38383a"],
+    c: ["#0a84ff", "#30b0c7", "#ff9f0a", "#bf5af2", "#ff375f", "#30d158"],
+  },
   signature: {
     l: ["#eef2ff", "#ffffff", "#0f172a", "#55607a", "#d6dcf5"],
     d: ["#0b1430", "#131e45", "#eef3ff", "#a9b6e8", "#2a3872"],
@@ -80,15 +85,16 @@ const FONTS = {
 };
 // Thèmes prêts à l'emploi : un clic règle tout d'un coup.
 const THEMES = [
-  ["signature", "Signature", { mode: "dark", pal: "signature", bg: "w", bgd: "p", fx: "aurora", font: "inter", rad: "r", mono: 0 }],
-  ["classique", "Classique", { mode: "auto", pal: "ocean", bg: "w", bgd: "p", fx: "none", font: "inter", rad: "n", mono: 0 }],
-  ["minuit", "Minuit", { mode: "dark", pal: "ocean", bg: "w", bgd: "b", fx: "none", font: "inter", rad: "n", mono: 0 }],
-  ["neon", "Néon", { mode: "dark", pal: "lavande", bg: "w", bgd: "n", fx: "glow", font: "inter", rad: "r", mono: 0 }],
-  ["pastel", "Pastel", { mode: "light", pal: "rose", bg: "l", bgd: "p", fx: "none", font: "nunito", rad: "r", mono: 0 }],
-  ["nature", "Nature", { mode: "auto", pal: "foret", bg: "v", bgd: "v", fx: "none", font: "nunito", rad: "n", mono: 0 }],
-  ["papier", "Papier", { mode: "light", pal: "sable", bg: "c", bgd: "m", fx: "none", font: "serif", rad: "s", mono: 0 }],
-  ["verre", "Verre", { mode: "auto", pal: "ocean", bg: "b", bgd: "b", fx: "glass", font: "inter", rad: "r", mono: 0 }],
-  ["contraste", "Contraste élevé", { mode: "light", pal: "contraste", bg: "p", bgd: "p", fx: "none", font: "lisible", rad: "n", mono: 0 }],
+  ["premium", "Premium", { mode: "auto", pal: "premium", bg: "p", bgd: "p", fx: "none", font: "inter", rad: "r", mono: 0, look: "premium" }],
+  ["signature", "Signature", { mode: "dark", pal: "signature", bg: "w", bgd: "p", fx: "aurora", font: "inter", rad: "r", mono: 0, look: "" }],
+  ["classique", "Classique", { mode: "auto", pal: "ocean", bg: "w", bgd: "p", fx: "none", font: "inter", rad: "n", mono: 0, look: "" }],
+  ["minuit", "Minuit", { mode: "dark", pal: "ocean", bg: "w", bgd: "b", fx: "none", font: "inter", rad: "n", mono: 0, look: "" }],
+  ["neon", "Néon", { mode: "dark", pal: "lavande", bg: "w", bgd: "n", fx: "glow", font: "inter", rad: "r", mono: 0, look: "" }],
+  ["pastel", "Pastel", { mode: "light", pal: "rose", bg: "l", bgd: "p", fx: "none", font: "nunito", rad: "r", mono: 0, look: "" }],
+  ["nature", "Nature", { mode: "auto", pal: "foret", bg: "v", bgd: "v", fx: "none", font: "nunito", rad: "n", mono: 0, look: "" }],
+  ["papier", "Papier", { mode: "light", pal: "sable", bg: "c", bgd: "m", fx: "none", font: "serif", rad: "s", mono: 0, look: "" }],
+  ["verre", "Verre", { mode: "auto", pal: "ocean", bg: "b", bgd: "b", fx: "glass", font: "inter", rad: "r", mono: 0, look: "" }],
+  ["contraste", "Contraste élevé", { mode: "light", pal: "contraste", bg: "p", bgd: "p", fx: "none", font: "lisible", rad: "n", mono: 0, look: "" }],
 ];
 function applyLook() {
   const h = document.documentElement,
@@ -102,6 +108,9 @@ function applyLook() {
   ["--bg", "--card", "--fg", "--mut", "--bd"].forEach((v, i) => st.setProperty(v, b[i]));
   P.c.forEach((c, i) => st.setProperty("--c" + (i + 1), S.mono && S.acc ? S.acc : c));
   h.dataset.fx = S.fx || "none";
+  if (S.look) h.dataset.look = S.look;
+  else h.removeAttribute("data-look");
+  h.classList.toggle("pdark", dark);
   const g = (dark ? BGD : BGS).find((x) => x[0] == (dark ? S.bgd || "p" : S.bg || "w"));
   if (g && g[2] && S.pal !== "contraste") {
     st.setProperty("--bg", g[2]);
