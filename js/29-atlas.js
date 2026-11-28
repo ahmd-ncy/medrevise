@@ -1100,6 +1100,12 @@ function atlasView(L, buf, model, focusName) {
       "vec3 q = vAtW * 1000.0; float s = dot(q, atFib); vec3 qq = (q - atFib * s) * 0.9; vec3 gr = atG(qq); gr -= atFib * dot(gr, atFib); atBump(gr, 1.6); diffuseColor.rgb *= 0.93 + 0.14 * atN(qq);",
     os: "vec3 q = vAtW * 1600.0; atBump(atG(q), 0.9); diffuseColor.rgb *= 0.95 + 0.08 * atN(q * 0.5);",
     myo:
+      "vec3 q = vAtW * 1000.0; vec3 dd = vAtW - atC; float hh = dot(dd, atAx); vec3 rr = dd - atAx * hh; float R = max(length(rr), 1e-4);" +
+      "float th = atan(dot(rr, atB2), dot(rr, atB1)); float al = 0.95; float ph = (th * R * sin(al) - hh * cos(al)) * 2600.0 + 2.0 * atN(q * 0.6);" +
+      "vec3 tg = normalize(cross(atAx, rr)); vec3 fb = normalize(tg * cos(al) + atAx * sin(al)); vec3 pp = normalize(cross(fb, rr / R));" +
+      "float am = 0.35 + 0.65 * atN(q * 0.12); float w = (sin(ph) * 0.6 + sin(ph * 2.7 + 1.3) * 0.4) * am; atBump(pp * w * 0.2 + 0.3 * atG(q * 0.35) + 0.15 * atG(q * 1.3), 0.8);" +
+      "diffuseColor.rgb *= 0.92 + 0.035 * w + 0.12 * atN(q * 0.25); diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.12, 0.98, 0.86), 0.45 * atN(q * 0.05 + 3.1));",
+    myoOld:
       "vec3 q = vAtW * 1000.0; float s = dot(q, atFib); vec3 qq = (q - atFib * s) * 1.4; vec3 gr = atG(qq); gr -= atFib * dot(gr, atFib); atBump(gr + 0.35 * atG(q * 0.35), 0.85);" +
       "diffuseColor.rgb *= 0.9 + 0.18 * atN(q * 0.25); diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.12, 0.98, 0.86), 0.5 * atN(q * 0.05 + 3.1));",
     lung:
@@ -1126,22 +1132,48 @@ function atlasView(L, buf, model, focusName) {
     if (sy == "cartilage") return "os";
     return "soft";
   }
+  // axe du cœur (base → pointe) : les fibres du myocarde s'enroulent autour en hélice
+  function myoAxis() {
+    const lv = V.parts.find((p) => p.meta.fiche == "left ventricle"),
+      mi = V.parts.find((p) => p.meta.fiche == "mitral valve");
+    if (!lv || !mi) return (V.myo = null);
+    const base = new T.Box3().setFromObject(mi.mesh).getCenter(new T.Vector3()),
+      a = lv.mesh.geometry.attributes.position,
+      v = new T.Vector3();
+    let far = null,
+      fd = 0;
+    lv.mesh.updateWorldMatrix(true, false);
+    for (let i = 0; i < a.count; i += 3) {
+      v.fromBufferAttribute(a, i).applyMatrix4(lv.mesh.matrixWorld);
+      const d = v.distanceToSquared(base);
+      if (d > fd) (fd = d), (far = v.clone());
+    }
+    const ax = far.clone().sub(base).normalize(),
+      b1 = new T.Vector3(1, 0, 0).cross(ax).normalize(),
+      b2 = ax.clone().cross(b1);
+    V.myo = { ax, c: base.clone().lerp(far, 0.5), b1, b2 };
+  }
   function reliefPatch(mt, kind, fiber) {
     mt.onBeforeCompile = (sh) => {
       sh.uniforms.atFib = { value: fiber };
+      const M = V.myo || { ax: fiber, c: new T.Vector3(), b1: new T.Vector3(1, 0, 0), b2: new T.Vector3(0, 0, 1) };
+      sh.uniforms.atAx = { value: M.ax };
+      sh.uniforms.atC = { value: M.c };
+      sh.uniforms.atB1 = { value: M.b1 };
+      sh.uniforms.atB2 = { value: M.b2 };
       sh.vertexShader = sh.vertexShader
         .replace("#include <common>", "#include <common>\nvarying vec3 vAtW;")
         .replace("#include <worldpos_vertex>", "#include <worldpos_vertex>\nvAtW = (modelMatrix * vec4(transformed, 1.0)).xyz;");
       sh.fragmentShader = sh.fragmentShader
         .replace(
           "#include <common>",
-          "#include <common>\nvarying vec3 vAtW;\nuniform vec3 atFib;" + NOISE +
+          "#include <common>\nvarying vec3 vAtW;\nuniform vec3 atFib;\nuniform vec3 atAx;\nuniform vec3 atC;\nuniform vec3 atB1;\nuniform vec3 atB2;" + NOISE +
             "\nvec3 atG(vec3 p){ float n = atN(p); return vec3(atN(p+vec3(0.31,0,0)), atN(p+vec3(0,0.31,0)), atN(p+vec3(0,0,0.31))) - n; }" +
             "\n#define atBump(g, k) normal = normalize(normal + (k) * (viewMatrix * vec4((g), 0.0)).xyz)",
         )
         .replace("#include <normal_fragment_maps>", "#include <normal_fragment_maps>\n{" + RELIEF[kind] + "}");
     };
-    mt.customProgramCacheKey = () => "atrelief2-" + kind;
+    mt.customProgramCacheKey = () => "atrelief3-" + kind;
   }
   function hashStr(s) {
     let h = 7;
@@ -1332,6 +1364,7 @@ function atlasView(L, buf, model, focusName) {
       if (!present.has("muscle")) V.opSys = "organe";
       atlasIndexSave(model.id, V.parts, V.fiches);
       atlasFicheSave(model.id, V.fiches);
+      myoAxis();
       pinsBuild();
       vis();
       grid();
@@ -3071,15 +3104,17 @@ function atlasView(L, buf, model, focusName) {
     add("Frontale par la trachée", "", "z", byFi(/^trachea$/));
     if (!byFi(/^trachea$/).length) {
       // cœur
-      add("Horizontale par les valves", "plan des orifices", "y", V.parts.filter((p) => p.meta.systeme == "valve"));
-      add("Frontale par les ventricules", "proche de la coupe « 4 cavités »", "z", byFi(/ventricle$/));
-      add("Sagittale par le septum", "entre les deux ventricules", "x", byFi(/ventricle$/));
+      add("Coupe 4 cavités", "les deux atriums, les deux ventricules, mitrale et tricuspide", "z", byFi(/^(mitral|tricuspid) valve$/));
+      add("Voie d’éjection gauche (grand axe)", "ventricule gauche, mitrale, valve et racine aortiques", "x", byFi(/^(aortic|mitral) valve$/));
+      add("Valves vues d’en haut", "les quatre orifices et le squelette fibreux", "y", V.parts.filter((p) => p.meta.systeme == "valve"));
+      add("Coupe petit axe", "les deux ventricules en travers, le septum", "y", byFi(/^papillary/));
     }
     return (V.presets = L);
   }
   function cutApply(c) {
     if (!c) return;
     V.clip.axis = c.axis;
+    if (model.id == "coeur") V.clip.caps = true; // parois pleines, comme les pièces d'un modèle démontable
     V.clip.pos = Math.max(-100, Math.min(100, Math.round((c.at / (V.ext[c.axis] * 1.05)) * 100)));
     clip();
     if (V.tool == "cut") toolPanel("cut", true);
