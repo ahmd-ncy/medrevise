@@ -1360,7 +1360,7 @@ function atlasView(L, buf, model, focusName) {
         mt.clippingPlanes = old.clippingPlanes;
         mt.side = p.meta.ds ? T.DoubleSide : old.side;
         // ombrage des sillons pré-calculé dans le modèle (couleurs de sommets)
-        mt.vertexColors = !!(p.mesh.geometry.attributes.color && V.real);
+        mt.vertexColors = !!p.mesh.geometry.attributes.color;
         p.mesh.material = mt;
         old.dispose();
       }
