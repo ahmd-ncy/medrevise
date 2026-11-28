@@ -4867,3 +4867,12 @@ html.atlon #md { z-index: 80; }
 .atdrc { display: flex; gap: 10px; margin: 12px 0; }
 .atdrc button { width: 32px; height: 32px; border-radius: 50%; border: 3px solid transparent; background: var(--c); cursor: pointer; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25); }
 .atdrc button.on { border-color: #fff; }
+/* silhouette v2 */
+#atbody { width: 112px; overflow: visible; }
+#atbody path[data-z] { fill: url(#atfg); stroke: #6f88a6; stroke-width: 1.3; stroke-linejoin: round; transition: fill 0.18s, filter 0.18s; }
+#atbody path[data-z].hov, #atbody path[data-z]:hover { fill: color-mix(in srgb, var(--atac, #5fd4c8) 55%, #2a3a4f); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--atac, #5fd4c8) 60%, transparent)); }
+#atbody path[data-z].on { fill: var(--atac, #5fd4c8); stroke: #fff; filter: drop-shadow(0 0 8px var(--atac, #5fd4c8)); }
+#atbody .atfd { fill: none; stroke: #9db2ca; stroke-width: 1; stroke-linecap: round; opacity: 0.45; pointer-events: none; }
+#atbody .atfd circle { fill: #9db2ca; stroke: none; }
+#atbzn { font-weight: 600; color: #b5c2d0 !important; min-height: 1.3em; text-align: center; }
+@media (max-width: 700px) { #atbody { width: 70px; } }

@@ -1,2 +1,2 @@
 // Généré par build.py : numéro de la version publiée.
-const APPV = "46d0417";
+const APPV = "29c1c4a";

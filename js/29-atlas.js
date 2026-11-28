@@ -403,6 +403,7 @@ function atlasGalRepaint() {
   const t = $("attabs");
   if (t) t.outerHTML = atlasTabs();
   document.querySelectorAll("#atbody [data-z]").forEach((x) => x.classList.toggle("on", x.dataset.z == ATL.zone));
+  atlasZoneHover();
 }
 const ATL_CATS_S = { corps: "Corps entier", region: "Régions", organe: "Organes", micro: "Microscopique" };
 // atlas liés : même zone du corps, ou liens de détail entre atlas
@@ -418,19 +419,41 @@ function atlasTabs() {
   return '<div id="attabs" class="attabs" role="tablist">' + ATL_TABS.map(([t, n]) => '<button role="tab"' + (t == k ? ' class="on" aria-selected="true"' : "") + ' onclick="atlasTab(\'' + t + "')\">" + n + "</button>").join("") + "</div>";
 }
 // silhouette cliquable : chaque zone filtre les atlas qui la montrent
+const ATL_FIG = {
+  tete: "M100 14C114 14 124 26 124 43C124 58 116 72 100 74C84 72 76 58 76 43C76 26 86 14 100 14Z",
+  cou: "M89 70C90 79 89 86 85 92L115 92C111 86 110 79 111 70C106 75 94 75 89 70Z",
+  thorax: "M85 92C71 94 59 97 51 104C45 110 44 120 46 132C49 150 53 166 58 182L142 182C147 166 151 150 154 132C156 120 155 110 149 104C141 97 129 94 115 92Z",
+  abdomen: "M58 182C59 194 60 202 60 210C59 218 56 224 55 230L145 230C144 224 141 218 140 210C140 202 141 194 142 182Z",
+  bassin: "M55 230C53 242 53 254 57 266C67 276 80 281 92 283L100 277L108 283C120 281 133 276 143 266C147 254 147 242 145 230Z",
+  msup: "M50 105C41 110 37 120 36 134C35 160 32 186 30 208C28 226 26 243 24 257C22 268 20 279 23 287C26 294 33 294 35 286C37 278 37 268 39 258C43 240 47 222 49 205C51 186 51 165 49 147Z",
+  minf: "M57 268C67 277 80 282 92 284L96 292C96 330 94 368 92 398C91 416 90 430 90 442C90 450 86 455 78 455L70 455C63 454 63 449 69 445C73 439 73 427 71 409C67 379 63 340 59 302Z",
+};
+const atlasMirror = (d) => {
+  let i = 0;
+  return d.replace(/-?\d+(\.\d+)?/g, (n) => (i++ % 2 == 0 ? String(200 - +n) : n));
+};
 function atlasBody() {
-  const Z = (z, d) => '<path data-z="' + z + '" d="' + d + '" onclick="atlasZone(\'' + z + '\')"><title>' + ATL_ZONES[z][0] + "</title></path>";
+  const Z = (z, d, k) =>
+    '<path data-z="' + z + '" d="' + d + '" onclick="atlasZone(\'' + z + "')\" onmouseenter=\"atlasZoneHover('" + z + '\')" onmouseleave="atlasZoneHover()"><title>' + ATL_ZONES[z][0] + "</title></path>";
+  const paired = (z) => Z(z, ATL_FIG[z]) + Z(z, atlasMirror(ATL_FIG[z]));
   return (
-    '<div class="atbodyw"><svg id="atbody" viewBox="0 0 120 250" aria-label="Choisir une zone du corps">' +
-    Z("tete", "M60 6c11 0 18 8 18 19s-7 21-18 21-18-10-18-21S49 6 60 6z") +
-    Z("cou", "M52 45h16l2 12H50z") +
-    Z("thorax", "M38 58h44c6 0 9 4 9 10l-3 30H32l-3-30c0-6 3-10 9-10z") +
-    Z("abdomen", "M32 99h56l-2 30H34z") +
-    Z("bassin", "M34 130h52l4 16-14 10H60l-1-4-1 4H44l-14-10z") +
-    Z("msup", "M29 62l-9 4-8 44-6 40 8 2 9-38 8-26zM91 62l9 4 8 44 6 40-8 2-9-38-8-26z") +
-    Z("minf", "M44 158h14l-1 40-3 44h-9l-2-44zM62 158h14l1 40-2 44h-9l-3-44z") +
-    "</svg><small>Touche une zone</small></div>"
+    '<div class="atbodyw"><svg id="atbody" viewBox="0 0 200 462" aria-label="Choisir une zone du corps">' +
+    '<defs><linearGradient id="atfg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3b5372"/><stop offset="1" stop-color="#1c2a3b"/></linearGradient>' +
+    '<radialGradient id="atfh" cx="0.5" cy="0.35" r="0.7"><stop offset="0" stop-color="#ffffff" stop-opacity="0.18"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></radialGradient></defs>' +
+    '<ellipse cx="100" cy="458" rx="52" ry="4" fill="#000" opacity="0.35"/>' +
+    Z("tete", ATL_FIG.tete) + Z("cou", ATL_FIG.cou) + Z("thorax", ATL_FIG.thorax) + Z("abdomen", ATL_FIG.abdomen) + Z("bassin", ATL_FIG.bassin) + paired("msup") + paired("minf") +
+    // repères dessinés (non cliquables) : clavicules, sternum, côtes, nombril, genoux
+    '<g class="atfd"><path d="M72 104C82 100 92 101 99 106M128 104C118 100 108 101 101 106"/><path d="M100 106V158"/>' +
+    '<path d="M64 132C76 140 90 142 98 140M136 132C124 140 110 142 102 140M66 150C78 157 90 159 98 157M134 150C122 157 110 159 102 157"/>' +
+    '<circle cx="100" cy="212" r="1.8"/><path d="M78 196C86 198 94 198 100 197C106 198 114 198 122 196"/>' +
+    '<path d="M79 372C82 366 88 366 90 372M121 372C118 366 112 366 110 372"/><path d="M90 66C95 69 105 69 110 66"/></g>' +
+    '</svg><small id="atbzn">Touche une zone</small></div>'
   );
+}
+function atlasZoneHover(z) {
+  const e = $("atbzn");
+  if (e) e.textContent = z ? ATL_ZONES[z][0] : ATL.zone ? ATL_ZONES[ATL.zone][0] : "Touche une zone";
+  document.querySelectorAll("#atbody [data-z]").forEach((x) => x.classList.toggle("hov", x.dataset.z == z));
 }
 function atlasCard(m) {
   const ok = atlasHas(m.id),
@@ -1207,7 +1230,9 @@ function atlasView(L, buf, model, focusName) {
         if (rk) reliefPatch(mt, rk, p.fib);
         if (V.real && (rk == "lung" || rk == "myo")) mt.roughness = rk == "lung" ? 0.62 : 0.48;
         mt.clippingPlanes = old.clippingPlanes;
-        mt.side = old.side;
+        mt.side = p.meta.ds ? T.DoubleSide : old.side;
+        // ombrage des sillons pré-calculé dans le modèle (couleurs de sommets)
+        mt.vertexColors = !!(p.mesh.geometry.attributes.color && V.real);
         p.mesh.material = mt;
         old.dispose();
       }
