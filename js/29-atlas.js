@@ -1204,7 +1204,7 @@ function atlasView(L, buf, model, focusName) {
     nerf: "vec3 q = vAtW * 1000.0; float s = dot(q, atFib); vec3 qq = (q - atFib * s) * 2.4; vec3 gr = atG(qq); gr -= atFib * dot(gr, atFib); atBump(gr, 0.9); diffuseColor.rgb *= 0.92 + 0.14 * atN(qq);",
     soft: "vec3 q = vAtW * 1000.0; atBump(atG(q * 1.1) * 0.6 + atG(q * 0.3) * 0.4, 0.6); diffuseColor.rgb *= 0.93 + 0.12 * atN(q * 0.35);",
   };
-  const AT_MYO = /^(right|left) (atrium|ventricle)$|^papillary/,
+  const AT_MYO = /^(right|left) (atrium|ventricle)$|^papillary|^interventricular septum$|^trabeculae carneae$|^pectinate muscles$|^moderator band$/,
     AT_LUNG = /^(rul|rml|rll|lul|lll|right lung|left lung)$/,
     AT_AIR = /^(trachea|main bronchus|intermediate bronchus|lobar bronchi|segmental bronchi)$/;
   function reliefKind(p) {
@@ -3381,9 +3381,11 @@ function atlasView(L, buf, model, focusName) {
         p.mesh.add(b, f);
         capObjs.push(b, f);
       }
-      const col = V.real ? ATL_REAL.sys[s] : ATL.colors[s],
+      // coupe colorée comme les structures du système (couleur propre au modèle si elle existe : myocarde rouge sombre…)
+      const own = V.parts.find((p) => p.meta.systeme == s && p.meta.col && !p.meta.cache),
+        col = own ? new T.Color(parseInt(String(own.meta.col).replace("#", ""), 16)).multiplyScalar(0.62).getHex() : V.real ? ATL_REAL.sys[s] : ATL.colors[s],
         pm = new T.MeshStandardMaterial({
-          color: new T.Color(col).lerp(new T.Color(0xffffff), 0.12).multiplyScalar(0.92), roughness: 0.95, metalness: 0,
+          color: own ? new T.Color(parseInt(String(own.meta.col).replace("#", ""), 16)).multiplyScalar(0.42) : new T.Color(col).lerp(new T.Color(0xffffff), 0.12).multiplyScalar(0.92), roughness: 0.95, metalness: 0, envMapIntensity: 0.12,
           stencilWrite: true, stencilRef: 0, stencilFunc: T.NotEqualStencilFunc,
           stencilFail: T.ReplaceStencilOp, stencilZFail: T.ReplaceStencilOp, stencilZPass: T.ReplaceStencilOp,
         }),
