@@ -200,7 +200,14 @@ async function atlasUploadFolder(files) {
     return !on || ((on.metadata && on.metadata.size) || 0) != f.size;
   });
   if (!Object.keys(best).length) return toast("Aucun fichier .glb dans ce dossier. Choisis « 1 - Atlas 3D à envoyer dans l’app » sur ton Bureau.");
-  if (!todo.length) return toast("Tout est déjà à jour ✔");
+  if (!todo.length) {
+    const pend = atlasPending();
+    return toast(
+      pend.length
+        ? "Les fichiers de ce dossier sont les mêmes que ceux déjà en ligne : les nouvelles versions n’y sont pas encore. Demande à Claude de les copier sur ton Bureau, puis recommence."
+        : "Tout est déjà à jour ✔",
+    );
+  }
   let ok = 0;
   for (let i = 0; i < todo.length; i++) {
     toast("Mise à jour " + (i + 1) + " / " + todo.length + " : " + esc(todo[i].name) + "…", 1);
@@ -412,14 +419,14 @@ const atlasLSset = (k, v) => {
   } catch (e) {}
 };
 function atlasThumb(id) {
-  const t = atlasLS("mr_atlas_th", {})[id];
+  const t = atlasLS("mr_atlas_th2", {})[id];
   return t ? '<img src="' + t + '" alt="" loading="lazy">' : atlasIco(id);
 }
 // vignette prise dans le visualiseur (une fois par semaine au plus)
 function atlasThumbSave(id, canvas) {
   try {
-    const all = atlasLS("mr_atlas_th", {}),
-      age = atlasLS("mr_atlas_tht", {});
+    const all = atlasLS("mr_atlas_th2", {}),
+      age = atlasLS("mr_atlas_tht2", {});
     if (all[id] && Date.now() - (age[id] || 0) < 7 * 864e5) return;
     const c = document.createElement("canvas"),
       W = canvas.width,
@@ -429,8 +436,8 @@ function atlasThumbSave(id, canvas) {
     c.getContext("2d").drawImage(canvas, (W - sz) / 2, (H - sz) / 2, sz, sz, 0, 0, 120, 120);
     all[id] = c.toDataURL("image/jpeg", 0.72);
     age[id] = Date.now();
-    atlasLSset("mr_atlas_th", all);
-    atlasLSset("mr_atlas_tht", age);
+    atlasLSset("mr_atlas_th2", all);
+    atlasLSset("mr_atlas_tht2", age);
   } catch (e) {}
 }
 function atlasRecent(id) {
@@ -1479,7 +1486,7 @@ function atlasView(L, buf, model, focusName) {
         if (p) setTimeout(() => focusPart(p), 300);
       };
       if (focusName) V.focusBy(focusName);
-      setTimeout(() => ATL.v === V && !V.pm && !V.tour && !V.quiz && (draw(), atlasThumbSave(V.id, canvas)), 3500);
+      setTimeout(() => ATL.v === V && !V.pm && !V.tour && !V.quiz && thumbShot(), 3500);
       // révision du jour : quiz lancé tout seul sur les structures à retravailler
       if (ATL.auto) {
         const a = ATL.auto;
@@ -2059,6 +2066,38 @@ function atlasView(L, buf, model, focusName) {
 
   // ---------- caméra : perspective ou orthographique, vues, zoom, historique ----------
   const VIEWS = { front: [0, 0, 1], back: [0, 0, -1], side: [1, 0, 0], left: [1, 0, 0], right: [-1, 0, 0], q34: [0.8, 0.35, 0.9], persp: [0.55, 1, 0.75], top: [0, 1, 0.0001], bottom: [0, -1, 0.0001] };
+  // vignette de l'atlas : toujours vue de face, cadrée de la même façon, sans toucher à la vue de l'utilisateur
+  function thumbShot() {
+    if (V.cam !== camP) return;
+    const vis = V.parts.filter((p) => visible(p));
+    if (!vis.length) return;
+    const box = new T.Box3();
+    vis.forEach((p) => box.expandByObject(p.mesh));
+    const c = box.getCenter(new T.Vector3()),
+      sz = box.getSize(new T.Vector3()),
+      r = (Math.max(sz.x, sz.y) / 2) * 1.04,
+      W = canvas.width,
+      H = canvas.height,
+      vf = T.MathUtils.degToRad(camP.fov / 2),
+      half = W < H ? Math.atan(Math.tan(vf) * camP.aspect) : vf, // le carré découpé suit le plus petit côté
+      d = r / (Math.tan(half) * 0.86) + sz.z / 2,
+      pos = camP.position.clone(),
+      tg = controls.target.clone(),
+      sels = V.sels;
+    V.sels = new Set();
+    materials();
+    camP.position.set(c.x, c.y, c.z + d);
+    camP.lookAt(c);
+    camP.updateMatrixWorld();
+    renderer.render(scene, camP);
+    atlasThumbSave(V.id, canvas);
+    V.sels = sels;
+    materials();
+    camP.position.copy(pos);
+    controls.target.copy(tg);
+    camP.lookAt(tg);
+    need();
+  }
   const fitDist = (r) => {
     const vf = T.MathUtils.degToRad(camP.fov / 2),
       hf = Math.atan(Math.tan(vf) * camP.aspect);
